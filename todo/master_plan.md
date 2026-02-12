@@ -28,15 +28,19 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Expanded self-bootstrap with PR lifecycle hooks (create + optional auto-merge) and rollback-on-unhealthy deploy behavior.
 - [x] Replaced Git API placeholders with manager-backed Actions/PR operations in `src/att/api/routes/git.py` and `src/att/core/git_manager.py`.
 - [x] Added self-bootstrap watchdog-style health retry controls before rollback (`health_check_retries`, `health_check_interval_seconds`).
+- [x] Wired baseline live self-bootstrap adapters in API deps (CI status from `gh run list`, PR create/merge hooks via `gh` CLI).
+- [x] Added CI status parser helper and unit coverage in `src/att/core/self_bootstrap_integrations.py` and `tests/unit/test_self_bootstrap_integrations.py`.
+- [x] Expanded MCP transport endpoint at `POST /mcp` with MCP handshake methods (`initialize`, `notifications/initialized`, `ping`) and manager-backed ATT tool/resource handlers aligned to the registered catalog.
+- [x] Added MCP transport integration coverage in `tests/integration/test_mcp_transport.py` for handshake, tool invocation, resource reads, and error cases.
 - [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
 - [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (44 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (51 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P16 is in progress (baseline implemented; remaining work is live CI provider integration, real PR provider wiring, and production restart/rollback execution wiring).
+- [ ] P16 is in progress (baseline implemented; remaining work is production-grade restart watchdog execution and real deployment/rollback integration).
 - [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 

@@ -77,7 +77,7 @@ async def test_self_bootstrap_success_with_ci_pr_merge_and_health(tmp_path: Path
     async def pr_creator(project_id: str, branch_name: str) -> str:
         return f"https://example.com/{project_id}/{branch_name}"
 
-    async def pr_merger(pr_url: str) -> bool:
+    async def pr_merger(project_id: str, pr_url: str) -> bool:
         return True
 
     manager = SelfBootstrapManager(
@@ -125,16 +125,16 @@ async def test_self_bootstrap_rolls_back_when_health_check_fails(tmp_path: Path)
     async def pr_creator(project_id: str, branch_name: str) -> str:
         return "https://example.com/pr/1"
 
-    async def pr_merger(pr_url: str) -> bool:
+    async def pr_merger(project_id: str, pr_url: str) -> bool:
         return True
 
-    async def deployer(target: str) -> bool:
+    async def deployer(project_id: str, target: str) -> bool:
         return True
 
     async def health_checker(target: str) -> bool:
         return False
 
-    async def rollback_executor(target: str) -> bool:
+    async def rollback_executor(project_id: str, target: str) -> bool:
         return True
 
     manager = SelfBootstrapManager(

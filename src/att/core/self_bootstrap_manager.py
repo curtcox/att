@@ -20,9 +20,9 @@ type CIChecker = Callable[[str, str], Awaitable[CIStatus]]
 type HealthChecker = Callable[[str], Awaitable[bool]]
 type Sleeper = Callable[[float], Awaitable[None]]
 type PRCreator = Callable[[str, str], Awaitable[str]]
-type PRMerger = Callable[[str], Awaitable[bool]]
-type Deployer = Callable[[str], Awaitable[bool]]
-type RollbackExecutor = Callable[[str], Awaitable[bool]]
+type PRMerger = Callable[[str, str], Awaitable[bool]]
+type Deployer = Callable[[str, str], Awaitable[bool]]
+type RollbackExecutor = Callable[[str, str], Awaitable[bool]]
 
 
 @dataclass(slots=True)
@@ -174,7 +174,7 @@ class SelfBootstrapManager:
                 )
 
         if request.auto_merge_on_ci_success and pr_url is not None and self._pr_merger is not None:
-            merged = await self._pr_merger(pr_url)
+            merged = await self._pr_merger(request.project_id, pr_url)
             if merged:
                 await self._record_event(
                     project_id=request.project_id,
@@ -212,7 +212,7 @@ class SelfBootstrapManager:
                 event_type=EventType.DEPLOY_STARTED,
                 payload={"target": deploy_target},
             )
-            deployed = await self._deployer(deploy_target)
+            deployed = await self._deployer(request.project_id, deploy_target)
             if not deployed:
                 await self._record_event(
                     project_id=request.project_id,
@@ -263,7 +263,10 @@ class SelfBootstrapManager:
                     and self._rollback_executor is not None
                     and deploy_target is not None
                 ):
-                    rollback_succeeded = await self._rollback_executor(deploy_target)
+                    rollback_succeeded = await self._rollback_executor(
+                        request.project_id,
+                        deploy_target,
+                    )
                     await self._record_event(
                         project_id=request.project_id,
                         event_type=EventType.ERROR,

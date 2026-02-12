@@ -20,4 +20,6 @@ P04-P08,P10
 - `todo/master_plan.md` is updated with completion status.
 
 ## Notes
-- Placeholder sub-plan scaffold created during initial master plan implementation.
+- Baseline FastAPI route surface implemented across project/code/git/runtime/test/debug/deploy/workflow/events/self-bootstrap APIs.
+- Added MCP management/discovery routes (`/api/v1/mcp/*`) and MCP transport route (`POST /mcp`) for JSON-RPC-style tool/resource access.
+- Integration coverage includes feature endpoint tests and MCP-specific API tests in `tests/integration/`.

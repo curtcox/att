@@ -28,3 +28,4 @@ P03
   - `pr_reviews`
 - Wired API routes under `src/att/api/routes/git.py` to these operations.
 - Added integration coverage updates in `tests/integration/test_api_feature_endpoints.py`.
+- `GitManager` operations are now consumed by self-bootstrap adapters for CI/PR lifecycle hooks.

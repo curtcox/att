@@ -11,6 +11,7 @@ from att.api.routes.deploy import router as deploy_router
 from att.api.routes.events import router as events_router
 from att.api.routes.git import router as git_router
 from att.api.routes.mcp import router as mcp_router
+from att.api.routes.mcp_transport import router as mcp_transport_router
 from att.api.routes.projects import router as projects_router
 from att.api.routes.runtime import router as runtime_router
 from att.api.routes.self_bootstrap import router as self_bootstrap_router
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(debug_router)
     app.include_router(deploy_router)
     app.include_router(mcp_router)
+    app.include_router(mcp_transport_router)
 
     @app.get("/api/v1/health", tags=["system"])
     async def health() -> dict[str, str]:

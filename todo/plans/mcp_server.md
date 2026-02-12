@@ -24,3 +24,6 @@ P04-P08,P10
 - Added lookup helper (`find_tool`) and unit coverage in `tests/unit/test_mcp_server.py`.
 - Exposed catalog through REST routes in `src/att/api/routes/mcp.py`.
 - Catalog is now consumed by invocation routes (`/api/v1/mcp/invoke/*`) for tool/resource discovery-aligned APIs.
+- Added MCP Streamable HTTP-style transport endpoint at `POST /mcp` in `src/att/api/routes/mcp_transport.py`.
+- Transport now supports handshake methods (`initialize`, `notifications/initialized`, `ping`) and manager-backed tool/resource execution for ATT project/code/git/runtime/test/debug/deploy operations.
+- Added transport integration coverage in `tests/integration/test_mcp_transport.py`.
