@@ -5,16 +5,28 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from att.api.app import create_app
-from att.api.deps import get_project_manager
+from att.api.deps import get_project_manager, get_runtime_manager
 from att.core.project_manager import ProjectManager
 from att.db.store import SQLiteStore
 
 
+class _FakeRuntimeManager:
+    def __init__(self) -> None:
+        self._logs = ["runtime-log-1", "runtime-log-2"]
+
+    def logs(self, *, limit: int | None = None) -> list[str]:
+        if limit is None or limit <= 0:
+            return list(self._logs)
+        return self._logs[-limit:]
+
+
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
+    runtime_manager = _FakeRuntimeManager()
     app.dependency_overrides[get_project_manager] = lambda: ProjectManager(
         SQLiteStore(tmp_path / "att.db")
     )
+    app.dependency_overrides[get_runtime_manager] = lambda: runtime_manager
     return TestClient(app)
 
 
@@ -112,6 +124,33 @@ def test_mcp_transport_tool_call_and_resource_read(tmp_path: Path) -> None:
     )
     assert resource.status_code == 200
     assert "app.py" in resource.json()["result"]["files"]
+
+    runtime_logs_tool = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "6c",
+            "method": "tools/call",
+            "params": {
+                "name": "att.runtime.logs",
+                "arguments": {"project_id": project_id},
+            },
+        },
+    )
+    assert runtime_logs_tool.status_code == 200
+    assert runtime_logs_tool.json()["result"]["logs"] == ["runtime-log-1", "runtime-log-2"]
+
+    runtime_logs_resource = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "6d",
+            "method": "resources/read",
+            "params": {"uri": f"att://project/{project_id}/logs"},
+        },
+    )
+    assert runtime_logs_resource.status_code == 200
+    assert runtime_logs_resource.json()["result"]["logs"] == ["runtime-log-1", "runtime-log-2"]
 
     listed = client.post(
         "/mcp",

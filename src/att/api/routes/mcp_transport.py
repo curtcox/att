@@ -145,8 +145,8 @@ async def mcp_transport(
                 project_manager=project_manager,
                 code_manager=code_manager,
                 git_manager=git_manager,
+                runtime_manager=runtime_manager,
                 test_results=test_results,
-                debug_logs=debug_logs,
             )
         except Exception as exc:  # pragma: no cover - defensive guard
             return _error(request_id, -32000, str(exc))
@@ -201,7 +201,6 @@ async def _handle_tool_call(
             runtime_call,
             project_manager,
             runtime_manager,
-            debug_logs,
         )
 
     try:
@@ -418,7 +417,6 @@ async def _handle_runtime_tool_call(
     call: RuntimeToolCall,
     project_manager: ProjectManager,
     runtime_manager: RuntimeManager,
-    debug_logs: dict[str, list[str]],
 ) -> dict[str, Any]:
     project = await project_manager.get(call.project_id)
     if project is None:
@@ -439,7 +437,7 @@ async def _handle_runtime_tool_call(
         return {"running": state.running, "pid": state.pid}
 
     if call.operation == "logs":
-        return {"logs": debug_logs.get(call.project_id, [])}
+        return {"logs": runtime_manager.logs()}
 
     return {"error": f"Runtime tool operation not implemented: {call.operation}"}
 
@@ -523,8 +521,8 @@ async def _handle_resource_read(
     project_manager: ProjectManager,
     code_manager: CodeManager,
     git_manager: GitManager,
+    runtime_manager: RuntimeManager,
     test_results: dict[str, dict[str, str | int]],
-    debug_logs: dict[str, list[str]],
 ) -> dict[str, Any]:
     resource_ref = parse_resource_ref(uri)
     if resource_ref is None:
@@ -575,7 +573,7 @@ async def _handle_resource_read(
         return test_results.get(project_id, {"status": "no_results"})
 
     if resource_ref.operation == "logs":
-        return {"logs": debug_logs.get(project_id, [])}
+        return {"logs": runtime_manager.logs()}
 
     if resource_ref.operation == "ci":
         project = await project_manager.get(project_id)

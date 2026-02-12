@@ -85,10 +85,12 @@ class FakeRuntimeManager:
     def __init__(self) -> None:
         self.running = False
         self.pid: int | None = None
+        self._logs: list[str] = []
 
     def start(self, project_path: Path, config_path: Path) -> RuntimeState:
         self.running = True
         self.pid = 4242
+        self._logs = [f"started:{config_path.name}"]
         return RuntimeState(running=True, pid=self.pid)
 
     def stop(self) -> RuntimeState:
@@ -98,6 +100,9 @@ class FakeRuntimeManager:
 
     def status(self) -> RuntimeState:
         return RuntimeState(running=self.running, pid=self.pid)
+
+    def logs(self) -> list[str]:
+        return list(self._logs)
 
 
 class FakeTestRunner:
@@ -280,7 +285,7 @@ def test_runtime_and_deploy_endpoints(tmp_path: Path) -> None:
 
     logs = client.get(f"/api/v1/projects/{project_id}/runtime/logs")
     assert logs.status_code == 200
-    assert logs.json()["logs"] == []
+    assert logs.json()["logs"] == [f"started:{config_path.name}"]
 
     stop = client.post(f"/api/v1/projects/{project_id}/runtime/stop")
     assert stop.status_code == 200

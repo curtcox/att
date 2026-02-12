@@ -49,10 +49,13 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Replaced e2e placeholder with real API smoke tests in `tests/e2e/test_placeholder.py` (health endpoint, MCP discovery, and MCP tools surface check).
 - [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
 - [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
+- [x] Runtime process output capture implemented in `RuntimeManager` via a bounded in-memory log buffer drained from subprocess stdout/stderr.
+- [x] Runtime log reads are now manager-backed across API and MCP surfaces (`GET /api/v1/projects/{id}/runtime/logs`, `att.runtime.logs`, and `att://project/{id}/logs`).
+- [x] Added runtime log coverage in `tests/unit/test_runtime_manager.py` and expanded MCP transport integration assertions in `tests/integration/test_mcp_transport.py`.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (99 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (101 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).

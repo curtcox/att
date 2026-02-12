@@ -51,6 +51,7 @@ async def runtime_status(
 async def runtime_logs(
     project_id: str,
     manager: ProjectManager = Depends(get_project_manager),
+    runtime: RuntimeManager = Depends(get_runtime_manager),
 ) -> dict[str, list[str]]:
     await require_project(project_id, manager)
-    return {"logs": []}
+    return {"logs": runtime.logs()}

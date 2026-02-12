@@ -20,4 +20,14 @@ P03,P04
 - `todo/master_plan.md` is updated with completion status.
 
 ## Notes
-- Placeholder sub-plan scaffold created during initial master plan implementation.
+- Implemented subprocess lifecycle methods in `src/att/core/runtime_manager.py`: `start`, `stop`, and `status` for a single managed runtime process.
+- Added bounded in-memory runtime log buffering (`max_log_lines`) with background stdout drain thread so process output is captured while running.
+- Added `RuntimeManager.logs(limit=...)` and wired log reads through API route `GET /api/v1/projects/{id}/runtime/logs`.
+- Wired MCP runtime log reads to manager-backed logs for both `att.runtime.logs` and resource reads via `att://project/{id}/logs`.
+- Added coverage in:
+  - `tests/unit/test_runtime_manager.py`
+  - `tests/integration/test_api_feature_endpoints.py`
+  - `tests/integration/test_mcp_transport.py`
+- Remaining scope before completion:
+  - Runtime health probing beyond process alive/dead status.
+  - Streaming runtime log delivery semantics for long-running sessions.
