@@ -137,6 +137,26 @@ async def initialize_mcp_servers(
     )
 
 
+@router.post("/servers/{name}/connect", response_model=MCPServerResponse)
+async def connect_mcp_server(
+    name: str,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServerResponse:
+    server = await manager.connect_server(name)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    return _as_response(server)
+
+
+@router.post("/servers/connect", response_model=MCPServersResponse)
+async def connect_mcp_servers(
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServersResponse:
+    return MCPServersResponse(
+        items=[_as_response(server) for server in await manager.connect_all()]
+    )
+
+
 @router.get("/events", response_model=MCPConnectionEventsResponse)
 async def mcp_connection_events(
     manager: MCPClientManager = Depends(get_mcp_client_manager),

@@ -288,3 +288,65 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
     server = manager.get("codex")
     assert server is not None
     assert server.initialized is True
+
+
+@pytest.mark.asyncio
+async def test_connect_server_runs_health_and_initialize() -> None:
+    probe_calls: list[str] = []
+    transport_calls: list[str] = []
+
+    async def probe(server: ExternalServer) -> tuple[bool, str | None]:
+        probe_calls.append(server.name)
+        return True, None
+
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        transport_calls.append(method)
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {},
+        }
+
+    manager = MCPClientManager(probe=probe, transport=transport)
+    manager.register("codex", "http://codex.local")
+
+    connected = await manager.connect_server("codex")
+
+    assert connected is not None
+    assert connected.status is ServerStatus.HEALTHY
+    assert connected.initialized is True
+    assert probe_calls == ["codex"]
+    assert transport_calls == ["initialize", "notifications/initialized"]
+
+
+@pytest.mark.asyncio
+async def test_connect_server_skips_initialize_when_unreachable() -> None:
+    transport_calls: list[str] = []
+
+    async def probe(server: ExternalServer) -> tuple[bool, str | None]:
+        return False, "down"
+
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        transport_calls.append(str(request.get("method", "")))
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {},
+        }
+
+    manager = MCPClientManager(probe=probe, transport=transport, unreachable_after=1)
+    manager.register("codex", "http://codex.local")
+
+    connected = await manager.connect_server("codex")
+
+    assert connected is not None
+    assert connected.status is ServerStatus.UNREACHABLE
+    assert connected.initialized is False
+    assert transport_calls == []

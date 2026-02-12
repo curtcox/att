@@ -33,3 +33,7 @@ P11
   - `POST /api/v1/mcp/servers/initialize`
 - Expanded unit/integration tests for handshake success/failure and initialization endpoint behavior.
 - Invocation now auto-initializes candidate servers before `tools/call` / `resources/read`, and falls back to the next server if initialization fails.
+- Added combined connect operations in client manager (`connect_server`, `connect_all`) to run health-check + initialize in one step.
+- Added connect API endpoints:
+  - `POST /api/v1/mcp/servers/{name}/connect`
+  - `POST /api/v1/mcp/servers/connect`

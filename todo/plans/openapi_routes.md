@@ -24,4 +24,5 @@ P04-P08,P10
 - Project routes now include clone/download endpoints in addition to CRUD.
 - Added MCP management/discovery routes (`/api/v1/mcp/*`) and MCP transport route (`POST /mcp`) for JSON-RPC-style tool/resource access.
 - MCP management surface now includes explicit server initialization routes (`/api/v1/mcp/servers/{name}/initialize`, `/api/v1/mcp/servers/initialize`).
+- MCP management surface now also includes combined connect routes (`/api/v1/mcp/servers/{name}/connect`, `/api/v1/mcp/servers/connect`).
 - Integration coverage includes feature endpoint tests and MCP-specific API tests in `tests/integration/`.

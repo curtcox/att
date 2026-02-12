@@ -238,6 +238,24 @@ class MCPClientManager:
                 initialized.append(server)
         return initialized
 
+    async def connect_server(self, name: str, *, force: bool = False) -> ExternalServer | None:
+        """Run health check + initialize handshake for one server."""
+        checked = await self.health_check_server(name)
+        if checked is None:
+            return None
+        if checked.status is ServerStatus.UNREACHABLE and not force:
+            return checked
+        return await self.initialize_server(name, force=force)
+
+    async def connect_all(self, *, force: bool = False) -> list[ExternalServer]:
+        """Run health check + initialize handshake for all servers."""
+        connected: list[ExternalServer] = []
+        for name in sorted(self._servers):
+            server = await self.connect_server(name, force=force)
+            if server is not None:
+                connected.append(server)
+        return connected
+
     async def invoke_tool(
         self,
         tool_name: str,

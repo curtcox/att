@@ -120,6 +120,38 @@ def test_mcp_server_initialize_endpoints() -> None:
     }
 
 
+def test_mcp_server_connect_endpoints() -> None:
+    transport = FallbackTransport()
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "codex", "url": "http://codex.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "github", "url": "http://github.local"},
+    )
+
+    one = client.post("/api/v1/mcp/servers/github/connect")
+    assert one.status_code == 200
+    assert one.json()["initialized"] is True
+    assert one.json()["status"] == ServerStatus.HEALTHY.value
+
+    failing = client.post("/api/v1/mcp/servers/codex/connect")
+    assert failing.status_code == 200
+    assert failing.json()["initialized"] is False
+    assert failing.json()["status"] in {
+        ServerStatus.DEGRADED.value,
+        ServerStatus.UNREACHABLE.value,
+    }
+
+    all_servers = client.post("/api/v1/mcp/servers/connect")
+    assert all_servers.status_code == 200
+    assert len(all_servers.json()["items"]) == 2
+
+
 def test_mcp_server_health_check_degraded_and_missing() -> None:
     manager = MCPClientManager(probe=StaticProbe(healthy=False, error="timeout"))
     client = _client_with_manager(manager)
