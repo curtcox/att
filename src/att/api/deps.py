@@ -13,7 +13,7 @@ from att.core.project_manager import ProjectManager
 from att.core.runtime_manager import RuntimeManager
 from att.core.self_bootstrap_integrations import parse_gh_actions_status
 from att.core.self_bootstrap_manager import SelfBootstrapManager
-from att.core.test_runner import TestRunner
+from att.core.test_runner import TestResultPayload, TestRunner
 from att.core.tool_orchestrator import ToolOrchestrator
 from att.db.store import SQLiteStore
 from att.mcp.client import MCPClientManager
@@ -26,7 +26,7 @@ _TEST_RUNNER = TestRunner()
 _DEBUG_MANAGER = DebugManager()
 _DEPLOY_MANAGER = DeployManager(_RUNTIME_MANAGER)
 _MCP_CLIENT_MANAGER = MCPClientManager()
-_TEST_RESULTS: dict[str, dict[str, str | int]] = {}
+_TEST_RESULTS: dict[str, TestResultPayload] = {}
 _DEBUG_LOGS: dict[str, list[str]] = {}
 
 
@@ -154,7 +154,7 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
     )
 
 
-def get_test_result_store() -> dict[str, dict[str, str | int]]:
+def get_test_result_store() -> dict[str, TestResultPayload]:
     return _TEST_RESULTS
 
 

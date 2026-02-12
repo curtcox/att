@@ -9,3 +9,5 @@ class RunTestRequest(BaseModel):
     """Test run payload."""
 
     suite: str = "unit"
+    markers: str | None = None
+    timeout_seconds: int | None = None

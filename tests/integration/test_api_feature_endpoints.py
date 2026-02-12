@@ -22,7 +22,7 @@ from att.core.deploy_manager import DeployStatus
 from att.core.git_manager import GitResult
 from att.core.project_manager import ProjectManager
 from att.core.runtime_manager import RuntimeState
-from att.core.test_runner import RunResult
+from att.core.test_runner import RunResult, TestResultPayload
 from att.db.store import SQLiteStore
 
 
@@ -106,7 +106,15 @@ class FakeRuntimeManager:
 
 
 class FakeTestRunner:
-    def run(self, project_path: Path, suite: str = "unit") -> RunResult:
+    def run(
+        self,
+        project_path: Path,
+        suite: str = "unit",
+        *,
+        markers: str | None = None,
+        timeout_seconds: int | None = None,
+    ) -> RunResult:
+        del project_path, markers, timeout_seconds
         return RunResult(
             command=f"pytest tests/{suite}",
             returncode=0,
@@ -131,7 +139,7 @@ class FakeDeployManager:
 
 def _client_with_project(
     tmp_path: Path,
-) -> tuple[TestClient, str, dict[str, list[str]], dict[str, dict[str, str | int]], FakeGitManager]:
+) -> tuple[TestClient, str, dict[str, list[str]], dict[str, TestResultPayload], FakeGitManager]:
     app = create_app()
 
     project_manager = ProjectManager(SQLiteStore(tmp_path / "att.db"))
@@ -142,7 +150,7 @@ def _client_with_project(
     test_runner = FakeTestRunner()
     deploy_manager = FakeDeployManager()
     debug_logs: dict[str, list[str]] = {}
-    test_results: dict[str, dict[str, str | int]] = {}
+    test_results: dict[str, TestResultPayload] = {}
 
     app.dependency_overrides[get_project_manager] = lambda: project_manager
     app.dependency_overrides[get_code_manager] = lambda: code_manager

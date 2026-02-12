@@ -52,10 +52,14 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Runtime process output capture implemented in `RuntimeManager` via a bounded in-memory log buffer drained from subprocess stdout/stderr.
 - [x] Runtime log reads are now manager-backed across API and MCP surfaces (`GET /api/v1/projects/{id}/runtime/logs`, `att.runtime.logs`, and `att://project/{id}/logs`).
 - [x] Added runtime log coverage in `tests/unit/test_runtime_manager.py` and expanded MCP transport integration assertions in `tests/integration/test_mcp_transport.py`.
+- [x] Expanded `TestRunner` execution output with parsed pytest summary metrics (pass/fail/skip/error counts, duration, no-tests flag) and timeout handling.
+- [x] Added pytest summary parsers for console, JSON report, and JUnit XML inputs in `src/att/core/test_runner.py`.
+- [x] Wired enriched test-run payloads through API and MCP transport (`/api/v1/projects/{id}/test/run`, `att.test.run`, `att.test.results`) including optional marker and timeout inputs.
+- [x] Added test-runner unit coverage in `tests/unit/test_test_runner.py` and expanded test-tool adapter coverage in `tests/unit/test_test_tools.py`.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (101 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (110 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).

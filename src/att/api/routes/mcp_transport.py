@@ -23,7 +23,7 @@ from att.core.deploy_manager import DeployManager
 from att.core.git_manager import GitManager
 from att.core.project_manager import CreateProjectInput, ProjectManager
 from att.core.runtime_manager import RuntimeManager
-from att.core.test_runner import TestRunner
+from att.core.test_runner import TestResultPayload, TestRunner
 from att.mcp.server import find_tool, registered_resources, registered_tools
 from att.mcp.tools.code_tools import CodeToolCall, parse_code_tool_call
 from att.mcp.tools.debug_tools import DebugToolCall, parse_debug_tool_call
@@ -62,7 +62,7 @@ async def mcp_transport(
     test_runner: TestRunner = Depends(get_test_runner),
     debug_manager: DebugManager = Depends(get_debug_manager),
     deploy_manager: DeployManager = Depends(get_deploy_manager),
-    test_results: dict[str, dict[str, str | int]] = Depends(get_test_result_store),
+    test_results: dict[str, TestResultPayload] = Depends(get_test_result_store),
     debug_logs: dict[str, list[str]] = Depends(get_debug_log_store),
 ) -> dict[str, Any]:
     request_id = payload.get("id")
@@ -168,7 +168,7 @@ async def _handle_tool_call(
     test_runner: TestRunner,
     debug_manager: DebugManager,
     deploy_manager: DeployManager,
-    test_results: dict[str, dict[str, str | int]],
+    test_results: dict[str, TestResultPayload],
     debug_logs: dict[str, list[str]],
 ) -> dict[str, Any]:
     try:
@@ -446,19 +446,20 @@ async def _handle_test_tool_call(
     call: MCPTestToolCall,
     project_manager: ProjectManager,
     test_runner: TestRunner,
-    test_results: dict[str, dict[str, str | int]],
+    test_results: dict[str, TestResultPayload],
 ) -> dict[str, Any]:
     project = await project_manager.get(call.project_id)
     if project is None:
         return {"error": "project not found"}
 
     if call.operation == "run":
-        test_result = test_runner.run(project.path, suite=call.suite)
-        payload: dict[str, str | int] = {
-            "command": test_result.command,
-            "returncode": test_result.returncode,
-            "output": test_result.output,
-        }
+        test_result = test_runner.run(
+            project.path,
+            suite=call.suite,
+            markers=call.markers,
+            timeout_seconds=call.timeout_seconds,
+        )
+        payload = test_result.as_payload()
         test_results[call.project_id] = payload
         return payload
 
@@ -522,7 +523,7 @@ async def _handle_resource_read(
     code_manager: CodeManager,
     git_manager: GitManager,
     runtime_manager: RuntimeManager,
-    test_results: dict[str, dict[str, str | int]],
+    test_results: dict[str, TestResultPayload],
 ) -> dict[str, Any]:
     resource_ref = parse_resource_ref(uri)
     if resource_ref is None:
