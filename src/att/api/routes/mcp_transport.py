@@ -30,6 +30,8 @@ from att.mcp.server import find_tool, registered_resources, registered_tools
 from att.mcp.tools.code_tools import CodeToolCall, parse_code_tool_call
 from att.mcp.tools.git_tools import GitToolCall, parse_git_tool_call
 from att.mcp.tools.project_tools import ProjectToolCall, parse_project_tool_call
+from att.mcp.tools.runtime_tools import RuntimeToolCall, parse_runtime_tool_call
+from att.mcp.tools.test_tools import MCPTestToolCall, parse_test_tool_call
 
 router = APIRouter(tags=["mcp-transport"])
 
@@ -218,61 +220,29 @@ async def _handle_tool_call(
     if git_call is not None:
         return await _handle_git_tool_call(git_call, project_manager, git_manager)
 
-    if tool_name == "att.runtime.start":
-        project_id = str(arguments.get("project_id", ""))
-        config_path = str(arguments.get("config_path", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not config_path:
-            return {"error": "config_path is required"}
-        state = runtime_manager.start(project.path, Path(config_path))
-        return {"running": state.running, "pid": state.pid}
+    try:
+        runtime_call = parse_runtime_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if runtime_call is not None:
+        return await _handle_runtime_tool_call(
+            runtime_call,
+            project_manager,
+            runtime_manager,
+            debug_logs,
+        )
 
-    if tool_name == "att.runtime.stop":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        state = runtime_manager.stop()
-        return {"running": state.running, "pid": state.pid}
-
-    if tool_name == "att.runtime.status":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        state = runtime_manager.status()
-        return {"running": state.running, "pid": state.pid}
-
-    if tool_name == "att.runtime.logs":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {"logs": debug_logs.get(project_id, [])}
-
-    if tool_name == "att.test.run":
-        project_id = str(arguments.get("project_id", ""))
-        suite = str(arguments.get("suite", "unit"))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        test_result = test_runner.run(project.path, suite=suite)
-        payload: dict[str, str | int] = {
-            "command": test_result.command,
-            "returncode": test_result.returncode,
-            "output": test_result.output,
-        }
-        test_results[project_id] = payload
-        return payload
-
-    if tool_name == "att.test.results":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return test_results.get(project_id, {"status": "no_results"})
+    try:
+        test_call = parse_test_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if test_call is not None:
+        return await _handle_test_tool_call(
+            test_call,
+            project_manager,
+            test_runner,
+            test_results,
+        )
 
     if tool_name == "att.debug.errors":
         project_id = str(arguments.get("project_id", ""))
@@ -501,6 +471,62 @@ async def _handle_git_tool_call(
         return {"actions": git_manager.actions(project.path, limit=limit).output}
 
     return {"error": f"Git tool operation not implemented: {call.operation}"}
+
+
+async def _handle_runtime_tool_call(
+    call: RuntimeToolCall,
+    project_manager: ProjectManager,
+    runtime_manager: RuntimeManager,
+    debug_logs: dict[str, list[str]],
+) -> dict[str, Any]:
+    project = await project_manager.get(call.project_id)
+    if project is None:
+        return {"error": "project not found"}
+
+    if call.operation == "start":
+        if call.config_path is None:
+            return {"error": "config_path is required"}
+        state = runtime_manager.start(project.path, call.config_path)
+        return {"running": state.running, "pid": state.pid}
+
+    if call.operation == "stop":
+        state = runtime_manager.stop()
+        return {"running": state.running, "pid": state.pid}
+
+    if call.operation == "status":
+        state = runtime_manager.status()
+        return {"running": state.running, "pid": state.pid}
+
+    if call.operation == "logs":
+        return {"logs": debug_logs.get(call.project_id, [])}
+
+    return {"error": f"Runtime tool operation not implemented: {call.operation}"}
+
+
+async def _handle_test_tool_call(
+    call: MCPTestToolCall,
+    project_manager: ProjectManager,
+    test_runner: TestRunner,
+    test_results: dict[str, dict[str, str | int]],
+) -> dict[str, Any]:
+    project = await project_manager.get(call.project_id)
+    if project is None:
+        return {"error": "project not found"}
+
+    if call.operation == "run":
+        test_result = test_runner.run(project.path, suite=call.suite)
+        payload: dict[str, str | int] = {
+            "command": test_result.command,
+            "returncode": test_result.returncode,
+            "output": test_result.output,
+        }
+        test_results[call.project_id] = payload
+        return payload
+
+    if call.operation == "results":
+        return test_results.get(call.project_id, {"status": "no_results"})
+
+    return {"error": f"Test tool operation not implemented: {call.operation}"}
 
 
 async def _handle_resource_read(

@@ -225,3 +225,33 @@ def test_mcp_transport_reports_errors(tmp_path: Path) -> None:
     )
     assert git_commit_missing_message.status_code == 200
     assert git_commit_missing_message.json()["error"]["code"] == -32000
+
+    runtime_start_missing_config = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "13",
+            "method": "tools/call",
+            "params": {
+                "name": "att.runtime.start",
+                "arguments": {"project_id": "p1"},
+            },
+        },
+    )
+    assert runtime_start_missing_config.status_code == 200
+    assert runtime_start_missing_config.json()["error"]["code"] == -32000
+
+    test_run_missing_project = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "14",
+            "method": "tools/call",
+            "params": {
+                "name": "att.test.run",
+                "arguments": {"suite": "unit"},
+            },
+        },
+    )
+    assert test_run_missing_project.status_code == 200
+    assert test_run_missing_project.json()["error"]["code"] == -32000

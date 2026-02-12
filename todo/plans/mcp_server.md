@@ -30,5 +30,6 @@ P04-P08,P10
 - Added typed project-tool adapter parsing in `src/att/mcp/tools/project_tools.py` and integrated it into transport project operations.
 - Added typed code-tool adapter parsing in `src/att/mcp/tools/code_tools.py` and integrated it into transport code operations.
 - Added typed git-tool adapter parsing in `src/att/mcp/tools/git_tools.py` and integrated it into transport git operations.
+- Added typed runtime/test tool adapter parsing in `src/att/mcp/tools/runtime_tools.py` and `src/att/mcp/tools/test_tools.py`, integrated into transport runtime/test operations.
 - Added defensive JSON-RPC error wrapping so unexpected handler exceptions return MCP error payloads instead of raw 500s.
-- Added transport integration coverage in `tests/integration/test_mcp_transport.py` and adapter unit coverage in `tests/unit/test_project_tools.py` + `tests/unit/test_code_tools.py` + `tests/unit/test_git_tools.py`.
+- Added transport integration coverage in `tests/integration/test_mcp_transport.py` and adapter unit coverage in `tests/unit/test_project_tools.py` + `tests/unit/test_code_tools.py` + `tests/unit/test_git_tools.py` + `tests/unit/test_runtime_tools.py` + `tests/unit/test_test_tools.py`.
