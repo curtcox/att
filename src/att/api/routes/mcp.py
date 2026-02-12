@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from att.api.deps import get_mcp_client_manager
 from att.api.schemas.mcp import (
+    InvokeToolRequest,
+    MCPConnectionEventResponse,
+    MCPConnectionEventsResponse,
+    MCPInvocationResponse,
     MCPResourceResponse,
     MCPServerResponse,
     MCPServersResponse,
     MCPToolResponse,
+    ReadResourceRequest,
     RegisterMCPServerRequest,
 )
-from att.mcp.client import ExternalServer, MCPClientManager
+from att.mcp.client import (
+    ExternalServer,
+    JSONValue,
+    MCPClientManager,
+    MCPInvocationError,
+)
 from att.mcp.server import registered_resources, registered_tools
 
 router = APIRouter(prefix="/api/v1/mcp", tags=["mcp"])
@@ -52,6 +64,17 @@ async def list_mcp_servers(
     return MCPServersResponse(items=[_as_response(server) for server in manager.list_servers()])
 
 
+@router.get("/servers/{name}", response_model=MCPServerResponse)
+async def get_mcp_server(
+    name: str,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServerResponse:
+    server = manager.get(name)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    return _as_response(server)
+
+
 @router.post("/servers", response_model=MCPServerResponse, status_code=status.HTTP_201_CREATED)
 async def register_mcp_server(
     request: RegisterMCPServerRequest,
@@ -59,6 +82,16 @@ async def register_mcp_server(
 ) -> MCPServerResponse:
     server = manager.register(request.name, str(request.url))
     return _as_response(server)
+
+
+@router.delete("/servers/{name}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_mcp_server(
+    name: str,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> None:
+    if manager.get(name) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    manager.unregister(name)
 
 
 @router.post("/servers/{name}/health-check", response_model=MCPServerResponse)
@@ -78,4 +111,71 @@ async def check_mcp_servers(
 ) -> MCPServersResponse:
     return MCPServersResponse(
         items=[_as_response(server) for server in await manager.health_check_all()]
+    )
+
+
+@router.get("/events", response_model=MCPConnectionEventsResponse)
+async def mcp_connection_events(
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPConnectionEventsResponse:
+    events = [
+        MCPConnectionEventResponse(
+            server=event.server,
+            from_status=event.from_status,
+            to_status=event.to_status,
+            reason=event.reason,
+            timestamp=event.timestamp,
+        )
+        for event in manager.list_events()
+    ]
+    return MCPConnectionEventsResponse(items=events)
+
+
+@router.post("/invoke/tool", response_model=MCPInvocationResponse)
+async def invoke_mcp_tool(
+    request: InvokeToolRequest,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPInvocationResponse:
+    try:
+        arguments = cast(dict[str, JSONValue], request.arguments)
+        result = await manager.invoke_tool(
+            request.tool_name,
+            arguments,
+            preferred=request.preferred_servers,
+        )
+    except MCPInvocationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    return MCPInvocationResponse(
+        server=result.server,
+        method=result.method,
+        request_id=result.request_id,
+        result=result.result,
+        raw_response=result.raw_response,
+    )
+
+
+@router.post("/invoke/resource", response_model=MCPInvocationResponse)
+async def invoke_mcp_resource(
+    request: ReadResourceRequest,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPInvocationResponse:
+    try:
+        result = await manager.read_resource(
+            request.uri,
+            preferred=request.preferred_servers,
+        )
+    except MCPInvocationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    return MCPInvocationResponse(
+        server=result.server,
+        method=result.method,
+        request_id=result.request_id,
+        result=result.result,
+        raw_response=result.raw_response,
     )

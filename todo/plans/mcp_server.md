@@ -23,3 +23,4 @@ P04-P08,P10
 - Implemented baseline tool and resource catalog in `src/att/mcp/server.py`.
 - Added lookup helper (`find_tool`) and unit coverage in `tests/unit/test_mcp_server.py`.
 - Exposed catalog through REST routes in `src/att/api/routes/mcp.py`.
+- Catalog is now consumed by invocation routes (`/api/v1/mcp/invoke/*`) for tool/resource discovery-aligned APIs.

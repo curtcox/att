@@ -4,7 +4,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from att.mcp.client import MCPClientManager, ServerStatus
+from att.mcp.client import (
+    ExternalServer,
+    JSONObject,
+    MCPClientManager,
+    MCPInvocationError,
+    ServerStatus,
+)
 
 
 @pytest.mark.asyncio
@@ -91,3 +97,74 @@ def test_choose_server_prefers_healthy_then_degraded() -> None:
     fallback = manager.choose_server(preferred=["a", "b"])
     assert fallback is not None
     assert fallback.name == "a"
+
+
+@pytest.mark.asyncio
+async def test_invoke_tool_fails_over_to_next_server() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        from_server = server.name
+        if from_server == "primary":
+            raise RuntimeError("connect timeout")
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True, "method": str(request.get("method", ""))},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    result = await manager.invoke_tool(
+        "att.project.list",
+        {"limit": 10},
+        preferred=["primary", "backup"],
+    )
+    assert result.server == "backup"
+    assert result.method == "tools/call"
+    assert isinstance(result.result, dict)
+    assert result.result["ok"] is True
+
+    primary = manager.get("primary")
+    backup = manager.get("backup")
+    assert primary is not None
+    assert backup is not None
+    assert primary.status is ServerStatus.DEGRADED
+    assert backup.status is ServerStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_read_resource_fallback_on_rpc_error() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        from_server = server.name
+        if from_server == "primary":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "error": {"message": "rpc down"},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"uri": "att://projects"},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("primary", "http://primary.local")
+    manager.register("secondary", "http://secondary.local")
+
+    result = await manager.read_resource(
+        "att://projects",
+        preferred=["primary", "secondary"],
+    )
+    assert result.server == "secondary"
+    assert result.method == "resources/read"
+    assert isinstance(result.result, dict)
+    assert result.result["uri"] == "att://projects"
+
+
+@pytest.mark.asyncio
+async def test_invoke_tool_raises_when_no_servers_available() -> None:
+    manager = MCPClientManager()
+    with pytest.raises(MCPInvocationError):
+        await manager.invoke_tool("att.project.list")

@@ -5,9 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Protocol
+from typing import Protocol, cast
+from uuid import uuid4
 
 import httpx
+
+type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
+type JSONObject = dict[str, JSONValue]
 
 
 class ServerStatus(StrEnum):
@@ -47,11 +51,33 @@ class ConnectionEvent:
     timestamp: datetime
 
 
+@dataclass(slots=True)
+class MCPInvocationResult:
+    """Normalized result for a single MCP invocation."""
+
+    server: str
+    method: str
+    request_id: str
+    result: JSONValue
+    raw_response: JSONObject
+
+
+class MCPInvocationError(RuntimeError):
+    """Raised when invocation fails across all available servers."""
+
+
 class HealthProbe(Protocol):
     """Async probe protocol for MCP health checks."""
 
     async def __call__(self, server: ExternalServer) -> tuple[bool, str | None]:
         """Return (healthy, error_message)."""
+
+
+class MCPTransport(Protocol):
+    """Async transport protocol for MCP JSON-RPC requests."""
+
+    async def __call__(self, server: ExternalServer, request: JSONObject) -> JSONObject:
+        """Send request to one server and return JSON object response."""
 
 
 class MCPClientManager:
@@ -61,12 +87,14 @@ class MCPClientManager:
         self,
         *,
         probe: HealthProbe | None = None,
+        transport: MCPTransport | None = None,
         max_backoff_seconds: int = 8,
         unreachable_after: int = 3,
     ) -> None:
         self._servers: dict[str, ExternalServer] = {}
         self._events: list[ConnectionEvent] = []
         self._probe = probe
+        self._transport = transport
         self._max_backoff_seconds = max_backoff_seconds
         self._unreachable_after = unreachable_after
 
@@ -134,6 +162,30 @@ class MCPClientManager:
                 results.append(checked)
         return results
 
+    async def invoke_tool(
+        self,
+        tool_name: str,
+        arguments: dict[str, JSONValue] | None = None,
+        *,
+        preferred: list[str] | None = None,
+    ) -> MCPInvocationResult:
+        """Invoke an MCP tool with fallback across eligible servers."""
+        params: JSONObject = {
+            "name": tool_name,
+            "arguments": arguments or {},
+        }
+        return await self._invoke("tools/call", params, preferred=preferred)
+
+    async def read_resource(
+        self,
+        uri: str,
+        *,
+        preferred: list[str] | None = None,
+    ) -> MCPInvocationResult:
+        """Read an MCP resource with fallback across eligible servers."""
+        params: JSONObject = {"uri": uri}
+        return await self._invoke("resources/read", params, preferred=preferred)
+
     def record_check_result(
         self,
         name: str,
@@ -185,6 +237,95 @@ class MCPClientManager:
         """Manual healthy marker for one server."""
         self.record_check_result(name, healthy=True)
 
+    async def _invoke(
+        self,
+        method: str,
+        params: JSONObject,
+        *,
+        preferred: list[str] | None,
+    ) -> MCPInvocationResult:
+        candidates = self._invocation_candidates(preferred)
+        if not candidates:
+            raise MCPInvocationError("No reachable MCP servers are currently available")
+
+        request_id = str(uuid4())
+        request = self._build_request(method, request_id=request_id, params=params)
+        transport = self._transport or self._default_transport
+        errors: list[str] = []
+
+        for server in candidates:
+            try:
+                response = await transport(server, request)
+            except Exception as exc:  # noqa: BLE001
+                message = str(exc)
+                self.record_check_result(server.name, healthy=False, error=message)
+                errors.append(f"{server.name}: {message}")
+                continue
+
+            rpc_error = self._extract_error(response)
+            if rpc_error is not None:
+                self.record_check_result(
+                    server.name, healthy=False, error=f"rpc error: {rpc_error}"
+                )
+                errors.append(f"{server.name}: {rpc_error}")
+                continue
+
+            if "result" not in response:
+                missing_result = "rpc error: missing result"
+                self.record_check_result(server.name, healthy=False, error=missing_result)
+                errors.append(f"{server.name}: {missing_result}")
+                continue
+
+            self.record_check_result(server.name, healthy=True)
+            return MCPInvocationResult(
+                server=server.name,
+                method=method,
+                request_id=request_id,
+                result=response["result"],
+                raw_response=response,
+            )
+
+        joined = "; ".join(errors) if errors else "unknown invocation failure"
+        msg = f"Invocation failed across servers: {joined}"
+        raise MCPInvocationError(msg)
+
+    @staticmethod
+    def _build_request(method: str, *, request_id: str, params: JSONObject) -> JSONObject:
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": method,
+            "params": params,
+        }
+
+    @staticmethod
+    def _extract_error(response: JSONObject) -> str | None:
+        error_payload = response.get("error")
+        if error_payload is None:
+            return None
+        if isinstance(error_payload, dict):
+            message = error_payload.get("message")
+            if isinstance(message, str):
+                return message
+            code = error_payload.get("code")
+            return f"code={code}"
+        return str(error_payload)
+
+    def _invocation_candidates(self, preferred: list[str] | None) -> list[ExternalServer]:
+        ordered = self._order_candidates(preferred)
+        healthy = [server for server in ordered if server.status is ServerStatus.HEALTHY]
+        degraded = [
+            server
+            for server in ordered
+            if server.status is ServerStatus.DEGRADED and self.should_retry(server.name)
+        ]
+        unreachable = [
+            server
+            for server in ordered
+            if server.status is ServerStatus.UNREACHABLE and self.should_retry(server.name)
+        ]
+        return [*healthy, *degraded, *unreachable]
+
     @staticmethod
     async def _default_probe(server: ExternalServer) -> tuple[bool, str | None]:
         """Default HTTP health probe against `/health`."""
@@ -197,6 +338,26 @@ class MCPClientManager:
             return False, f"http {response.status_code}"
         except httpx.HTTPError as exc:
             return False, str(exc)
+
+    @staticmethod
+    async def _default_transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        """Default Streamable HTTP JSON-RPC transport."""
+        endpoint = f"{server.url.rstrip('/')}/mcp"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(endpoint, json=request)
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        payload = response.json()
+        if not isinstance(payload, dict):
+            msg = "Invalid JSON-RPC response payload"
+            raise RuntimeError(msg)
+        if not all(isinstance(key, str) for key in payload):
+            msg = "Invalid JSON-RPC response keys"
+            raise RuntimeError(msg)
+        return cast(JSONObject, payload)
 
     def _order_candidates(self, preferred: list[str] | None) -> list[ExternalServer]:
         if not preferred:

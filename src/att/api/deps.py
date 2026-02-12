@@ -11,6 +11,7 @@ from att.core.git_manager import GitManager
 from att.core.project_manager import ProjectManager
 from att.core.runtime_manager import RuntimeManager
 from att.core.test_runner import TestRunner
+from att.core.tool_orchestrator import ToolOrchestrator
 from att.db.store import SQLiteStore
 from att.mcp.client import MCPClientManager
 
@@ -61,6 +62,15 @@ def get_deploy_manager() -> DeployManager:
 
 def get_mcp_client_manager() -> MCPClientManager:
     return _MCP_CLIENT_MANAGER
+
+
+def get_tool_orchestrator() -> ToolOrchestrator:
+    return ToolOrchestrator(
+        code_manager=get_code_manager(),
+        git_manager=get_git_manager(),
+        test_runner=get_test_runner(),
+        store=get_store(),
+    )
 
 
 def get_test_result_store() -> dict[str, dict[str, str | int]]:

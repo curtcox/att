@@ -20,4 +20,8 @@ P04-P08,P10
 - `todo/master_plan.md` is updated with completion status.
 
 ## Notes
-- Placeholder sub-plan scaffold created during initial master plan implementation.
+- Implemented orchestrated change workflow in `src/att/core/tool_orchestrator.py`.
+- Workflow now emits and persists `code.changed`, `test.run`, `test.passed`/`test.failed`, and optional `git.commit` events.
+- Added workflow API route: `POST /api/v1/projects/{project_id}/workflows/change-test`.
+- Added event query API route: `GET /api/v1/projects/{project_id}/events` with optional event-type filter.
+- Added unit coverage in `tests/unit/test_tool_orchestrator.py` and integration coverage in `tests/integration/test_api_workflows_events.py`.

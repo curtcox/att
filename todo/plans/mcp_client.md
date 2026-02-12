@@ -24,3 +24,6 @@ P11
 - Added retry policy, degraded/unreachable states, transition events, and server selection logic.
 - Added unit coverage in `tests/unit/test_mcp_client.py`.
 - Added API management endpoints and integration tests in `tests/integration/test_api_mcp.py`.
+- Added JSON-RPC invocation methods (`tools/call`, `resources/read`) with fallback across servers and error-based degrade handling.
+- Added invocation API endpoints (`/api/v1/mcp/invoke/tool`, `/api/v1/mcp/invoke/resource`) and failover tests.
+- Added server inspection/deletion and connection event APIs for operational visibility.
