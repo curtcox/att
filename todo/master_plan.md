@@ -59,7 +59,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 | CI/CD | GitHub Actions (tiered) |
 | Containers | Docker / Docker Compose (optional — not required) |
 | Deployment | Local-first (direct subprocess via `nat serve`), cloud migration path later |
-| Process Model | Single NAT app at a time, subprocess isolation |
+| Process Model | Single managed NAT app at a time, subprocess isolation (ATT itself always runs) |
 
 ---
 
@@ -105,19 +105,23 @@ att/
 │       │   ├── app.py
 │       │   ├── routes/
 │       │   └── schemas/
-│       ├── mcp/                   # MCP server + client
+│       ├── mcp/                   # MCP server + client (thin wrappers around nat.mcp)
 │       │   ├── __init__.py
-│       │   ├── server.py
-│       │   ├── client.py
-│       │   └── tools/
+│       │   ├── server.py          # Registers ATT tools with nat.mcp server
+│       │   ├── client.py          # Multi-server connection manager using nat.mcp client
+│       │   └── tools/             # ATT tool definitions exposed via MCP
 │       ├── nat_integration/       # NAT workflow configs + plugins
 │       │   ├── __init__.py
 │       │   ├── configs/
 │       │   └── workflows/
-│       └── models/                # Data models
+│       ├── models/                # Data models
+│       │   ├── __init__.py
+│       │   ├── project.py
+│       │   └── events.py
+│       └── db/                    # SQLite persistence layer
 │           ├── __init__.py
-│           ├── project.py
-│           └── events.py
+│           ├── store.py           # SQLite connection + queries
+│           └── migrations.py      # Schema versioning
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -130,12 +134,12 @@ att/
 │       ├── pr-quick.yml           # Tier 1: fast PR checks
 │       └── main-full.yml          # Tier 2: full pre-merge
 ├── pyproject.toml
-├── Dockerfile
-├── docker-compose.yml
+├── Dockerfile                     # Optional — not required for local dev
+├── docker-compose.yml             # Optional — not required for local dev
 └── README.md
 ```
 
-- Dependencies: `nvidia-nat[mcp]` (1.4.x), `fastapi`, `uvicorn`, `httpx`, `pydantic`
+- Dependencies: `nvidia-nat[mcp]` (1.4.x — includes fastapi, uvicorn, pydantic), `httpx`, `aiosqlite`
 - Dev dependencies: `pytest`, `pytest-asyncio`, `hypothesis`, `playwright`, `mypy`, `ruff`, `coverage`, `pytest-cov`
 
 ### 0.2 CI/CD — Tiered GitHub Actions
@@ -158,8 +162,8 @@ att/
   3. E2E tests: `pytest tests/e2e/ --timeout=300` (~5min)
   4. Security scan: `bandit -r src/`
   5. Dependency audit: `pip-audit`
-  6. Build Docker image
-  7. Smoke test Docker image (start server, hit health endpoint)
+  6. Smoke test: start server (subprocess), hit health endpoint, shut down
+  7. (Optional, if Docker available) Build Docker image and smoke test it
 - Target: < 10 minutes total
 
 ### 0.3 Core Data Models
@@ -207,6 +211,10 @@ class EventType(str, Enum):
     ERROR = "error"
 ```
 
+**Persistence:** Both `Project` and `ATTEvent` are stored in SQLite via `db/store.py`.
+Events are append-only (audit log) and retained until manual cleanup. The store
+provides async query methods for filtering events by project, type, and time range.
+
 ### 0.4 Core Managers (interfaces first, TDD)
 
 Each manager is developed interface-first with tests written before implementation.
@@ -253,9 +261,9 @@ Expose each manager operation as an MCP tool via Streamable HTTP transport:
 | `att.test.results` | Get test results |
 | `att.debug.errors` | Get current errors/stack traces |
 | `att.debug.logs` | Get filtered debug logs |
-| `att.deploy.build` | Build deployment artifact |
-| `att.deploy.push` | Push to registry |
-| `att.deploy.run` | Deploy to target |
+| `att.deploy.build` | Build deployment artifact (subprocess or Docker) |
+| `att.deploy.run` | Deploy to target (subprocess restart, or Docker run if available) |
+| `att.deploy.status` | Get current deployment status |
 
 MCP Resources:
 | Resource URI | Description |
@@ -315,8 +323,8 @@ GET    /api/v1/projects/{id}/test/results
 GET    /api/v1/projects/{id}/debug/errors
 GET    /api/v1/projects/{id}/debug/logs
 POST   /api/v1/projects/{id}/deploy/build
-POST   /api/v1/projects/{id}/deploy/push
 POST   /api/v1/projects/{id}/deploy/run
+GET    /api/v1/projects/{id}/deploy/status
 WS     /api/v1/projects/{id}/ws             # WebSocket for streaming
 GET    /api/v1/health
 GET    /api/v1/mcp/.well-known              # MCP discovery
@@ -346,7 +354,13 @@ The critical milestone — ATT operating on its own codebase. **Fully autonomous
 6. ATT creates a PR via GitManager
 7. CI runs (GitHub Actions Tier 1) — ATT polls for results
 8. On CI pass, ATT merges the PR autonomously
-9. ATT rebuilds and redeploys itself via DeployManager (subprocess restart)
+9. ATT triggers a graceful self-restart via DeployManager:
+   a. ATT spawns a new process from the updated code
+   b. New process starts and begins accepting requests
+   c. Old process drains in-flight requests and exits
+   d. (Implementation: use `exec` to replace process, or a lightweight
+      watchdog/launcher script that restarts ATT when it exits with a
+      "restart requested" exit code)
 10. Health check confirms new version is running
 
 **Safety rails:**
@@ -430,7 +444,7 @@ Each sub-plan will be a separate document in `todo/plans/` with full specificati
 |---|----------|-------------|-------|
 | P01 | `project_skeleton.md` — uv setup, pyproject.toml, directory structure, dev tooling | None | 0.1 |
 | P02 | `ci_github_actions.md` — Tier 1 + Tier 2 workflow definitions, matrix strategy | P01 | 0.2 |
-| P03 | `data_models.md` — Pydantic models, database schema, migrations | P01 | 0.3 |
+| P03 | `data_models.md` — Pydantic models, SQLite store, schema migrations, event audit log | P01 | 0.3 |
 | P04 | `project_manager.md` — CRUD, template instantiation, project lifecycle | P03 | 0.4 |
 | P05 | `code_manager.md` — file read/write/search/diff, working directory isolation | P03 | 0.4 |
 | P06 | `git_manager.md` — all git operations, GitHub API integration | P03 | 0.4 |
@@ -458,16 +472,20 @@ Each sub-plan will be a separate document in `todo/plans/` with full specificati
 
 ```
 P01 → P02
-P01 → P03 → P04 → P07 → P10 → P16 (self-bootstrap)
-              ├──→ P05 → P08 ──→ P16
-              ├──→ P06 ────────→ P16
-              └──→ P09 ────────→ P16
-P04-P10 → P11 → P12 → P16
-P04-P10 → P11 → P13 → P16
-P04-P10 → P14 → P15 → P16
+P01 → P03 → P04 → P07 → P10 ──┐
+              ├──→ P05 → P08 ──┤
+              ├──→ P06 ────────┤
+              └──→ P09 (not on critical path for self-bootstrap)
+                               │
+{P04,P05,P06,P08,P10} → P11 → P12 ──→ P16 (self-bootstrap)
+                         P11 → P13 ──→ P16
+                  {P04-P10} → P14 → P15 → P16
 ```
 
-**Shortest path to self-bootstrap**: P01 → P03 → P05 → P06 → P08 → P11 → P12 → P16
+**Shortest path to self-bootstrap**: P01 → P03 → {P04, P05, P06, P08, P10} → P11 → {P12, P13, P14} → P16
+
+Note: P04, P05, P06, P08, P10 can be parallelized. P09 (DebugManager) is not on
+the critical path for self-bootstrap but is needed for Phase 2.
 
 ---
 
@@ -637,6 +655,9 @@ test_rollback_to_previous_version
 test_rollback_no_previous_version_raises_error [EDGE]
 test_deploy_with_docker_when_available
 test_deploy_without_docker_uses_subprocess
+test_self_restart_spawns_new_process [SELF]
+test_self_restart_old_process_exits_cleanly [SELF]
+test_self_restart_exits_with_restart_code [SELF]
 ```
 
 #### Tool Orchestrator (`tests/unit/test_tool_orchestrator.py`)
@@ -733,6 +754,24 @@ test_project_status_enum_complete
 test_project_status_transition_validation
 ```
 
+#### Database Store (`tests/unit/test_db_store.py`)
+```
+test_create_tables_on_init
+test_insert_project_and_retrieve
+test_update_project_status
+test_delete_project
+test_list_projects_empty
+test_list_projects_returns_all
+test_insert_event_and_retrieve
+test_query_events_by_project_id
+test_query_events_by_type
+test_query_events_by_time_range
+test_events_are_append_only
+test_concurrent_writes_dont_corrupt [EDGE]
+test_database_file_created_at_configured_path
+test_migrations_run_on_schema_change
+```
+
 ### Property-Based Tests (`tests/property/`)
 
 ```
@@ -754,6 +793,10 @@ test_branch_name_sanitization — any valid branch name roundtrips through creat
 # test_mcp_server_property.py
 test_tool_call_response_always_valid_jsonrpc — any tool call returns valid JSON-RPC response
 test_resource_uri_always_parseable — any registered resource has a parseable URI
+
+# test_db_store_property.py
+test_insert_then_retrieve_roundtrip — any valid Project/Event roundtrips through SQLite
+test_event_ordering_preserved — events inserted in order are always retrieved in order
 
 # test_mcp_client_property.py
 test_client_never_crashes_on_server_failure — for any sequence of connect/disconnect events, client stays healthy
@@ -835,7 +878,7 @@ test_deploy_via_ui
 test_chat_view_sends_message_and_receives_response
 test_settings_configure_mcp_server
 
-# test_nat_app_creation.py
+# test_nat_app_creation.py (Phase 2 — not needed for self-bootstrap)
 test_create_nat_app_from_template
 test_configure_nat_app_via_ui
 test_run_nat_app_and_interact
@@ -874,7 +917,7 @@ All architectural questions have been resolved. These decisions are binding for 
 | 12 | **Offline Mode** | No explicit offline mode. Account for services being down/unreachable (retry, degrade gracefully). |
 | 13 | **NAT App Testing** | Use TDD. Direct TDD being used. Ensure tests pass. Not advisory — tests must pass. |
 | 14 | **Docker Dependency** | Docker not required. Primary mode: direct subprocess with `nat serve` and other NAT facilities (`nat start`, `nat eval`, etc.). |
-| 15 | **Multi-App** | Single NAT app at a time. No multi-app port allocation needed. |
+| 15 | **Multi-App** | Single managed NAT app at a time (ATT itself always runs). No multi-app port allocation needed. |
 | 16 | **Log Retention** | Manual cleanup. Logs retained until user deletes them. |
 
 ## Open Questions
@@ -888,11 +931,11 @@ All architectural questions have been resolved. These decisions are binding for 
 The fastest path to self-bootstrapping:
 
 ```
-Week 1:  P01 (skeleton) + P02 (CI) + P03 (models)
-Week 2:  P05 (code mgr) + P06 (git mgr) — in parallel
-Week 3:  P08 (test runner) + P11 (orchestrator)
-Week 4:  P12 (MCP server) + P14 (OpenAPI routes)
-Week 5:  P15 (web UI — minimal) + P13 (MCP client — Claude Code only)
+Week 1:  P01 (skeleton) + P02 (CI) + P03 (models + db/store)
+Week 2:  P04 (project mgr) + P05 (code mgr) + P06 (git mgr) — in parallel
+Week 3:  P07 (runtime mgr) + P08 (test runner) + P10 (deploy mgr) — in parallel
+Week 4:  P11 (orchestrator) + P12 (MCP server) + P14 (OpenAPI routes)
+Week 5:  P13 (MCP client — multi-server) + P15 (web UI — minimal)
 Week 6:  P16 (self-bootstrap) + stabilization
 ```
 
