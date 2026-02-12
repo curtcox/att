@@ -22,7 +22,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 ├────────────────────────┬────────────────────────────────┤
 │   ATT API Server       │     MCP Server (Streamable HTTP)│
 │   (FastAPI/OpenAPI)    │     Tools: project, code, git,  │
-│   REST + WebSocket     │     ci, deploy, debug, test     │
+│   REST + WebSocket     │     deploy, debug, test, runtime │
 ├────────────────────────┴────────────────────────────────┤
 │                ATT Core Engine                          │
 │   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐│
@@ -175,7 +175,7 @@ class Project(BaseModel):
     name: str
     path: Path
     git_remote: str | None
-    nat_config_path: Path
+    nat_config_path: Path | None  # None until project has a NAT config
     status: ProjectStatus  # created | cloned | running | stopped | error
     created_at: datetime
     updated_at: datetime
@@ -219,7 +219,7 @@ provides async query methods for filtering events by project, type, and time ran
 
 Each manager is developed interface-first with tests written before implementation.
 
-**ProjectManager** — create, list, clone, delete projects
+**ProjectManager** — create, list, clone, download, delete projects
 **CodeManager** — read, write, search, diff files within a project
 **GitManager** — status, add, commit, push, branch, PR, merge, log, diff
 **RuntimeManager** — start (`nat serve`), stop, restart, status, logs (single app at a time, subprocess)
@@ -237,9 +237,12 @@ Expose each manager operation as an MCP tool via Streamable HTTP transport:
 
 | Tool Name | Description |
 |-----------|-------------|
-| `att.project.create` | Create a new NAT project from template |
+| `att.project.create` | Create a new NAT project from template or clone from URL |
+| `att.project.download` | Download a pre-built project artifact/zip |
 | `att.project.list` | List all projects |
 | `att.project.status` | Get project status |
+| `att.project.delete` | Delete a project |
+| `att.code.list` | List file tree for project |
 | `att.code.read` | Read file contents |
 | `att.code.write` | Write/update file contents |
 | `att.code.search` | Search across project files |
@@ -300,34 +303,54 @@ The MCP client uses NAT's built-in MCP integration (`nat.mcp`) with dynamic serv
 All REST endpoints auto-generate OpenAPI 3.1 spec via FastAPI:
 
 ```
-GET    /api/v1/projects
-POST   /api/v1/projects
-GET    /api/v1/projects/{id}
-DELETE /api/v1/projects/{id}
-GET    /api/v1/projects/{id}/files
-GET    /api/v1/projects/{id}/files/{path}
-PUT    /api/v1/projects/{id}/files/{path}
-POST   /api/v1/projects/{id}/git/commit
-POST   /api/v1/projects/{id}/git/push
-POST   /api/v1/projects/{id}/git/branch
-POST   /api/v1/projects/{id}/git/pr
-GET    /api/v1/projects/{id}/git/status
-GET    /api/v1/projects/{id}/git/log
-GET    /api/v1/projects/{id}/git/actions
-POST   /api/v1/projects/{id}/runtime/start
-POST   /api/v1/projects/{id}/runtime/stop
-GET    /api/v1/projects/{id}/runtime/status
-GET    /api/v1/projects/{id}/runtime/logs
-POST   /api/v1/projects/{id}/test/run
-GET    /api/v1/projects/{id}/test/results
-GET    /api/v1/projects/{id}/debug/errors
-GET    /api/v1/projects/{id}/debug/logs
-POST   /api/v1/projects/{id}/deploy/build
-POST   /api/v1/projects/{id}/deploy/run
-GET    /api/v1/projects/{id}/deploy/status
-WS     /api/v1/projects/{id}/ws             # WebSocket for streaming
-GET    /api/v1/health
-GET    /api/v1/mcp/.well-known              # MCP discovery
+# Projects
+GET    /api/v1/projects                          # List all projects
+POST   /api/v1/projects                          # Create from template or clone from URL
+POST   /api/v1/projects/download                  # Download pre-built artifact/zip
+GET    /api/v1/projects/{id}                      # Get project details + status
+DELETE /api/v1/projects/{id}                      # Delete project
+
+# Code
+GET    /api/v1/projects/{id}/files                # File tree listing
+GET    /api/v1/projects/{id}/files/{path}         # Read file contents
+PUT    /api/v1/projects/{id}/files/{path}         # Write/update file
+POST   /api/v1/projects/{id}/files/search         # Search across files
+GET    /api/v1/projects/{id}/files/diff            # Show current diff
+
+# Git
+GET    /api/v1/projects/{id}/git/status           # Git status
+POST   /api/v1/projects/{id}/git/commit           # Stage + commit
+POST   /api/v1/projects/{id}/git/push             # Push to remote
+POST   /api/v1/projects/{id}/git/branch           # Create/switch branch
+GET    /api/v1/projects/{id}/git/log              # Commit log
+GET    /api/v1/projects/{id}/git/actions           # GitHub Actions status/logs
+POST   /api/v1/projects/{id}/git/pr               # Create pull request
+POST   /api/v1/projects/{id}/git/pr/merge         # Merge pull request
+GET    /api/v1/projects/{id}/git/pr/reviews        # Get PR review comments
+
+# Runtime
+POST   /api/v1/projects/{id}/runtime/start        # Start nat serve
+POST   /api/v1/projects/{id}/runtime/stop         # Stop nat serve
+GET    /api/v1/projects/{id}/runtime/status        # Running/stopped/health
+GET    /api/v1/projects/{id}/runtime/logs          # Runtime logs (with streaming via Accept header)
+
+# Test
+POST   /api/v1/projects/{id}/test/run             # Run test suite
+GET    /api/v1/projects/{id}/test/results          # Get test results + coverage
+
+# Debug
+GET    /api/v1/projects/{id}/debug/errors          # Current errors/stack traces
+GET    /api/v1/projects/{id}/debug/logs            # Filtered debug logs
+
+# Deploy
+POST   /api/v1/projects/{id}/deploy/build         # Build artifact
+POST   /api/v1/projects/{id}/deploy/run           # Deploy (subprocess or Docker)
+GET    /api/v1/projects/{id}/deploy/status         # Deployment status
+
+# Streaming & System
+WS     /api/v1/projects/{id}/ws                    # WebSocket for event streaming
+GET    /api/v1/health                              # Server health check
+GET    /api/v1/mcp/.well-known                     # MCP server discovery
 ```
 
 ### 1.4 Web UI — NAT Frontend Integration
@@ -369,11 +392,23 @@ The critical milestone — ATT operating on its own codebase. **Fully autonomous
 - ATT may optionally request human review for changes it deems high-risk
 - Full audit log of every autonomous action
 
+**Self-bootstrap branching strategy:**
+- ATT creates feature branches off `dev`
+- PRs target `dev` (triggers Tier 1 quick checks)
+- After merge to `dev`, a separate PR from `dev` → `main` triggers Tier 2 full checks
+- For urgent self-fixes, ATT can PR directly to `main` (triggers both tiers)
+
 **CI polling:**
 - ATT polls GitHub Actions API for workflow run status
 - Poll interval: 10s with exponential backoff to 60s
 - Timeout: configurable (default 10 minutes)
 - Handle GitHub API being unreachable (retry with backoff)
+
+**Health check after self-restart:**
+- The watchdog/launcher script (not ATT itself) performs the health check
+- Watchdog starts new ATT process, polls `GET /api/v1/health` with timeout
+- On health check pass: watchdog exits successfully (new ATT takes over)
+- On health check fail: watchdog kills new process, restarts old version, emits error event
 
 ---
 
@@ -452,10 +487,10 @@ Each sub-plan will be a separate document in `todo/plans/` with full specificati
 | P08 | `test_runner.md` — test execution, result parsing, coverage reporting | P03, P05 | 0.4 |
 | P09 | `debug_manager.md` — error collection, log filtering, profiler integration | P03, P07 | 0.4 |
 | P10 | `deploy_manager.md` — subprocess deploy, optional Docker, health verification, rollback | P03, P07 | 0.4 |
-| P11 | `tool_orchestrator.md` — multi-step workflow coordination, event bus | P04-P10 | 0.4 |
-| P12 | `mcp_server.md` — tool registration via `nat.mcp`, Streamable HTTP transport | P04-P10 | 1.1 |
+| P11 | `tool_orchestrator.md` — multi-step workflow coordination, event bus | P04-P08, P10 | 0.4 |
+| P12 | `mcp_server.md` — tool registration via `nat.mcp`, Streamable HTTP transport | P04-P08, P10 | 1.1 |
 | P13 | `mcp_client.md` — multi-server from Phase 1, discovery, health checks, failover, tool invocation | P11 | 1.2 |
-| P14 | `openapi_routes.md` — REST endpoints, request validation, error handling | P04-P10 | 1.3 |
+| P14 | `openapi_routes.md` — REST endpoints, request validation, error handling | P04-P08, P10 | 1.3 |
 | P15 | `web_ui.md` — NAT-UI integration (no fork), Ace editor, views, WebSocket streaming | P14 | 1.4 |
 | P16 | `self_bootstrap.md` — fully autonomous self-modification, CI polling, safety rails, rollback | P04-P13 | 1.5 |
 | P17 | `project_templates.md` — template system, registry, scaffolding | P04 | 2.1 |
@@ -479,7 +514,7 @@ P01 → P03 → P04 → P07 → P10 ──┐
                                │
 {P04,P05,P06,P08,P10} → P11 → P12 ──→ P16 (self-bootstrap)
                          P11 → P13 ──→ P16
-                  {P04-P10} → P14 → P15 → P16
+          {P04-P08, P10} → P14 → P15 → P16
 ```
 
 **Shortest path to self-bootstrap**: P01 → P03 → {P04, P05, P06, P08, P10} → P11 → {P12, P13, P14} → P16
@@ -516,6 +551,9 @@ test_clone_project_from_git_url
 test_clone_project_invalid_url_raises_error [EDGE]
 test_clone_project_auth_failure_raises_error [EDGE]
 test_clone_project_sets_status_cloned
+test_download_project_from_url
+test_download_project_invalid_url_raises_error [EDGE]
+test_download_project_creates_directory
 test_project_status_transitions_are_valid
 test_project_status_invalid_transition_raises_error [EDGE]
 ```
@@ -719,27 +757,65 @@ test_client_logs_connection_state_changes
 
 #### OpenAPI Routes (`tests/unit/test_api_routes.py`)
 ```
+# System
 test_health_endpoint_returns_200
+test_openapi_spec_endpoint_returns_valid_spec
+test_all_endpoints_have_openapi_docs
+test_mcp_well_known_endpoint_returns_discovery_info
+test_error_responses_follow_rfc7807 [EDGE]
+test_cors_headers_present
+test_request_id_header_propagated
+
+# Projects
 test_list_projects_endpoint
 test_create_project_endpoint
+test_create_project_from_clone_url_endpoint
+test_download_project_endpoint
 test_create_project_invalid_body_returns_422 [EDGE]
 test_get_project_endpoint
 test_get_project_not_found_returns_404 [EDGE]
 test_delete_project_endpoint
+
+# Code
+test_list_files_endpoint
 test_read_file_endpoint
 test_write_file_endpoint
+test_search_files_endpoint
+test_diff_files_endpoint
+
+# Git
 test_git_status_endpoint
 test_git_commit_endpoint
+test_git_push_endpoint
+test_git_branch_endpoint
+test_git_log_endpoint
+test_git_actions_endpoint
+test_git_pr_create_endpoint
+test_git_pr_merge_endpoint
+test_git_pr_reviews_endpoint
+
+# Runtime
 test_runtime_start_endpoint
 test_runtime_stop_endpoint
+test_runtime_status_endpoint
 test_runtime_logs_endpoint
+
+# Test
 test_test_run_endpoint
+test_test_results_endpoint
+
+# Debug
+test_debug_errors_endpoint
+test_debug_logs_endpoint
+
+# Deploy
 test_deploy_build_endpoint
-test_openapi_spec_endpoint_returns_valid_spec
-test_all_endpoints_have_openapi_docs
-test_error_responses_follow_rfc7807 [EDGE]
-test_cors_headers_present
-test_request_id_header_propagated
+test_deploy_run_endpoint
+test_deploy_status_endpoint
+
+# WebSocket
+test_websocket_connect_and_receive_events
+test_websocket_invalid_project_returns_error [EDGE]
 ```
 
 #### Data Models (`tests/unit/test_models.py`)
