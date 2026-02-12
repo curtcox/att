@@ -27,6 +27,7 @@ from att.core.project_manager import CreateProjectInput, ProjectManager
 from att.core.runtime_manager import RuntimeManager
 from att.core.test_runner import TestRunner
 from att.mcp.server import find_tool, registered_resources, registered_tools
+from att.mcp.tools.code_tools import CodeToolCall, parse_code_tool_call
 from att.mcp.tools.project_tools import ProjectToolCall, parse_project_tool_call
 
 router = APIRouter(tags=["mcp-transport"])
@@ -202,55 +203,12 @@ async def _handle_tool_call(
     if project_call is not None:
         return await _handle_project_tool_call(project_call, project_manager)
 
-    if tool_name == "att.code.list":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {
-            "files": [
-                str(path.relative_to(project.path))
-                for path in code_manager.list_files(project.path)
-            ]
-        }
-
-    if tool_name == "att.code.read":
-        project_id = str(arguments.get("project_id", ""))
-        file_path = str(arguments.get("path", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {"content": code_manager.read_file(project.path, file_path)}
-
-    if tool_name == "att.code.write":
-        project_id = str(arguments.get("project_id", ""))
-        file_path = str(arguments.get("path", ""))
-        content = str(arguments.get("content", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        code_manager.write_file(project.path, file_path, content)
-        return {"status": "updated"}
-
-    if tool_name == "att.code.search":
-        project_id = str(arguments.get("project_id", ""))
-        pattern = str(arguments.get("pattern", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {
-            "matches": [
-                str(path.relative_to(project.path))
-                for path in code_manager.search(project.path, pattern)
-            ]
-        }
-
-    if tool_name == "att.code.diff":
-        original = str(arguments.get("original", ""))
-        updated = str(arguments.get("updated", ""))
-        from_name = str(arguments.get("from_name", "original"))
-        to_name = str(arguments.get("to_name", "updated"))
-        return {"diff": code_manager.diff(original, updated, from_name=from_name, to_name=to_name)}
+    try:
+        code_call = parse_code_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if code_call is not None:
+        return await _handle_code_tool_call(code_call, project_manager, code_manager)
 
     if tool_name == "att.git.status":
         project_id = str(arguments.get("project_id", ""))
@@ -514,6 +472,61 @@ async def _handle_project_tool_call(
         return {"archive_path": str(archive_path)}
 
     return {"error": f"Project tool operation not implemented: {call.operation}"}
+
+
+async def _handle_code_tool_call(
+    call: CodeToolCall,
+    project_manager: ProjectManager,
+    code_manager: CodeManager,
+) -> dict[str, Any]:
+    if call.operation == "diff":
+        if call.original is None or call.updated is None:
+            return {"error": "original and updated are required"}
+        return {
+            "diff": code_manager.diff(
+                call.original,
+                call.updated,
+                from_name=call.from_name,
+                to_name=call.to_name,
+            )
+        }
+
+    if call.project_id is None:
+        return {"error": "project_id is required"}
+    project = await project_manager.get(call.project_id)
+    if project is None:
+        return {"error": "project not found"}
+
+    if call.operation == "list":
+        return {
+            "files": [
+                str(path.relative_to(project.path))
+                for path in code_manager.list_files(project.path)
+            ]
+        }
+
+    if call.operation == "read":
+        if call.path is None:
+            return {"error": "path is required"}
+        return {"content": code_manager.read_file(project.path, call.path)}
+
+    if call.operation == "write":
+        if call.path is None or call.content is None:
+            return {"error": "path and content are required"}
+        code_manager.write_file(project.path, call.path, call.content)
+        return {"status": "updated"}
+
+    if call.operation == "search":
+        if call.pattern is None:
+            return {"error": "pattern is required"}
+        return {
+            "matches": [
+                str(path.relative_to(project.path))
+                for path in code_manager.search(project.path, call.pattern)
+            ]
+        }
+
+    return {"error": f"Code tool operation not implemented: {call.operation}"}
 
 
 async def _handle_resource_read(
