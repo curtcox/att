@@ -17,7 +17,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    ATT Web UI                           │
-│   (NAT FastAPI Frontend + NAT-UI components)            │
+│   (NAT FastAPI Frontend + NAT-UI + Ace Editor)          │
 │   Project Manager │ Code Editor │ Terminal │ Logs │ Chat│
 ├────────────────────────┬────────────────────────────────┤
 │   ATT API Server       │     MCP Server (Streamable HTTP)│
@@ -36,7 +36,8 @@ ATT is a web-based application for developing, running, debugging, and deploying
 ├─────────────────────────────────────────────────────────┤
 │                  MCP Client Layer                       │
 │   Connects to: Claude Code, Codex, Windsurf, GitHub,   │
-│   filesystem, terminal, NAT profiler, external MCP svrs│
+│   filesystem, terminal, NAT profiler, other MCP servers │
+│   (multi-server from Phase 1 — availability failover)   │
 ├─────────────────────────────────────────────────────────┤
 │                  NAT Runtime                            │
 │   nat serve │ YAML configs │ workflow engine │ profiler │
@@ -48,15 +49,17 @@ ATT is a web-based application for developing, running, debugging, and deploying
 | Layer | Technology |
 |-------|-----------|
 | Backend | Python 3.12+, FastAPI, NAT (`nvidia-nat`) |
-| Frontend | NAT FastAPI Frontend + NAT-UI (Next.js/React/TypeScript) |
-| Protocol | MCP (JSON-RPC 2.0, Streamable HTTP), OpenAPI 3.1 |
+| Frontend | NAT FastAPI Frontend + NAT-UI (Next.js/React/TypeScript) + Ace Editor |
+| Protocol | MCP via NAT built-in (`nat.mcp`), OpenAPI 3.1 |
 | Database | SQLite (local), PostgreSQL (cloud) |
 | Queue | Redis (optional, for async jobs) |
 | Package Manager | `uv` (Astral) |
+| NAT Version | 1.4.x (`nvidia-nat[mcp]`) |
 | Testing | pytest, hypothesis, playwright, mypy, ruff |
 | CI/CD | GitHub Actions (tiered) |
-| Containers | Docker / Docker Compose (optional) |
-| Deployment | Local-first, cloud migration path via Docker/K8s |
+| Containers | Docker / Docker Compose (optional — not required) |
+| Deployment | Local-first (direct subprocess via `nat serve`), cloud migration path later |
+| Process Model | Single NAT app at a time, subprocess isolation |
 
 ---
 
@@ -121,8 +124,7 @@ att/
 │   ├── property/
 │   └── e2e/
 ├── configs/                       # NAT YAML configs for ATT itself
-├── external/
-│   └── nat-ui/                    # NAT-UI submodule
+├── ui/                            # ATT-specific UI extensions for NAT-UI (no fork)
 ├── .github/
 │   └── workflows/
 │       ├── pr-quick.yml           # Tier 1: fast PR checks
@@ -133,7 +135,7 @@ att/
 └── README.md
 ```
 
-- Dependencies: `nvidia-nat`, `fastapi`, `uvicorn`, `mcp` (Python SDK), `httpx`, `pydantic`
+- Dependencies: `nvidia-nat[mcp]` (1.4.x), `fastapi`, `uvicorn`, `httpx`, `pydantic`
 - Dev dependencies: `pytest`, `pytest-asyncio`, `hypothesis`, `playwright`, `mypy`, `ruff`, `coverage`, `pytest-cov`
 
 ### 0.2 CI/CD — Tiered GitHub Actions
@@ -212,10 +214,10 @@ Each manager is developed interface-first with tests written before implementati
 **ProjectManager** — create, list, clone, delete projects
 **CodeManager** — read, write, search, diff files within a project
 **GitManager** — status, add, commit, push, branch, PR, merge, log, diff
-**RuntimeManager** — start (`nat serve`), stop, restart, status, logs
-**TestRunner** — run unit/integration/e2e tests, parse results, report
+**RuntimeManager** — start (`nat serve`), stop, restart, status, logs (single app at a time, subprocess)
+**TestRunner** — run unit/integration/e2e tests, parse results, report; use TDD and ensure tests pass
 **DebugManager** — read logs, read errors, fetch stack traces, attach profiler
-**DeployManager** — build, push image, deploy (local Docker or remote)
+**DeployManager** — build, deploy (local subprocess primary, Docker optional)
 **ToolOrchestrator** — coordinate multi-step workflows across managers
 
 ---
@@ -266,17 +268,25 @@ MCP Resources:
 | `att://project/{id}/ci` | CI pipeline status |
 
 ### 1.2 MCP Client — Connect to External Tools
-Connect to external MCP servers for enhanced capabilities:
+Connect to multiple external MCP servers from Phase 1. Multi-server support is a high priority because different servers have different capabilities and availability levels. ATT must handle servers being down or unreachable gracefully — retry with backoff, fall back to alternatives, and continue operating in degraded mode.
 
-| External Server | Purpose |
-|----------------|---------|
-| Claude Code MCP | AI-assisted code editing, review, explanation |
-| GitHub MCP | Issues, PRs, actions, code search |
-| Filesystem MCP | Direct file access |
-| Terminal MCP | Shell command execution |
-| Windsurf/Codex | Alternative AI code assistants |
+| External Server | Purpose | Phase |
+|----------------|---------|-------|
+| Claude Code MCP | AI-assisted code editing, review, explanation | 1 |
+| GitHub MCP | Issues, PRs, actions, code search | 1 |
+| Filesystem MCP | Direct file access | 1 |
+| Terminal MCP | Shell command execution | 1 |
+| Windsurf | AI code assistant (alternative to Claude Code) | 1 |
+| Codex | AI code assistant (alternative to Claude Code) | 1 |
 
-The MCP client uses dynamic server discovery and configuration stored per-project.
+**Availability handling:**
+- Health check each connected server periodically
+- On connection failure: retry with exponential backoff (1s, 2s, 4s, 8s)
+- If a server is unreachable, mark as degraded and continue with remaining servers
+- Log all connection state changes
+- UI shows server health status
+
+The MCP client uses NAT's built-in MCP integration (`nat.mcp`) with dynamic server discovery and configuration stored per-project.
 
 ### 1.3 OpenAPI Interface
 All REST endpoints auto-generate OpenAPI 3.1 spec via FastAPI:
@@ -317,7 +327,7 @@ Build on the NAT FastAPI Frontend + NAT-UI:
 
 **Views:**
 1. **Dashboard** — project list, status overview, quick actions
-2. **Project View** — file tree, code editor (Monaco/CodeMirror), terminal, logs
+2. **Project View** — file tree, code editor (Ace), terminal, logs
 3. **Git View** — branch visualization, diff viewer, PR management
 4. **Test View** — test results, coverage reports, failure details
 5. **Runtime View** — server status, log streaming, health metrics
@@ -326,18 +336,30 @@ Build on the NAT FastAPI Frontend + NAT-UI:
 8. **Settings** — MCP server connections, tool configuration, project templates
 
 ### 1.5 Self-Bootstrap Capability
-The critical milestone — ATT operating on its own codebase:
+The critical milestone — ATT operating on its own codebase. **Fully autonomous** by default: ATT can complete the entire cycle without human intervention when CI is green. It *can* request human review/approval when it chooses to (e.g., for high-risk changes), but is not required to.
 
 1. ATT registers itself as a project (pointing to its own repo)
 2. User (or AI agent via MCP/chat) requests a change
 3. ATT creates a branch via GitManager
 4. ATT edits its own source via CodeManager
-5. ATT runs its own tests via TestRunner
+5. ATT runs its own tests via TestRunner (local, fast feedback)
 6. ATT creates a PR via GitManager
-7. CI runs (GitHub Actions Tier 1)
-8. On CI pass, ATT merges the PR
-9. ATT rebuilds and redeploys itself via DeployManager
+7. CI runs (GitHub Actions Tier 1) — ATT polls for results
+8. On CI pass, ATT merges the PR autonomously
+9. ATT rebuilds and redeploys itself via DeployManager (subprocess restart)
 10. Health check confirms new version is running
+
+**Safety rails:**
+- All tests must pass before merge (local + CI)
+- Health check after deploy; auto-rollback on failure
+- ATT may optionally request human review for changes it deems high-risk
+- Full audit log of every autonomous action
+
+**CI polling:**
+- ATT polls GitHub Actions API for workflow run status
+- Poll interval: 10s with exponential backoff to 60s
+- Timeout: configurable (default 10 minutes)
+- Handle GitHub API being unreachable (retry with backoff)
 
 ---
 
@@ -415,13 +437,13 @@ Each sub-plan will be a separate document in `todo/plans/` with full specificati
 | P07 | `runtime_manager.md` — nat serve lifecycle, log capture, health checks | P03, P04 | 0.4 |
 | P08 | `test_runner.md` — test execution, result parsing, coverage reporting | P03, P05 | 0.4 |
 | P09 | `debug_manager.md` — error collection, log filtering, profiler integration | P03, P07 | 0.4 |
-| P10 | `deploy_manager.md` — Docker build, push, run, health verification | P03, P07 | 0.4 |
+| P10 | `deploy_manager.md` — subprocess deploy, optional Docker, health verification, rollback | P03, P07 | 0.4 |
 | P11 | `tool_orchestrator.md` — multi-step workflow coordination, event bus | P04-P10 | 0.4 |
-| P12 | `mcp_server.md` — tool registration, Streamable HTTP transport, auth | P04-P10 | 1.1 |
-| P13 | `mcp_client.md` — server discovery, connection management, tool invocation | P11 | 1.2 |
+| P12 | `mcp_server.md` — tool registration via `nat.mcp`, Streamable HTTP transport | P04-P10 | 1.1 |
+| P13 | `mcp_client.md` — multi-server from Phase 1, discovery, health checks, failover, tool invocation | P11 | 1.2 |
 | P14 | `openapi_routes.md` — REST endpoints, request validation, error handling | P04-P10 | 1.3 |
-| P15 | `web_ui.md` — NAT-UI integration, views, WebSocket streaming | P14 | 1.4 |
-| P16 | `self_bootstrap.md` — self-modification workflow, safety rails, rollback | P04-P13 | 1.5 |
+| P15 | `web_ui.md` — NAT-UI integration (no fork), Ace editor, views, WebSocket streaming | P14 | 1.4 |
+| P16 | `self_bootstrap.md` — fully autonomous self-modification, CI polling, safety rails, rollback | P04-P13 | 1.5 |
 | P17 | `project_templates.md` — template system, registry, scaffolding | P04 | 2.1 |
 | P18 | `nat_config_editor.md` — visual YAML editor, component browser | P15 | 2.2 |
 | P19 | `mcp_registry.md` — marketplace, discovery, publishing | P12, P13 | 2.3 |
@@ -541,12 +563,12 @@ test_actions_status_no_workflows_returns_empty [EDGE]
 
 #### Runtime Manager (`tests/unit/test_runtime_manager.py`)
 ```
-test_start_launches_nat_serve_process
+test_start_launches_nat_serve_subprocess
 test_start_with_config_path
 test_start_already_running_raises_error [EDGE]
 test_start_invalid_config_raises_error [EDGE]
 test_start_port_in_use_raises_error [EDGE]
-test_stop_terminates_process
+test_stop_terminates_subprocess
 test_stop_not_running_raises_error [EDGE]
 test_stop_graceful_then_force [EDGE]
 test_restart_stops_and_starts
@@ -559,6 +581,10 @@ test_health_check_returns_healthy
 test_health_check_unhealthy_after_crash [EDGE]
 test_start_captures_stderr [EDGE]
 test_start_with_env_vars
+test_only_one_app_running_at_a_time [EDGE]
+test_start_new_app_stops_current_first [EDGE]
+test_nat_eval_command_runs_and_returns_results
+test_nat_start_command_alternative_to_serve
 ```
 
 #### Test Runner (`tests/unit/test_test_runner.py`)
@@ -598,19 +624,19 @@ test_profiler_data_no_session_raises_error [EDGE]
 
 #### Deploy Manager (`tests/unit/test_deploy_manager.py`)
 ```
-test_build_docker_image_succeeds
-test_build_no_dockerfile_raises_error [EDGE]
-test_build_invalid_dockerfile_raises_error [EDGE]
-test_push_image_to_registry
-test_push_auth_failure_raises_error [EDGE]
-test_deploy_local_docker_run
+test_build_creates_deployable_artifact
+test_build_missing_config_raises_error [EDGE]
+test_build_invalid_config_raises_error [EDGE]
+test_deploy_local_subprocess_starts
 test_deploy_health_check_passes
 test_deploy_health_check_fails_rolls_back [EDGE]
-test_deploy_stop_previous_version
+test_deploy_stops_previous_version_first
 test_deploy_status_returns_info
-test_deploy_no_image_raises_error [EDGE]
+test_deploy_no_artifact_raises_error [EDGE]
 test_rollback_to_previous_version
 test_rollback_no_previous_version_raises_error [EDGE]
+test_deploy_with_docker_when_available
+test_deploy_without_docker_uses_subprocess
 ```
 
 #### Tool Orchestrator (`tests/unit/test_tool_orchestrator.py`)
@@ -662,6 +688,12 @@ test_client_multiple_server_connections
 test_client_reads_resource
 test_client_resource_not_found_error [EDGE]
 test_client_invalid_server_url_raises_error [EDGE]
+test_client_retries_with_exponential_backoff [EDGE]
+test_client_marks_server_degraded_after_failures [EDGE]
+test_client_continues_with_remaining_servers_on_failure [EDGE]
+test_client_periodic_health_check
+test_client_recovers_degraded_server_on_health_check_pass
+test_client_logs_connection_state_changes
 ```
 
 #### OpenAPI Routes (`tests/unit/test_api_routes.py`)
@@ -722,6 +754,10 @@ test_branch_name_sanitization — any valid branch name roundtrips through creat
 # test_mcp_server_property.py
 test_tool_call_response_always_valid_jsonrpc — any tool call returns valid JSON-RPC response
 test_resource_uri_always_parseable — any registered resource has a parseable URI
+
+# test_mcp_client_property.py
+test_client_never_crashes_on_server_failure — for any sequence of connect/disconnect events, client stays healthy
+test_retry_backoff_always_increases — backoff intervals are monotonically increasing up to max
 ```
 
 ### Integration Tests (`tests/integration/`)
@@ -751,6 +787,9 @@ test_coverage_report_generated
 test_mcp_server_accepts_client_connection
 test_mcp_client_calls_server_tool
 test_mcp_roundtrip_tool_call_and_result
+test_mcp_client_multi_server_connects_all
+test_mcp_client_one_server_down_others_work [EDGE]
+test_mcp_client_server_recovers_after_down [EDGE]
 
 # test_api_integration.py
 test_api_create_project_and_query
@@ -772,6 +811,15 @@ test_att_full_self_modification_cycle [SELF]
 test_att_rollback_after_failed_self_test [SELF] [EDGE]
 test_att_rejects_change_that_breaks_tests [SELF] [EDGE]
 test_att_concurrent_self_modifications_serialize [SELF] [EDGE]
+test_att_merges_autonomously_on_green_ci [SELF]
+test_att_polls_github_actions_for_ci_status [SELF]
+test_att_handles_github_api_unreachable_during_poll [SELF] [EDGE]
+test_att_ci_poll_timeout_aborts_merge [SELF] [EDGE]
+test_att_redeploys_via_subprocess_restart [SELF]
+test_att_health_check_after_redeploy [SELF]
+test_att_auto_rollback_on_health_check_failure [SELF] [EDGE]
+test_att_audit_log_records_all_autonomous_actions [SELF]
+test_att_can_request_human_review_for_high_risk_change [SELF]
 
 # test_web_ui.py (Playwright)
 test_dashboard_loads_and_shows_projects
@@ -800,53 +848,38 @@ test_external_mcp_client_creates_project
 test_external_mcp_client_full_workflow
 test_att_as_mcp_client_uses_external_tool
 test_mcp_tool_discovery_via_well_known
+test_mcp_client_failover_when_server_unreachable
+test_att_operates_with_degraded_mcp_servers
 ```
 
 ---
 
+## Resolved Decisions
+
+All architectural questions have been resolved. These decisions are binding for implementation.
+
+| # | Decision | Resolution |
+|---|----------|-----------|
+| 1 | **NAT-UI Integration** | No fork. Use NAT-UI as a dependency and include custom ATT-specific code alongside it. |
+| 2 | **Code Editor** | Ace Editor. |
+| 3 | **NAT Version** | 1.4.x (`nvidia-nat`). |
+| 4 | **MCP SDK** | Use NAT's built-in MCP integration (`nat.mcp`). |
+| 5 | **Database** | SQLite for local mode. |
+| 6 | **Process Isolation** | Subprocess (direct `nat serve` and other NAT CLI commands). |
+| 7 | **Self-Modification Safety** | Mandatory passing tests + auto-rollback on health check failure. Sufficient for now. |
+| 8 | **CI Feedback** | Poll GitHub Actions API (not webhooks). |
+| 9 | **Human Approval** | Fully autonomous — can merge on green CI without human approval. Can still *choose* to request review. |
+| 10 | **MCP Client Servers** | Multi-server support from Phase 1. High priority due to different capabilities and availability levels. |
+| 11 | **A2A Protocol** | Defer to Phase 2 unless it speeds up bootstrapping. |
+| 12 | **Offline Mode** | No explicit offline mode. Account for services being down/unreachable (retry, degrade gracefully). |
+| 13 | **NAT App Testing** | Use TDD. Direct TDD being used. Ensure tests pass. Not advisory — tests must pass. |
+| 14 | **Docker Dependency** | Docker not required. Primary mode: direct subprocess with `nat serve` and other NAT facilities (`nat start`, `nat eval`, etc.). |
+| 15 | **Multi-App** | Single NAT app at a time. No multi-app port allocation needed. |
+| 16 | **Log Retention** | Manual cleanup. Logs retained until user deletes them. |
+
 ## Open Questions
 
-> These must be resolved before implementation begins. We will iterate on this plan until all are answered.
-
-### Architecture & Technology
-
-1. **NAT-UI Integration Strategy**: Should we use the NAT-UI (Next.js) as-is via the git submodule, or fork it and extend with ATT-specific views (file tree, code editor, git, deploy)? The standard NAT-UI is a chat interface — ATT needs significantly more.
-
-2. **Code Editor in Browser**: Which embeddable code editor should we use in the web UI? Options: Monaco Editor (VS Code engine), CodeMirror 6, or a simpler textarea with syntax highlighting. Monaco is heavy but feature-rich.
-
-3. **NAT Version Pinning**: Which version of `nvidia-nat` should we target? The latest is 1.4.x but the API naming transitioned from `aiq.*` to `nat.*`. We need to confirm API stability.
-
-4. **Python MCP SDK Version**: The official `mcp` Python SDK supports Streamable HTTP. Should we use it directly, or use NAT's built-in MCP integration (`nat.mcp`)?
-
-5. **Database for Local Mode**: Is SQLite sufficient for local project metadata, or should we use something like TinyDB or even flat JSON files for maximum simplicity?
-
-6. **Process Isolation**: How should ATT isolate managed NAT app processes? Options: subprocess, Docker container, or virtual environment only. Subprocess is simplest, Docker is safest.
-
-### Self-Bootstrapping
-
-7. **Safety Rails for Self-Modification**: What safeguards prevent ATT from breaking itself during self-modification? Proposed: mandatory passing tests + rollback on health check failure. Is this sufficient?
-
-8. **CI Feedback Loop**: Should ATT poll GitHub Actions for CI results, or use webhooks? Polling is simpler; webhooks require a public endpoint or tunnel.
-
-9. **Human Approval Gate**: Should the self-bootstrap cycle require human approval before merging, or can it be fully autonomous for green CI? This is a critical safety decision.
-
-### Scope & Priority
-
-10. **MCP Client Priority**: Which external MCP servers should be supported first? Claude Code is the obvious first choice for self-bootstrapping. Should we defer Windsurf/Codex to Phase 2?
-
-11. **A2A Protocol**: NAT supports Agent-to-Agent protocol. Should ATT expose A2A endpoints in Phase 1 or defer to Phase 2?
-
-12. **Offline Mode**: Should ATT work without internet access (no GitHub, no external MCP servers)? This affects whether git operations require a remote or can be purely local.
-
-13. **NAT App Testing Mandate**: When ATT creates a NAT app, should it enforce TDD and refuse to deploy apps without passing tests? Or should it be advisory?
-
-### Operations
-
-14. **Docker Dependency**: The plan says "with or without Docker." For non-Docker local deployment, how does ATT manage NAT app processes? Direct subprocess with `nat serve`?
-
-15. **Multi-Project Ports**: When running multiple NAT apps simultaneously, how should port allocation work? Auto-assign from a range? User-specified?
-
-16. **Log Retention**: How long should ATT retain logs and test results? Options: configurable TTL, fixed (e.g., last 100 runs), or unlimited until manual cleanup.
+> None remaining. All decisions resolved. Ready for implementation.
 
 ---
 
