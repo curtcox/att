@@ -19,6 +19,10 @@ type CIStatus = Literal["pending", "success", "failure"]
 type CIChecker = Callable[[str, str], Awaitable[CIStatus]]
 type HealthChecker = Callable[[str], Awaitable[bool]]
 type Sleeper = Callable[[float], Awaitable[None]]
+type PRCreator = Callable[[str, str], Awaitable[str]]
+type PRMerger = Callable[[str], Awaitable[bool]]
+type Deployer = Callable[[str], Awaitable[bool]]
+type RollbackExecutor = Callable[[str], Awaitable[bool]]
 
 
 @dataclass(slots=True)
@@ -35,7 +39,12 @@ class SelfBootstrapRequest:
     ci_timeout_seconds: int = 600
     ci_initial_poll_seconds: int = 10
     ci_max_poll_seconds: int = 60
+    create_pr: bool = True
+    auto_merge_on_ci_success: bool = True
+    deploy_target: str | None = None
     health_check_target: str | None = None
+    health_check_retries: int = 1
+    health_check_interval_seconds: int = 5
 
 
 @dataclass(slots=True)
@@ -46,13 +55,17 @@ class SelfBootstrapResult:
     committed: bool
     pushed: bool
     ci_status: str
+    pr_url: str | None
+    merged: bool
     health_status: str
+    rollback_performed: bool
+    rollback_succeeded: bool | None
     success: bool
     workflow_result: WorkflowRunResult
 
 
 class SelfBootstrapManager:
-    """Coordinate branch, change, test, CI, and health checks."""
+    """Coordinate branch, change, CI, merge, deploy, and health checks."""
 
     def __init__(
         self,
@@ -62,6 +75,10 @@ class SelfBootstrapManager:
         store: SQLiteStore,
         ci_checker: CIChecker | None = None,
         health_checker: HealthChecker | None = None,
+        pr_creator: PRCreator | None = None,
+        pr_merger: PRMerger | None = None,
+        deployer: Deployer | None = None,
+        rollback_executor: RollbackExecutor | None = None,
         sleeper: Sleeper | None = None,
     ) -> None:
         self._git = git_manager
@@ -69,11 +86,17 @@ class SelfBootstrapManager:
         self._store = store
         self._ci_checker = ci_checker
         self._health_checker = health_checker
+        self._pr_creator = pr_creator
+        self._pr_merger = pr_merger
+        self._deployer = deployer
+        self._rollback_executor = rollback_executor
         self._sleep = sleeper or asyncio.sleep
 
     async def execute(self, request: SelfBootstrapRequest) -> SelfBootstrapResult:
         """Run a baseline self-bootstrap cycle."""
         branch_name = request.branch_name or f"codex/self-bootstrap-{uuid4().hex[:8]}"
+        pr_url: str | None = None
+        merged = False
 
         self._git.branch(request.project_path, branch_name, checkout=True)
 
@@ -97,12 +120,24 @@ class SelfBootstrapManager:
                 committed=False,
                 pushed=False,
                 ci_status="not_run",
+                pr_url=None,
+                merged=False,
                 health_status="not_run",
+                rollback_performed=False,
+                rollback_succeeded=None,
                 success=False,
                 workflow_result=workflow,
             )
 
         self._git.push(request.project_path, "origin", branch_name)
+
+        if request.create_pr and self._pr_creator is not None:
+            pr_url = await self._pr_creator(request.project_id, branch_name)
+            await self._record_event(
+                project_id=request.project_id,
+                event_type=EventType.GIT_PR_CREATED,
+                payload={"branch": branch_name, "url": pr_url},
+            )
 
         ci_status = "not_run"
         if self._ci_checker is not None:
@@ -129,19 +164,90 @@ class SelfBootstrapManager:
                     committed=True,
                     pushed=True,
                     ci_status=ci_status,
+                    pr_url=pr_url,
+                    merged=False,
                     health_status="not_run",
+                    rollback_performed=False,
+                    rollback_succeeded=None,
+                    success=False,
+                    workflow_result=workflow,
+                )
+
+        if request.auto_merge_on_ci_success and pr_url is not None and self._pr_merger is not None:
+            merged = await self._pr_merger(pr_url)
+            if merged:
+                await self._record_event(
+                    project_id=request.project_id,
+                    event_type=EventType.GIT_PR_MERGED,
+                    payload={"url": pr_url},
+                )
+            else:
+                await self._record_event(
+                    project_id=request.project_id,
+                    event_type=EventType.ERROR,
+                    payload={"phase": "merge", "url": pr_url, "message": "PR merge failed"},
+                )
+                return SelfBootstrapResult(
+                    branch_name=branch_name,
+                    committed=True,
+                    pushed=True,
+                    ci_status=ci_status,
+                    pr_url=pr_url,
+                    merged=False,
+                    health_status="not_run",
+                    rollback_performed=False,
+                    rollback_succeeded=None,
                     success=False,
                     workflow_result=workflow,
                 )
 
         health_status = "not_run"
-        if self._health_checker is not None and request.health_check_target is not None:
+        rollback_performed = False
+        rollback_succeeded: bool | None = None
+        deploy_target = request.deploy_target or request.health_check_target
+
+        if self._deployer is not None and deploy_target is not None:
             await self._record_event(
                 project_id=request.project_id,
                 event_type=EventType.DEPLOY_STARTED,
-                payload={"target": request.health_check_target},
+                payload={"target": deploy_target},
             )
-            healthy = await self._health_checker(request.health_check_target)
+            deployed = await self._deployer(deploy_target)
+            if not deployed:
+                await self._record_event(
+                    project_id=request.project_id,
+                    event_type=EventType.ERROR,
+                    payload={
+                        "phase": "deploy",
+                        "target": deploy_target,
+                        "message": "Deploy failed",
+                    },
+                )
+                await self._record_event(
+                    project_id=request.project_id,
+                    event_type=EventType.DEPLOY_COMPLETED,
+                    payload={"target": deploy_target, "healthy": False},
+                )
+                return SelfBootstrapResult(
+                    branch_name=branch_name,
+                    committed=True,
+                    pushed=True,
+                    ci_status=ci_status,
+                    pr_url=pr_url,
+                    merged=merged,
+                    health_status="not_run",
+                    rollback_performed=False,
+                    rollback_succeeded=None,
+                    success=False,
+                    workflow_result=workflow,
+                )
+
+        if self._health_checker is not None and request.health_check_target is not None:
+            healthy = await self._poll_health(
+                target=request.health_check_target,
+                retries=request.health_check_retries,
+                interval_seconds=request.health_check_interval_seconds,
+            )
             health_status = "healthy" if healthy else "unhealthy"
             await self._record_event(
                 project_id=request.project_id,
@@ -149,12 +255,35 @@ class SelfBootstrapManager:
                 payload={"target": request.health_check_target, "healthy": healthy},
             )
             if not healthy:
+                rollback_performed = (
+                    self._rollback_executor is not None and deploy_target is not None
+                )
+                if (
+                    rollback_performed
+                    and self._rollback_executor is not None
+                    and deploy_target is not None
+                ):
+                    rollback_succeeded = await self._rollback_executor(deploy_target)
+                    await self._record_event(
+                        project_id=request.project_id,
+                        event_type=EventType.ERROR,
+                        payload={
+                            "phase": "rollback",
+                            "target": deploy_target,
+                            "succeeded": rollback_succeeded,
+                        },
+                    )
+
                 return SelfBootstrapResult(
                     branch_name=branch_name,
                     committed=True,
                     pushed=True,
                     ci_status=ci_status,
+                    pr_url=pr_url,
+                    merged=merged,
                     health_status=health_status,
+                    rollback_performed=rollback_performed,
+                    rollback_succeeded=rollback_succeeded,
                     success=False,
                     workflow_result=workflow,
                 )
@@ -164,10 +293,32 @@ class SelfBootstrapManager:
             committed=True,
             pushed=True,
             ci_status=ci_status,
+            pr_url=pr_url,
+            merged=merged,
             health_status=health_status,
+            rollback_performed=rollback_performed,
+            rollback_succeeded=rollback_succeeded,
             success=True,
             workflow_result=workflow,
         )
+
+    async def _poll_health(
+        self,
+        *,
+        target: str,
+        retries: int,
+        interval_seconds: int,
+    ) -> bool:
+        attempts = max(1, retries)
+        for attempt in range(attempts):
+            if self._health_checker is None:
+                return True
+            healthy = await self._health_checker(target)
+            if healthy:
+                return True
+            if attempt < attempts - 1:
+                await self._sleep(float(interval_seconds))
+        return False
 
     async def _poll_ci(
         self,

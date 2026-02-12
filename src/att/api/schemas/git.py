@@ -23,3 +23,25 @@ class BranchRequest(BaseModel):
 
     name: str
     checkout: bool = True
+
+
+class PRCreateRequest(BaseModel):
+    """Pull request creation payload."""
+
+    title: str
+    body: str
+    base: str = "dev"
+    head: str | None = None
+
+
+class PRMergeRequest(BaseModel):
+    """Pull request merge payload."""
+
+    pull_request: str
+    strategy: str = "squash"
+
+
+class PRReviewsRequest(BaseModel):
+    """Pull request review query payload."""
+
+    pull_request: str

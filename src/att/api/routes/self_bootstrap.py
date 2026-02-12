@@ -33,7 +33,12 @@ async def run_self_bootstrap(
             ci_timeout_seconds=request.ci_timeout_seconds,
             ci_initial_poll_seconds=request.ci_initial_poll_seconds,
             ci_max_poll_seconds=request.ci_max_poll_seconds,
+            create_pr=request.create_pr,
+            auto_merge_on_ci_success=request.auto_merge_on_ci_success,
+            deploy_target=request.deploy_target,
             health_check_target=request.health_check_target,
+            health_check_retries=request.health_check_retries,
+            health_check_interval_seconds=request.health_check_interval_seconds,
         )
     )
     return SelfBootstrapResponseModel(
@@ -41,7 +46,11 @@ async def run_self_bootstrap(
         committed=result.committed,
         pushed=result.pushed,
         ci_status=result.ci_status,
+        pr_url=result.pr_url,
+        merged=result.merged,
         health_status=result.health_status,
+        rollback_performed=result.rollback_performed,
+        rollback_succeeded=result.rollback_succeeded,
         success=result.success,
         test_returncode=result.workflow_result.test_result.returncode,
         event_ids=[event.id for event in result.workflow_result.events],

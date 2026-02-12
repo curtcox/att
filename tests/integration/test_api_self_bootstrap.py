@@ -21,7 +21,11 @@ class FakeSelfBootstrapManager:
             committed=True,
             pushed=True,
             ci_status="success",
+            pr_url="https://example.com/pr/1",
+            merged=True,
             health_status="healthy",
+            rollback_performed=False,
+            rollback_succeeded=None,
             success=True,
             workflow_result=WorkflowRunResult(
                 diff="diff",
@@ -79,6 +83,8 @@ def test_self_bootstrap_run_endpoint(tmp_path: Path) -> None:
     assert payload["success"] is True
     assert payload["committed"] is True
     assert payload["branch_name"] == "codex/self-bootstrap-demo"
+    assert payload["pr_url"] == "https://example.com/pr/1"
+    assert payload["merged"] is True
     assert payload["test_returncode"] == 0
     assert len(payload["event_ids"]) == 2
 

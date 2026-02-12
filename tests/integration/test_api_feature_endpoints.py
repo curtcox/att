@@ -50,6 +50,36 @@ class FakeGitManager:
         self.calls.append(f"log:{limit}")
         return GitResult(command="git log", output="abc123 init")
 
+    def actions(self, project_path: Path, limit: int = 10) -> GitResult:
+        self.calls.append(f"actions:{limit}")
+        return GitResult(command="gh run list", output='[{"status":"completed"}]')
+
+    def pr_create(
+        self,
+        project_path: Path,
+        *,
+        title: str,
+        body: str,
+        base: str = "dev",
+        head: str | None = None,
+    ) -> GitResult:
+        self.calls.append(f"pr_create:{title}:{base}:{head}")
+        return GitResult(command="gh pr create", output="https://example.com/pr/1")
+
+    def pr_merge(
+        self,
+        project_path: Path,
+        *,
+        pull_request: str,
+        strategy: str = "squash",
+    ) -> GitResult:
+        self.calls.append(f"pr_merge:{pull_request}:{strategy}")
+        return GitResult(command="gh pr merge", output="merged")
+
+    def pr_reviews(self, project_path: Path, *, pull_request: str) -> GitResult:
+        self.calls.append(f"pr_reviews:{pull_request}")
+        return GitResult(command="gh pr view", output='{"reviews":[]}')
+
 
 class FakeRuntimeManager:
     def __init__(self) -> None:
@@ -200,14 +230,34 @@ def test_git_endpoints(tmp_path: Path) -> None:
 
     actions = client.get(f"/api/v1/projects/{project_id}/git/actions")
     assert actions.status_code == 200
-    assert actions.json()["status"] == "not_implemented"
+    assert "actions" in actions.json()
 
-    assert client.post(f"/api/v1/projects/{project_id}/git/pr").status_code == 200
-    assert client.post(f"/api/v1/projects/{project_id}/git/pr/merge").status_code == 200
-    assert client.get(f"/api/v1/projects/{project_id}/git/pr/reviews").status_code == 200
+    assert (
+        client.post(
+            f"/api/v1/projects/{project_id}/git/pr",
+            json={"title": "feat: demo", "body": "desc", "base": "dev", "head": "feature/demo"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/api/v1/projects/{project_id}/git/pr/merge",
+            json={"pull_request": "123", "strategy": "squash"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.get(
+            f"/api/v1/projects/{project_id}/git/pr/reviews",
+            params={"pull_request": "123"},
+        ).status_code
+        == 200
+    )
 
     assert any(call.startswith("status:") for call in git_manager.calls)
     assert "commit:feat: test" in git_manager.calls
+    assert "actions:10" in git_manager.calls
+    assert "pr_merge:123:squash" in git_manager.calls
 
 
 def test_runtime_and_deploy_endpoints(tmp_path: Path) -> None:

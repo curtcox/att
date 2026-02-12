@@ -25,15 +25,18 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] P16 self-bootstrap baseline added: `SelfBootstrapManager` coordinates branch/change/test/commit/push, optional CI polling, and optional health-check gating.
 - [x] Added self-bootstrap API endpoint: `POST /api/v1/projects/{id}/self-bootstrap/run`.
 - [x] Added self-bootstrap coverage in `tests/unit/test_self_bootstrap_manager.py` and `tests/integration/test_api_self_bootstrap.py`.
+- [x] Expanded self-bootstrap with PR lifecycle hooks (create + optional auto-merge) and rollback-on-unhealthy deploy behavior.
+- [x] Replaced Git API placeholders with manager-backed Actions/PR operations in `src/att/api/routes/git.py` and `src/att/core/git_manager.py`.
+- [x] Added self-bootstrap watchdog-style health retry controls before rollback (`health_check_retries`, `health_check_interval_seconds`).
 - [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
 - [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (42 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (44 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P16 is in progress (baseline implemented; CI integration, PR lifecycle, and restart/rollback hooks still pending).
+- [ ] P16 is in progress (baseline implemented; remaining work is live CI provider integration, real PR provider wiring, and production restart/rollback execution wiring).
 - [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 

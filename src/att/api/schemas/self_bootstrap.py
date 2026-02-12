@@ -16,7 +16,12 @@ class SelfBootstrapRequestModel(BaseModel):
     ci_timeout_seconds: int = 600
     ci_initial_poll_seconds: int = 10
     ci_max_poll_seconds: int = 60
+    create_pr: bool = True
+    auto_merge_on_ci_success: bool = True
+    deploy_target: str | None = None
     health_check_target: str | None = None
+    health_check_retries: int = 1
+    health_check_interval_seconds: int = 5
 
 
 class SelfBootstrapResponseModel(BaseModel):
@@ -26,7 +31,11 @@ class SelfBootstrapResponseModel(BaseModel):
     committed: bool
     pushed: bool
     ci_status: str
+    pr_url: str | None
+    merged: bool
     health_status: str
+    rollback_performed: bool
+    rollback_succeeded: bool | None
     success: bool
     test_returncode: int
     event_ids: list[str] = Field(default_factory=list)

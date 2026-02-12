@@ -20,4 +20,11 @@ P03
 - `todo/master_plan.md` is updated with completion status.
 
 ## Notes
-- Placeholder sub-plan scaffold created during initial master plan implementation.
+- Implemented baseline git operations (`status`, `add/commit`, `push`, `branch`, `log`) in `src/att/core/git_manager.py`.
+- Added GitHub CLI-backed operations for Actions and PR lifecycle:
+  - `actions`
+  - `pr_create`
+  - `pr_merge`
+  - `pr_reviews`
+- Wired API routes under `src/att/api/routes/git.py` to these operations.
+- Added integration coverage updates in `tests/integration/test_api_feature_endpoints.py`.
