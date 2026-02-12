@@ -28,6 +28,7 @@ from att.core.runtime_manager import RuntimeManager
 from att.core.test_runner import TestRunner
 from att.mcp.server import find_tool, registered_resources, registered_tools
 from att.mcp.tools.code_tools import CodeToolCall, parse_code_tool_call
+from att.mcp.tools.git_tools import GitToolCall, parse_git_tool_call
 from att.mcp.tools.project_tools import ProjectToolCall, parse_project_tool_call
 
 router = APIRouter(tags=["mcp-transport"])
@@ -210,108 +211,12 @@ async def _handle_tool_call(
     if code_call is not None:
         return await _handle_code_tool_call(code_call, project_manager, code_manager)
 
-    if tool_name == "att.git.status":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {"status": git_manager.status(project.path).output}
-
-    if tool_name == "att.git.commit":
-        project_id = str(arguments.get("project_id", ""))
-        message = str(arguments.get("message", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not message:
-            return {"error": "message is required"}
-        return {"result": git_manager.commit(project.path, message).output}
-
-    if tool_name == "att.git.push":
-        project_id = str(arguments.get("project_id", ""))
-        remote = str(arguments.get("remote", "origin"))
-        branch = str(arguments.get("branch", "HEAD"))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {"result": git_manager.push(project.path, remote, branch).output}
-
-    if tool_name == "att.git.branch":
-        project_id = str(arguments.get("project_id", ""))
-        name = str(arguments.get("name", ""))
-        checkout = _parse_bool(arguments.get("checkout"), default=True)
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not name:
-            return {"error": "name is required"}
-        return {"result": git_manager.branch(project.path, name, checkout=checkout).output}
-
-    if tool_name == "att.git.pr.create":
-        project_id = str(arguments.get("project_id", ""))
-        title = str(arguments.get("title", ""))
-        body = str(arguments.get("body", ""))
-        base = str(arguments.get("base", "dev"))
-        head = arguments.get("head")
-        if head is not None:
-            head = str(head)
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not title:
-            return {"error": "title is required"}
-        return {
-            "result": git_manager.pr_create(
-                project.path,
-                title=title,
-                body=body,
-                base=base,
-                head=head,
-            ).output
-        }
-
-    if tool_name == "att.git.pr.merge":
-        project_id = str(arguments.get("project_id", ""))
-        pull_request = str(arguments.get("pull_request", ""))
-        strategy = str(arguments.get("strategy", "squash"))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not pull_request:
-            return {"error": "pull_request is required"}
-        return {
-            "result": git_manager.pr_merge(
-                project.path,
-                pull_request=pull_request,
-                strategy=strategy,
-            ).output
-        }
-
-    if tool_name == "att.git.pr.review":
-        project_id = str(arguments.get("project_id", ""))
-        pull_request = str(arguments.get("pull_request", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not pull_request:
-            return {"error": "pull_request is required"}
-        return {"reviews": git_manager.pr_reviews(project.path, pull_request=pull_request).output}
-
-    if tool_name == "att.git.log":
-        project_id = str(arguments.get("project_id", ""))
-        limit = _parse_int(arguments.get("limit"), default=20)
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {"log": git_manager.log(project.path, limit=limit).output}
-
-    if tool_name == "att.git.actions":
-        project_id = str(arguments.get("project_id", ""))
-        limit = _parse_int(arguments.get("limit"), default=10)
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        return {"actions": git_manager.actions(project.path, limit=limit).output}
+    try:
+        git_call = parse_git_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if git_call is not None:
+        return await _handle_git_tool_call(git_call, project_manager, git_manager)
 
     if tool_name == "att.runtime.start":
         project_id = str(arguments.get("project_id", ""))
@@ -527,6 +432,75 @@ async def _handle_code_tool_call(
         }
 
     return {"error": f"Code tool operation not implemented: {call.operation}"}
+
+
+async def _handle_git_tool_call(
+    call: GitToolCall,
+    project_manager: ProjectManager,
+    git_manager: GitManager,
+) -> dict[str, Any]:
+    project = await project_manager.get(call.project_id)
+    if project is None:
+        return {"error": "project not found"}
+
+    if call.operation == "status":
+        return {"status": git_manager.status(project.path).output}
+
+    if call.operation == "commit":
+        if call.message is None:
+            return {"error": "message is required"}
+        return {"result": git_manager.commit(project.path, call.message).output}
+
+    if call.operation == "push":
+        return {"result": git_manager.push(project.path, call.remote, call.branch).output}
+
+    if call.operation == "branch":
+        if call.name is None:
+            return {"error": "name is required"}
+        return {
+            "result": git_manager.branch(project.path, call.name, checkout=call.checkout).output
+        }
+
+    if call.operation == "pr_create":
+        if call.title is None:
+            return {"error": "title is required"}
+        return {
+            "result": git_manager.pr_create(
+                project.path,
+                title=call.title,
+                body=call.body,
+                base=call.base,
+                head=call.head,
+            ).output
+        }
+
+    if call.operation == "pr_merge":
+        if call.pull_request is None:
+            return {"error": "pull_request is required"}
+        return {
+            "result": git_manager.pr_merge(
+                project.path,
+                pull_request=call.pull_request,
+                strategy=call.strategy,
+            ).output
+        }
+
+    if call.operation == "pr_review":
+        if call.pull_request is None:
+            return {"error": "pull_request is required"}
+        return {
+            "reviews": git_manager.pr_reviews(project.path, pull_request=call.pull_request).output
+        }
+
+    if call.operation == "log":
+        limit = call.limit if call.limit is not None else 20
+        return {"log": git_manager.log(project.path, limit=limit).output}
+
+    if call.operation == "actions":
+        limit = call.limit if call.limit is not None else 10
+        return {"actions": git_manager.actions(project.path, limit=limit).output}
+
+    return {"error": f"Git tool operation not implemented: {call.operation}"}
 
 
 async def _handle_resource_read(

@@ -210,3 +210,18 @@ def test_mcp_transport_reports_errors(tmp_path: Path) -> None:
     )
     assert clone_without_remote.status_code == 200
     assert clone_without_remote.json()["error"]["code"] == -32000
+
+    git_commit_missing_message = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "12",
+            "method": "tools/call",
+            "params": {
+                "name": "att.git.commit",
+                "arguments": {"project_id": "p1"},
+            },
+        },
+    )
+    assert git_commit_missing_message.status_code == 200
+    assert git_commit_missing_message.json()["error"]["code"] == -32000
