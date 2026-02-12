@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -28,6 +27,8 @@ from att.core.runtime_manager import RuntimeManager
 from att.core.test_runner import TestRunner
 from att.mcp.server import find_tool, registered_resources, registered_tools
 from att.mcp.tools.code_tools import CodeToolCall, parse_code_tool_call
+from att.mcp.tools.debug_tools import DebugToolCall, parse_debug_tool_call
+from att.mcp.tools.deploy_tools import DeployToolCall, parse_deploy_tool_call
 from att.mcp.tools.git_tools import GitToolCall, parse_git_tool_call
 from att.mcp.tools.project_tools import ProjectToolCall, parse_project_tool_call
 from att.mcp.tools.runtime_tools import RuntimeToolCall, parse_runtime_tool_call
@@ -55,29 +56,6 @@ def _error(request_id: str | int | None, code: int, message: str) -> dict[str, A
             "message": message,
         },
     }
-
-
-def _parse_bool(value: Any, *, default: bool) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {"true", "1", "yes", "on"}:
-            return True
-        if lowered in {"false", "0", "no", "off"}:
-            return False
-    return default
-
-
-def _parse_int(value: Any, *, default: int) -> int:
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str):
-        try:
-            return int(value.strip())
-        except ValueError:
-            return default
-    return default
 
 
 @router.post("/mcp")
@@ -244,50 +222,19 @@ async def _handle_tool_call(
             test_results,
         )
 
-    if tool_name == "att.debug.errors":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        logs = debug_logs.get(project_id, [])
-        return {"errors": debug_manager.errors(logs)}
+    try:
+        debug_call = parse_debug_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if debug_call is not None:
+        return await _handle_debug_tool_call(debug_call, project_manager, debug_manager, debug_logs)
 
-    if tool_name == "att.debug.logs":
-        project_id = str(arguments.get("project_id", ""))
-        query = str(arguments.get("query", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        logs = debug_logs.get(project_id, [])
-        filtered = debug_manager.filter_logs(logs, query) if query else logs
-        return {"logs": filtered}
-
-    if tool_name == "att.deploy.build":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        status = deploy_manager.build(project.path)
-        return {"built": status.built, "running": status.running, "message": status.message}
-
-    if tool_name == "att.deploy.run":
-        project_id = str(arguments.get("project_id", ""))
-        config_path = str(arguments.get("config_path", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        if not config_path:
-            return {"error": "config_path is required"}
-        status = deploy_manager.run(project.path, Path(config_path))
-        return {"built": status.built, "running": status.running, "message": status.message}
-
-    if tool_name == "att.deploy.status":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        if project is None:
-            return {"error": "project not found"}
-        status = deploy_manager.status()
-        return {"built": status.built, "running": status.running, "message": status.message}
+    try:
+        deploy_call = parse_deploy_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if deploy_call is not None:
+        return await _handle_deploy_tool_call(deploy_call, project_manager, deploy_manager)
 
     return {"error": f"Tool handler not implemented: {tool_name}"}
 
@@ -527,6 +474,53 @@ async def _handle_test_tool_call(
         return test_results.get(call.project_id, {"status": "no_results"})
 
     return {"error": f"Test tool operation not implemented: {call.operation}"}
+
+
+async def _handle_debug_tool_call(
+    call: DebugToolCall,
+    project_manager: ProjectManager,
+    debug_manager: DebugManager,
+    debug_logs: dict[str, list[str]],
+) -> dict[str, Any]:
+    project = await project_manager.get(call.project_id)
+    if project is None:
+        return {"error": "project not found"}
+    logs = debug_logs.get(call.project_id, [])
+
+    if call.operation == "errors":
+        return {"errors": debug_manager.errors(logs)}
+
+    if call.operation == "logs":
+        filtered = debug_manager.filter_logs(logs, call.query) if call.query else logs
+        return {"logs": filtered}
+
+    return {"error": f"Debug tool operation not implemented: {call.operation}"}
+
+
+async def _handle_deploy_tool_call(
+    call: DeployToolCall,
+    project_manager: ProjectManager,
+    deploy_manager: DeployManager,
+) -> dict[str, Any]:
+    project = await project_manager.get(call.project_id)
+    if project is None:
+        return {"error": "project not found"}
+
+    if call.operation == "build":
+        status = deploy_manager.build(project.path)
+        return {"built": status.built, "running": status.running, "message": status.message}
+
+    if call.operation == "run":
+        if call.config_path is None:
+            return {"error": "config_path is required"}
+        status = deploy_manager.run(project.path, call.config_path)
+        return {"built": status.built, "running": status.running, "message": status.message}
+
+    if call.operation == "status":
+        status = deploy_manager.status()
+        return {"built": status.built, "running": status.running, "message": status.message}
+
+    return {"error": f"Deploy tool operation not implemented: {call.operation}"}
 
 
 async def _handle_resource_read(

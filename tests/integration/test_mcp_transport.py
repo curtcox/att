@@ -255,3 +255,33 @@ def test_mcp_transport_reports_errors(tmp_path: Path) -> None:
     )
     assert test_run_missing_project.status_code == 200
     assert test_run_missing_project.json()["error"]["code"] == -32000
+
+    debug_missing_project = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "15",
+            "method": "tools/call",
+            "params": {
+                "name": "att.debug.logs",
+                "arguments": {"query": "traceback"},
+            },
+        },
+    )
+    assert debug_missing_project.status_code == 200
+    assert debug_missing_project.json()["error"]["code"] == -32000
+
+    deploy_run_missing_config = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "16",
+            "method": "tools/call",
+            "params": {
+                "name": "att.deploy.run",
+                "arguments": {"project_id": "p1"},
+            },
+        },
+    )
+    assert deploy_run_missing_config.status_code == 200
+    assert deploy_run_missing_config.json()["error"]["code"] == -32000
