@@ -4,6 +4,28 @@
 
 ATT is a web-based application for developing, running, debugging, and deploying NVIDIA NeMo Agent Toolkit (NAT) apps. It is built on NAT itself, exposes an OpenAPI interface, and functions as both an MCP client and MCP server. The top priority is reaching self-bootstrapping: the point where ATT can create future versions of itself.
 
+## Implementation Progress (2026-02-12)
+
+- [x] P01 `project_skeleton.md` baseline implemented: `pyproject.toml`, `src/` package layout, test directories, config/ui folders, and package entrypoint.
+- [x] P03 `data_models.md` baseline implemented: `Project` + `ATTEvent` models, SQLite migrations, async store with CRUD and event queries.
+- [x] P04-P11 baseline manager interfaces implemented in `src/att/core/` (`project_manager`, `code_manager`, `git_manager`, `runtime_manager`, `test_runner`, `debug_manager`, `deploy_manager`, `tool_orchestrator`).
+- [x] P14 baseline API scaffolding implemented: FastAPI app, project/code/git/runtime/test/debug/deploy routes, health endpoint, WebSocket endpoint, and MCP discovery endpoint.
+- [x] P02 CI workflows implemented: `.github/workflows/pr-quick.yml` and `.github/workflows/main-full.yml`.
+- [x] P12 MCP server baseline expanded: full ATT tool/resource catalog + lookup helpers in `src/att/mcp/server.py`.
+- [x] P13 MCP client baseline expanded: multi-server state model with health checks, exponential backoff, degraded/unreachable states, and transition audit events in `src/att/mcp/client.py`.
+- [x] MCP API routes added for catalog and server management (`/api/v1/mcp/tools`, `/api/v1/mcp/resources`, `/api/v1/mcp/servers`, and health-check endpoints).
+- [x] MCP unit test coverage added in `tests/unit/test_mcp_server.py` and `tests/unit/test_mcp_client.py`.
+- [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
+- [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
+- [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
+- [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
+- [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (28 tests).
+- [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
+- [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
+- [ ] P15-P25 not started (planned phases remain unchanged).
+- [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
+
 ## Reference Technologies
 
 - [NVIDIA NeMo Agent Toolkit](https://developer.nvidia.com/nemo-agent-toolkit) — core framework (FastAPI frontend, YAML-driven workflows, MCP/A2A support)

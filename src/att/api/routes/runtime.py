@@ -1,0 +1,56 @@
+"""Runtime routes."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
+
+from att.api.deps import get_project_manager, get_runtime_manager
+from att.api.routes.common import require_project
+from att.api.schemas.runtime import RuntimeStartRequest
+from att.core.project_manager import ProjectManager
+from att.core.runtime_manager import RuntimeManager
+
+router = APIRouter(prefix="/api/v1/projects/{project_id}/runtime", tags=["runtime"])
+
+
+@router.post("/start")
+async def runtime_start(
+    project_id: str,
+    request: RuntimeStartRequest,
+    manager: ProjectManager = Depends(get_project_manager),
+    runtime: RuntimeManager = Depends(get_runtime_manager),
+) -> dict[str, bool | int | None]:
+    project = await require_project(project_id, manager)
+    state = runtime.start(project.path, request.config_path)
+    return {"running": state.running, "pid": state.pid}
+
+
+@router.post("/stop")
+async def runtime_stop(
+    project_id: str,
+    manager: ProjectManager = Depends(get_project_manager),
+    runtime: RuntimeManager = Depends(get_runtime_manager),
+) -> dict[str, bool | int | None]:
+    await require_project(project_id, manager)
+    state = runtime.stop()
+    return {"running": state.running, "pid": state.pid}
+
+
+@router.get("/status")
+async def runtime_status(
+    project_id: str,
+    manager: ProjectManager = Depends(get_project_manager),
+    runtime: RuntimeManager = Depends(get_runtime_manager),
+) -> dict[str, bool | int | None]:
+    await require_project(project_id, manager)
+    state = runtime.status()
+    return {"running": state.running, "pid": state.pid}
+
+
+@router.get("/logs")
+async def runtime_logs(
+    project_id: str,
+    manager: ProjectManager = Depends(get_project_manager),
+) -> dict[str, list[str]]:
+    await require_project(project_id, manager)
+    return {"logs": []}
