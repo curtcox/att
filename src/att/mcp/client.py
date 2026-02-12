@@ -33,6 +33,9 @@ class ExternalServer:
     retry_count: int = 0
     last_checked_at: datetime | None = None
     next_retry_at: datetime | None = None
+    initialized: bool = False
+    protocol_version: str | None = None
+    last_initialized_at: datetime | None = None
 
     @property
     def healthy(self) -> bool:
@@ -162,6 +165,79 @@ class MCPClientManager:
                 results.append(checked)
         return results
 
+    async def initialize_server(self, name: str, *, force: bool = False) -> ExternalServer | None:
+        """Perform MCP initialize handshake for one server."""
+        server = self._servers.get(name)
+        if server is None:
+            return None
+        if server.initialized and not force:
+            return server
+
+        transport = self._transport or self._default_transport
+        request_id = str(uuid4())
+        initialize_request = self._build_request(
+            "initialize",
+            request_id=request_id,
+            params={
+                "protocolVersion": "2025-11-25",
+                "clientInfo": {"name": "att", "version": "0.1.0"},
+                "capabilities": {
+                    "tools": {},
+                    "resources": {},
+                },
+            },
+        )
+        try:
+            response = await transport(server, initialize_request)
+        except Exception as exc:  # noqa: BLE001
+            server.initialized = False
+            server.protocol_version = None
+            self.record_check_result(name, healthy=False, error=str(exc))
+            return self._servers.get(name)
+
+        rpc_error = self._extract_error(response)
+        if rpc_error is not None:
+            server.initialized = False
+            server.protocol_version = None
+            self.record_check_result(name, healthy=False, error=f"rpc error: {rpc_error}")
+            return self._servers.get(name)
+
+        result = response.get("result")
+        if not isinstance(result, dict):
+            server.initialized = False
+            server.protocol_version = None
+            self.record_check_result(
+                name, healthy=False, error="rpc error: invalid initialize result"
+            )
+            return self._servers.get(name)
+
+        protocol = result.get("protocolVersion")
+        server.protocol_version = protocol if isinstance(protocol, str) else None
+        server.initialized = True
+        server.last_initialized_at = datetime.now(UTC)
+        self.record_check_result(name, healthy=True)
+
+        initialized_notification = self._build_request(
+            "notifications/initialized",
+            request_id=str(uuid4()),
+            params={},
+        )
+        try:
+            await transport(server, initialized_notification)
+        except Exception as exc:  # noqa: BLE001
+            server.initialized = False
+            self.record_check_result(name, healthy=False, error=str(exc))
+        return self._servers.get(name)
+
+    async def initialize_all(self, *, force: bool = False) -> list[ExternalServer]:
+        """Perform initialize handshake for all servers."""
+        initialized: list[ExternalServer] = []
+        for name in sorted(self._servers):
+            server = await self.initialize_server(name, force=force)
+            if server is not None:
+                initialized.append(server)
+        return initialized
+
     async def invoke_tool(
         self,
         tool_name: str,
@@ -206,6 +282,7 @@ class MCPClientManager:
             server.retry_count = 0
             server.next_retry_at = None
         else:
+            server.initialized = False
             server.retry_count += 1
             if server.retry_count >= self._unreachable_after:
                 server.status = ServerStatus.UNREACHABLE

@@ -39,6 +39,9 @@ def _as_response(server: ExternalServer) -> MCPServerResponse:
         retry_count=server.retry_count,
         last_checked_at=server.last_checked_at,
         next_retry_at=server.next_retry_at,
+        initialized=server.initialized,
+        protocol_version=server.protocol_version,
+        last_initialized_at=server.last_initialized_at,
     )
 
 
@@ -111,6 +114,26 @@ async def check_mcp_servers(
 ) -> MCPServersResponse:
     return MCPServersResponse(
         items=[_as_response(server) for server in await manager.health_check_all()]
+    )
+
+
+@router.post("/servers/{name}/initialize", response_model=MCPServerResponse)
+async def initialize_mcp_server(
+    name: str,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServerResponse:
+    server = await manager.initialize_server(name)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    return _as_response(server)
+
+
+@router.post("/servers/initialize", response_model=MCPServersResponse)
+async def initialize_mcp_servers(
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServersResponse:
+    return MCPServersResponse(
+        items=[_as_response(server) for server in await manager.initialize_all()]
     )
 
 

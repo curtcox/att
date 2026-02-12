@@ -23,4 +23,5 @@ P04-P08,P10
 - Baseline FastAPI route surface implemented across project/code/git/runtime/test/debug/deploy/workflow/events/self-bootstrap APIs.
 - Project routes now include clone/download endpoints in addition to CRUD.
 - Added MCP management/discovery routes (`/api/v1/mcp/*`) and MCP transport route (`POST /mcp`) for JSON-RPC-style tool/resource access.
+- MCP management surface now includes explicit server initialization routes (`/api/v1/mcp/servers/{name}/initialize`, `/api/v1/mcp/servers/initialize`).
 - Integration coverage includes feature endpoint tests and MCP-specific API tests in `tests/integration/`.

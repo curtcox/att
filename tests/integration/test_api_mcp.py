@@ -74,6 +74,7 @@ def test_mcp_server_register_list_and_health_check_healthy() -> None:
     )
     assert create.status_code == 201
     assert create.json()["status"] == ServerStatus.HEALTHY.value
+    assert create.json()["initialized"] is False
 
     listing = client.get("/api/v1/mcp/servers")
     assert listing.status_code == 200
@@ -86,6 +87,36 @@ def test_mcp_server_register_list_and_health_check_healthy() -> None:
     checked = client.post("/api/v1/mcp/servers/codex/health-check")
     assert checked.status_code == 200
     assert checked.json()["status"] == ServerStatus.HEALTHY.value
+
+
+def test_mcp_server_initialize_endpoints() -> None:
+    transport = FallbackTransport()
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "codex", "url": "http://codex.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "github", "url": "http://github.local"},
+    )
+
+    one = client.post("/api/v1/mcp/servers/github/initialize")
+    assert one.status_code == 200
+    assert one.json()["initialized"] is True
+
+    all_servers = client.post("/api/v1/mcp/servers/initialize")
+    assert all_servers.status_code == 200
+    assert len(all_servers.json()["items"]) == 2
+    by_name = {item["name"]: item for item in all_servers.json()["items"]}
+    assert by_name["github"]["initialized"] is True
+    assert by_name["codex"]["initialized"] is False
+    assert by_name["codex"]["status"] in {
+        ServerStatus.DEGRADED.value,
+        ServerStatus.UNREACHABLE.value,
+    }
 
 
 def test_mcp_server_health_check_degraded_and_missing() -> None:

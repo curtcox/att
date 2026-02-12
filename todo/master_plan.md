@@ -19,6 +19,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] MCP invocation flow added with server failover: `tools/call` and `resources/read` JSON-RPC requests via `src/att/mcp/client.py`.
 - [x] MCP invocation API endpoints added: `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` with 503 handling on all-server failure.
 - [x] MCP management API expanded with server detail/delete and connection events endpoints (`/api/v1/mcp/servers/{name}`, `DELETE /api/v1/mcp/servers/{name}`, `/api/v1/mcp/events`).
+- [x] MCP client/server handshake support added with persistent initialization metadata (`initialized`, `protocol_version`, `last_initialized_at`) and initialization APIs (`POST /api/v1/mcp/servers/{name}/initialize`, `POST /api/v1/mcp/servers/initialize`).
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
@@ -42,7 +43,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (56 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (60 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).

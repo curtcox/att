@@ -27,6 +27,9 @@ class MCPServerResponse(BaseModel):
     retry_count: int
     last_checked_at: datetime | None
     next_retry_at: datetime | None
+    initialized: bool
+    protocol_version: str | None
+    last_initialized_at: datetime | None
 
 
 class MCPServersResponse(BaseModel):

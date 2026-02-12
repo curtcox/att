@@ -27,3 +27,8 @@ P11
 - Added JSON-RPC invocation methods (`tools/call`, `resources/read`) with fallback across servers and error-based degrade handling.
 - Added invocation API endpoints (`/api/v1/mcp/invoke/tool`, `/api/v1/mcp/invoke/resource`) and failover tests.
 - Added server inspection/deletion and connection event APIs for operational visibility.
+- Added explicit MCP initialize handshake support in `MCPClientManager` (`initialize_server`, `initialize_all`) with persisted initialization metadata per server.
+- Added initialization API endpoints:
+  - `POST /api/v1/mcp/servers/{name}/initialize`
+  - `POST /api/v1/mcp/servers/initialize`
+- Expanded unit/integration tests for handshake success/failure and initialization endpoint behavior.

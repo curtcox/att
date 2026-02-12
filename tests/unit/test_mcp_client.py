@@ -168,3 +168,72 @@ async def test_invoke_tool_raises_when_no_servers_available() -> None:
     manager = MCPClientManager()
     with pytest.raises(MCPInvocationError):
         await manager.invoke_tool("att.project.list")
+
+
+@pytest.mark.asyncio
+async def test_initialize_server_updates_state_on_success() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("codex", "http://codex.local")
+
+    initialized = await manager.initialize_server("codex")
+
+    assert initialized is not None
+    assert initialized.status is ServerStatus.HEALTHY
+    assert initialized.initialized is True
+    assert initialized.protocol_version == "2025-11-25"
+    assert initialized.last_initialized_at is not None
+
+
+@pytest.mark.asyncio
+async def test_initialize_server_marks_degraded_on_error() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        raise RuntimeError("init failed")
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("github", "http://github.local")
+
+    initialized = await manager.initialize_server("github")
+
+    assert initialized is not None
+    assert initialized.status is ServerStatus.DEGRADED
+    assert initialized.initialized is False
+    assert initialized.last_error == "init failed"
+
+
+@pytest.mark.asyncio
+async def test_initialize_all_returns_all_servers() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"protocolVersion": "2025-11-25"},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("a", "http://a.local")
+    manager.register("b", "http://b.local")
+
+    results = await manager.initialize_all()
+
+    assert [server.name for server in results] == ["a", "b"]
+    assert all(server.initialized for server in results)
