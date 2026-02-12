@@ -32,3 +32,4 @@ P11
   - `POST /api/v1/mcp/servers/{name}/initialize`
   - `POST /api/v1/mcp/servers/initialize`
 - Expanded unit/integration tests for handshake success/failure and initialization endpoint behavior.
+- Invocation now auto-initializes candidate servers before `tools/call` / `resources/read`, and falls back to the next server if initialization fails.

@@ -23,10 +23,11 @@ class StaticProbe:
 
 class FallbackTransport:
     def __init__(self) -> None:
-        self.calls: list[str] = []
+        self.calls: list[tuple[str, str]] = []
 
     async def __call__(self, server: ExternalServer, request: JSONObject) -> JSONObject:
-        self.calls.append(server.name)
+        method = str(request.get("method", ""))
+        self.calls.append((server.name, method))
         if server.name == "codex":
             raise RuntimeError("codex unavailable")
         if server.name == "failing":
@@ -195,12 +196,18 @@ def test_mcp_invoke_tool_with_fallback() -> None:
     assert payload["server"] == "github"
     assert payload["method"] == "tools/call"
     assert payload["result"]["served_by"] == "github"
-    assert transport.calls == ["codex", "github"]
+    assert transport.calls[0] == ("codex", "initialize")
+    assert ("github", "initialize") in transport.calls
+    assert ("github", "notifications/initialized") in transport.calls
+    assert transport.calls[-1] == ("github", "tools/call")
 
     servers = client.get("/api/v1/mcp/servers")
     statuses = {item["name"]: item["status"] for item in servers.json()["items"]}
+    initialized = {item["name"]: item["initialized"] for item in servers.json()["items"]}
     assert statuses["codex"] == ServerStatus.DEGRADED.value
     assert statuses["github"] == ServerStatus.HEALTHY.value
+    assert initialized["codex"] is False
+    assert initialized["github"] is True
 
 
 def test_mcp_invoke_resource_and_error_when_unavailable() -> None:
@@ -227,6 +234,8 @@ def test_mcp_invoke_resource_and_error_when_unavailable() -> None:
     assert resource.status_code == 200
     assert resource.json()["server"] == "backup"
     assert resource.json()["method"] == "resources/read"
+    assert ("backup", "initialize") in transport.calls
+    assert ("backup", "resources/read") in transport.calls
 
     empty_client = _client_with_manager(MCPClientManager())
     unavailable = empty_client.post(

@@ -331,31 +331,39 @@ class MCPClientManager:
         errors: list[str] = []
 
         for server in candidates:
+            initialized = await self.initialize_server(server.name)
+            if initialized is None:
+                errors.append(f"{server.name}: server not found")
+                continue
+            if not initialized.initialized:
+                init_error = initialized.last_error or "initialize failed"
+                errors.append(f"{server.name}: initialize failed ({init_error})")
+                continue
             try:
-                response = await transport(server, request)
+                response = await transport(initialized, request)
             except Exception as exc:  # noqa: BLE001
                 message = str(exc)
-                self.record_check_result(server.name, healthy=False, error=message)
-                errors.append(f"{server.name}: {message}")
+                self.record_check_result(initialized.name, healthy=False, error=message)
+                errors.append(f"{initialized.name}: {message}")
                 continue
 
             rpc_error = self._extract_error(response)
             if rpc_error is not None:
                 self.record_check_result(
-                    server.name, healthy=False, error=f"rpc error: {rpc_error}"
+                    initialized.name, healthy=False, error=f"rpc error: {rpc_error}"
                 )
-                errors.append(f"{server.name}: {rpc_error}")
+                errors.append(f"{initialized.name}: {rpc_error}")
                 continue
 
             if "result" not in response:
                 missing_result = "rpc error: missing result"
-                self.record_check_result(server.name, healthy=False, error=missing_result)
-                errors.append(f"{server.name}: {missing_result}")
+                self.record_check_result(initialized.name, healthy=False, error=missing_result)
+                errors.append(f"{initialized.name}: {missing_result}")
                 continue
 
-            self.record_check_result(server.name, healthy=True)
+            self.record_check_result(initialized.name, healthy=True)
             return MCPInvocationResult(
-                server=server.name,
+                server=initialized.name,
                 method=method,
                 request_id=request_id,
                 result=response["result"],

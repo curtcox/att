@@ -101,7 +101,11 @@ def test_choose_server_prefers_healthy_then_degraded() -> None:
 
 @pytest.mark.asyncio
 async def test_invoke_tool_fails_over_to_next_server() -> None:
+    calls: list[tuple[str, str]] = []
+
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        calls.append((server.name, method))
         from_server = server.name
         if from_server == "primary":
             raise RuntimeError("connect timeout")
@@ -124,6 +128,8 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
     assert result.method == "tools/call"
     assert isinstance(result.result, dict)
     assert result.result["ok"] is True
+    assert calls[0] == ("primary", "initialize")
+    assert calls[-1] == ("backup", "tools/call")
 
     primary = manager.get("primary")
     backup = manager.get("backup")
@@ -131,11 +137,17 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
     assert backup is not None
     assert primary.status is ServerStatus.DEGRADED
     assert backup.status is ServerStatus.HEALTHY
+    assert primary.initialized is False
+    assert backup.initialized is True
 
 
 @pytest.mark.asyncio
 async def test_read_resource_fallback_on_rpc_error() -> None:
+    calls: list[tuple[str, str]] = []
+
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        calls.append((server.name, method))
         from_server = server.name
         if from_server == "primary":
             return {
@@ -161,6 +173,8 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
     assert result.method == "resources/read"
     assert isinstance(result.result, dict)
     assert result.result["uri"] == "att://projects"
+    assert calls[0] == ("primary", "initialize")
+    assert calls[-1] == ("secondary", "resources/read")
 
 
 @pytest.mark.asyncio
@@ -237,3 +251,40 @@ async def test_initialize_all_returns_all_servers() -> None:
 
     assert [server.name for server in results] == ["a", "b"]
     assert all(server.initialized for server in results)
+
+
+@pytest.mark.asyncio
+async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
+    calls: list[str] = []
+
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        calls.append(method)
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("codex", "http://codex.local")
+
+    result = await manager.invoke_tool("att.project.list")
+
+    assert result.server == "codex"
+    assert calls == ["initialize", "notifications/initialized", "tools/call"]
+    server = manager.get("codex")
+    assert server is not None
+    assert server.initialized is True
