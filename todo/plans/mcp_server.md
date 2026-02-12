@@ -32,5 +32,6 @@ P04-P08,P10
 - Added typed git-tool adapter parsing in `src/att/mcp/tools/git_tools.py` and integrated it into transport git operations.
 - Added typed runtime/test tool adapter parsing in `src/att/mcp/tools/runtime_tools.py` and `src/att/mcp/tools/test_tools.py`, integrated into transport runtime/test operations.
 - Added typed debug/deploy tool adapter parsing in `src/att/mcp/tools/debug_tools.py` and `src/att/mcp/tools/deploy_tools.py`, integrated into transport debug/deploy operations.
+- Added typed resource URI parsing in `src/att/mcp/tools/resource_refs.py` and integrated it into transport `resources/read` dispatch.
 - Added defensive JSON-RPC error wrapping so unexpected handler exceptions return MCP error payloads instead of raw 500s.
-- Added transport integration coverage in `tests/integration/test_mcp_transport.py` and adapter unit coverage in `tests/unit/test_project_tools.py` + `tests/unit/test_code_tools.py` + `tests/unit/test_git_tools.py` + `tests/unit/test_runtime_tools.py` + `tests/unit/test_test_tools.py` + `tests/unit/test_debug_tools.py` + `tests/unit/test_deploy_tools.py`.
+- Added transport integration coverage in `tests/integration/test_mcp_transport.py` and adapter unit coverage in `tests/unit/test_project_tools.py` + `tests/unit/test_code_tools.py` + `tests/unit/test_git_tools.py` + `tests/unit/test_runtime_tools.py` + `tests/unit/test_test_tools.py` + `tests/unit/test_debug_tools.py` + `tests/unit/test_deploy_tools.py` + `tests/unit/test_resource_refs.py`.

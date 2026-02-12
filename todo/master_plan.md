@@ -43,6 +43,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Implemented typed MCP git-tool adapter parsing in `src/att/mcp/tools/git_tools.py` and wired transport git operations to this adapter for normalized argument validation/execution.
 - [x] Implemented typed MCP runtime/test tool adapter parsing in `src/att/mcp/tools/runtime_tools.py` and `src/att/mcp/tools/test_tools.py`, wired transport runtime/test operations to these adapters for normalized argument validation/execution.
 - [x] Implemented typed MCP debug/deploy tool adapter parsing in `src/att/mcp/tools/debug_tools.py` and `src/att/mcp/tools/deploy_tools.py`, wired transport debug/deploy operations to these adapters for normalized argument validation/execution.
+- [x] Implemented typed MCP resource URI parsing in `src/att/mcp/tools/resource_refs.py` and wired `resources/read` flow to this adapter for normalized resource dispatch.
 - [x] Added project clone/download API coverage in `tests/integration/test_api_projects.py` and unit coverage for clone/download logic in `tests/unit/test_project_manager.py`.
 - [x] Implemented `att.project.download` in MCP transport and added defensive JSON-RPC error wrapping for unexpected tool/resource handler exceptions.
 - [x] Replaced e2e placeholder with real API smoke tests in `tests/e2e/test_placeholder.py` (health endpoint, MCP discovery, and MCP tools surface check).
@@ -51,7 +52,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (95 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (99 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -31,16 +30,11 @@ from att.mcp.tools.debug_tools import DebugToolCall, parse_debug_tool_call
 from att.mcp.tools.deploy_tools import DeployToolCall, parse_deploy_tool_call
 from att.mcp.tools.git_tools import GitToolCall, parse_git_tool_call
 from att.mcp.tools.project_tools import ProjectToolCall, parse_project_tool_call
+from att.mcp.tools.resource_refs import parse_resource_ref
 from att.mcp.tools.runtime_tools import RuntimeToolCall, parse_runtime_tool_call
 from att.mcp.tools.test_tools import MCPTestToolCall, parse_test_tool_call
 
 router = APIRouter(tags=["mcp-transport"])
-
-_PROJECT_FILES_URI = re.compile(r"^att://project/([^/]+)/files$")
-_PROJECT_CONFIG_URI = re.compile(r"^att://project/([^/]+)/config$")
-_PROJECT_TESTS_URI = re.compile(r"^att://project/([^/]+)/tests$")
-_PROJECT_LOGS_URI = re.compile(r"^att://project/([^/]+)/logs$")
-_PROJECT_CI_URI = re.compile(r"^att://project/([^/]+)/ci$")
 
 
 def _response(request_id: str | int | None, result: Any) -> dict[str, Any]:
@@ -532,7 +526,11 @@ async def _handle_resource_read(
     test_results: dict[str, dict[str, str | int]],
     debug_logs: dict[str, list[str]],
 ) -> dict[str, Any]:
-    if uri == "att://projects":
+    resource_ref = parse_resource_ref(uri)
+    if resource_ref is None:
+        return {"error": f"Unknown resource uri: {uri}"}
+
+    if resource_ref.operation == "projects":
         projects = await project_manager.list()
         return {
             "items": [
@@ -546,9 +544,11 @@ async def _handle_resource_read(
             ]
         }
 
-    files_match = _PROJECT_FILES_URI.match(uri)
-    if files_match:
-        project_id = files_match.group(1)
+    if resource_ref.project_id is None:
+        return {"error": f"Invalid resource uri: {uri}"}
+    project_id = resource_ref.project_id
+
+    if resource_ref.operation == "files":
         project = await project_manager.get(project_id)
         if project is None:
             return {"error": "project not found"}
@@ -559,9 +559,7 @@ async def _handle_resource_read(
             ]
         }
 
-    config_match = _PROJECT_CONFIG_URI.match(uri)
-    if config_match:
-        project_id = config_match.group(1)
+    if resource_ref.operation == "config":
         project = await project_manager.get(project_id)
         if project is None:
             return {"error": "project not found"}
@@ -573,22 +571,16 @@ async def _handle_resource_read(
             return {"error": "project config file not found"}
         return {"path": str(resolved), "content": resolved.read_text(encoding="utf-8")}
 
-    tests_match = _PROJECT_TESTS_URI.match(uri)
-    if tests_match:
-        project_id = tests_match.group(1)
+    if resource_ref.operation == "tests":
         return test_results.get(project_id, {"status": "no_results"})
 
-    logs_match = _PROJECT_LOGS_URI.match(uri)
-    if logs_match:
-        project_id = logs_match.group(1)
+    if resource_ref.operation == "logs":
         return {"logs": debug_logs.get(project_id, [])}
 
-    ci_match = _PROJECT_CI_URI.match(uri)
-    if ci_match:
-        project_id = ci_match.group(1)
+    if resource_ref.operation == "ci":
         project = await project_manager.get(project_id)
         if project is None:
             return {"error": "project not found"}
         return {"actions": git_manager.actions(project.path).output}
 
-    return {"error": f"Unknown resource uri: {uri}"}
+    return {"error": f"Resource operation not implemented: {resource_ref.operation}"}
