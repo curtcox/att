@@ -27,6 +27,7 @@ from att.core.project_manager import CreateProjectInput, ProjectManager
 from att.core.runtime_manager import RuntimeManager
 from att.core.test_runner import TestRunner
 from att.mcp.server import find_tool, registered_resources, registered_tools
+from att.mcp.tools.project_tools import ProjectToolCall, parse_project_tool_call
 
 router = APIRouter(tags=["mcp-transport"])
 
@@ -194,49 +195,12 @@ async def _handle_tool_call(
     test_results: dict[str, dict[str, str | int]],
     debug_logs: dict[str, list[str]],
 ) -> dict[str, Any]:
-    if tool_name == "att.project.list":
-        projects = await project_manager.list()
-        return {
-            "items": [
-                {
-                    "id": project.id,
-                    "name": project.name,
-                    "path": str(project.path),
-                    "status": project.status.value,
-                }
-                for project in projects
-            ]
-        }
-
-    if tool_name == "att.project.status":
-        project_id = str(arguments.get("project_id", ""))
-        project = await project_manager.get(project_id)
-        return {
-            "exists": project is not None,
-            "status": project.status.value if project else "missing",
-        }
-
-    if tool_name == "att.project.create":
-        name = str(arguments.get("name", ""))
-        path = str(arguments.get("path", ""))
-        if not name or not path:
-            return {"error": "name and path are required"}
-        project = await project_manager.create(CreateProjectInput(name=name, path=Path(path)))
-        return {"id": project.id}
-
-    if tool_name == "att.project.delete":
-        project_id = str(arguments.get("project_id", ""))
-        if not project_id:
-            return {"error": "project_id is required"}
-        await project_manager.delete(project_id)
-        return {"status": "deleted"}
-
-    if tool_name == "att.project.download":
-        project_id = str(arguments.get("project_id", ""))
-        if not project_id:
-            return {"error": "project_id is required"}
-        archive_path = await project_manager.download(project_id)
-        return {"archive_path": str(archive_path)}
+    try:
+        project_call = parse_project_tool_call(tool_name, arguments)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    if project_call is not None:
+        return await _handle_project_tool_call(project_call, project_manager)
 
     if tool_name == "att.code.list":
         project_id = str(arguments.get("project_id", ""))
@@ -493,6 +457,63 @@ async def _handle_tool_call(
         return {"built": status.built, "running": status.running, "message": status.message}
 
     return {"error": f"Tool handler not implemented: {tool_name}"}
+
+
+async def _handle_project_tool_call(
+    call: ProjectToolCall,
+    project_manager: ProjectManager,
+) -> dict[str, Any]:
+    if call.operation == "list":
+        projects = await project_manager.list()
+        return {
+            "items": [
+                {
+                    "id": project.id,
+                    "name": project.name,
+                    "path": str(project.path),
+                    "status": project.status.value,
+                }
+                for project in projects
+            ]
+        }
+
+    if call.operation == "status":
+        if call.project_id is None:
+            return {"error": "project_id is required"}
+        project = await project_manager.get(call.project_id)
+        return {
+            "exists": project is not None,
+            "status": project.status.value if project else "missing",
+        }
+
+    if call.operation == "create":
+        if call.name is None or call.path is None:
+            return {"error": "name and path are required"}
+        create_input = CreateProjectInput(
+            name=call.name,
+            path=call.path,
+            git_remote=call.git_remote,
+            nat_config_path=call.nat_config_path,
+        )
+        if call.clone_from_remote:
+            project = await project_manager.clone(create_input)
+        else:
+            project = await project_manager.create(create_input)
+        return {"id": project.id, "status": project.status.value}
+
+    if call.operation == "delete":
+        if call.project_id is None:
+            return {"error": "project_id is required"}
+        await project_manager.delete(call.project_id)
+        return {"status": "deleted"}
+
+    if call.operation == "download":
+        if call.project_id is None:
+            return {"error": "project_id is required"}
+        archive_path = await project_manager.download(call.project_id)
+        return {"archive_path": str(archive_path)}
+
+    return {"error": f"Project tool operation not implemented: {call.operation}"}
 
 
 async def _handle_resource_read(

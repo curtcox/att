@@ -37,6 +37,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Wired baseline deploy/restart/rollback adapters into self-bootstrap deps (`DeployManager.run`, `RuntimeManager.status`, `RuntimeManager.stop`) and surfaced `restart_watchdog_status` in API responses.
 - [x] Expanded MCP transport endpoint at `POST /mcp` with MCP handshake methods (`initialize`, `notifications/initialized`, `ping`) and manager-backed ATT tool/resource handlers aligned to the registered catalog.
 - [x] Added MCP transport integration coverage in `tests/integration/test_mcp_transport.py` for handshake, tool invocation, resource reads, and error cases.
+- [x] Implemented typed MCP project-tool adapter parsing in `src/att/mcp/tools/project_tools.py` and wired transport project operations to this adapter for normalized argument validation/execution.
 - [x] Added project clone/download API coverage in `tests/integration/test_api_projects.py` and unit coverage for clone/download logic in `tests/unit/test_project_manager.py`.
 - [x] Implemented `att.project.download` in MCP transport and added defensive JSON-RPC error wrapping for unexpected tool/resource handler exceptions.
 - [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
@@ -44,7 +45,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (61 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (67 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).

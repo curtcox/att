@@ -191,3 +191,22 @@ def test_mcp_transport_reports_errors(tmp_path: Path) -> None:
     )
     assert missing_required.status_code == 200
     assert missing_required.json()["error"]["code"] == -32000
+
+    clone_without_remote = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "11",
+            "method": "tools/call",
+            "params": {
+                "name": "att.project.create",
+                "arguments": {
+                    "name": "demo",
+                    "path": str(tmp_path / "clone-project"),
+                    "clone_from_remote": True,
+                },
+            },
+        },
+    )
+    assert clone_without_remote.status_code == 200
+    assert clone_without_remote.json()["error"]["code"] == -32000
