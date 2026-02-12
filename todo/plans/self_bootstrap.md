@@ -1,7 +1,7 @@
 # P16 - self_bootstrap
 
 ## Status
-not_started
+in_progress
 
 ## Phase
 1.5
@@ -20,4 +20,7 @@ P04-P13
 - `todo/master_plan.md` is updated with completion status.
 
 ## Notes
-- Placeholder sub-plan scaffold created during initial master plan implementation.
+- Implemented baseline `SelfBootstrapManager` in `src/att/core/self_bootstrap_manager.py`.
+- Manager now coordinates: branch creation, change workflow execution, push, optional CI polling with exponential backoff, and optional health-check gating.
+- Added API route: `POST /api/v1/projects/{project_id}/self-bootstrap/run`.
+- Added unit coverage in `tests/unit/test_self_bootstrap_manager.py` and integration coverage in `tests/integration/test_api_self_bootstrap.py`.

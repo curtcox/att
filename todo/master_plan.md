@@ -22,15 +22,19 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
 - [x] Added orchestration coverage in `tests/unit/test_tool_orchestrator.py` and `tests/integration/test_api_workflows_events.py`.
+- [x] P16 self-bootstrap baseline added: `SelfBootstrapManager` coordinates branch/change/test/commit/push, optional CI polling, and optional health-check gating.
+- [x] Added self-bootstrap API endpoint: `POST /api/v1/projects/{id}/self-bootstrap/run`.
+- [x] Added self-bootstrap coverage in `tests/unit/test_self_bootstrap_manager.py` and `tests/integration/test_api_self_bootstrap.py`.
 - [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
 - [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (37 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (42 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P15-P25 not started (planned phases remain unchanged).
+- [ ] P16 is in progress (baseline implemented; CI integration, PR lifecycle, and restart/rollback hooks still pending).
+- [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 
 ## Reference Technologies

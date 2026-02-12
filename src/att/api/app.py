@@ -13,6 +13,7 @@ from att.api.routes.git import router as git_router
 from att.api.routes.mcp import router as mcp_router
 from att.api.routes.projects import router as projects_router
 from att.api.routes.runtime import router as runtime_router
+from att.api.routes.self_bootstrap import router as self_bootstrap_router
 from att.api.routes.tests import router as tests_router
 from att.api.routes.workflows import router as workflows_router
 
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(code_router)
     app.include_router(git_router)
     app.include_router(runtime_router)
+    app.include_router(self_bootstrap_router)
     app.include_router(tests_router)
     app.include_router(events_router)
     app.include_router(workflows_router)

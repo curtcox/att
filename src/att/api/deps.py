@@ -10,6 +10,7 @@ from att.core.deploy_manager import DeployManager
 from att.core.git_manager import GitManager
 from att.core.project_manager import ProjectManager
 from att.core.runtime_manager import RuntimeManager
+from att.core.self_bootstrap_manager import SelfBootstrapManager
 from att.core.test_runner import TestRunner
 from att.core.tool_orchestrator import ToolOrchestrator
 from att.db.store import SQLiteStore
@@ -69,6 +70,14 @@ def get_tool_orchestrator() -> ToolOrchestrator:
         code_manager=get_code_manager(),
         git_manager=get_git_manager(),
         test_runner=get_test_runner(),
+        store=get_store(),
+    )
+
+
+def get_self_bootstrap_manager() -> SelfBootstrapManager:
+    return SelfBootstrapManager(
+        git_manager=get_git_manager(),
+        orchestrator=get_tool_orchestrator(),
         store=get_store(),
     )
 
