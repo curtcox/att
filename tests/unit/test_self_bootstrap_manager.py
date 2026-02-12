@@ -112,6 +112,7 @@ async def test_self_bootstrap_success_with_ci_pr_merge_and_health(tmp_path: Path
     assert result.ci_status == "success"
     assert result.pr_url == "https://example.com/p1/codex/test-branch"
     assert result.merged is True
+    assert result.restart_watchdog_status == "not_run"
     assert result.health_status == "healthy"
     assert result.rollback_performed is False
     assert sleeps == [1.0, 2.0]
@@ -165,6 +166,7 @@ async def test_self_bootstrap_rolls_back_when_health_check_fails(tmp_path: Path)
     result = await manager.execute(request)
 
     assert result.success is False
+    assert result.restart_watchdog_status == "not_run"
     assert result.health_status == "unhealthy"
     assert result.rollback_performed is True
     assert result.rollback_succeeded is True
@@ -210,6 +212,7 @@ async def test_self_bootstrap_health_retries_before_failing(tmp_path: Path) -> N
     result = await manager.execute(request)
 
     assert result.success is True
+    assert result.restart_watchdog_status == "not_run"
     assert result.health_status == "healthy"
     assert sleeps == [3.0]
 
@@ -238,6 +241,7 @@ async def test_self_bootstrap_returns_failure_when_tests_fail(tmp_path: Path) ->
     assert result.success is False
     assert result.committed is False
     assert result.pushed is False
+    assert result.restart_watchdog_status == "not_run"
 
 
 @pytest.mark.asyncio
@@ -274,3 +278,99 @@ async def test_self_bootstrap_returns_failure_on_ci_timeout(tmp_path: Path) -> N
 
     assert result.success is False
     assert result.ci_status == "timeout"
+    assert result.restart_watchdog_status == "not_run"
+
+
+@pytest.mark.asyncio
+async def test_self_bootstrap_restart_watchdog_retries_and_succeeds(tmp_path: Path) -> None:
+    watchdog_states = [False, True]
+    sleeps: list[float] = []
+
+    async def ci_checker(project_id: str, branch: str) -> str:
+        return "success"
+
+    async def deployer(project_id: str, target: str) -> bool:
+        return True
+
+    async def restart_watchdog(project_id: str, target: str) -> bool:
+        return watchdog_states.pop(0)
+
+    async def sleeper(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    manager = SelfBootstrapManager(
+        git_manager=FakeGitManager(),
+        orchestrator=FakeOrchestrator(committed=True, returncode=0),
+        store=SQLiteStore(tmp_path / "att.db"),
+        ci_checker=ci_checker,
+        deployer=deployer,
+        restart_watchdog=restart_watchdog,
+        sleeper=sleeper,
+    )
+
+    project_path = tmp_path / "project"
+    project_path.mkdir(parents=True, exist_ok=True)
+    request = SelfBootstrapRequest(
+        project_id="p1",
+        project_path=project_path,
+        file_path="app.py",
+        content="x",
+        commit_message="feat: auto",
+        branch_name="codex/test-branch",
+        deploy_target="att-service",
+        restart_watchdog_retries=2,
+        restart_watchdog_interval_seconds=4,
+    )
+
+    result = await manager.execute(request)
+
+    assert result.success is True
+    assert result.restart_watchdog_status == "stable"
+    assert result.rollback_performed is False
+    assert sleeps == [4.0]
+
+
+@pytest.mark.asyncio
+async def test_self_bootstrap_restart_watchdog_failure_triggers_rollback(tmp_path: Path) -> None:
+    async def ci_checker(project_id: str, branch: str) -> str:
+        return "success"
+
+    async def deployer(project_id: str, target: str) -> bool:
+        return True
+
+    async def restart_watchdog(project_id: str, target: str) -> bool:
+        return False
+
+    async def rollback_executor(project_id: str, target: str) -> bool:
+        return True
+
+    manager = SelfBootstrapManager(
+        git_manager=FakeGitManager(),
+        orchestrator=FakeOrchestrator(committed=True, returncode=0),
+        store=SQLiteStore(tmp_path / "att.db"),
+        ci_checker=ci_checker,
+        deployer=deployer,
+        restart_watchdog=restart_watchdog,
+        rollback_executor=rollback_executor,
+    )
+
+    project_path = tmp_path / "project"
+    project_path.mkdir(parents=True, exist_ok=True)
+    request = SelfBootstrapRequest(
+        project_id="p1",
+        project_path=project_path,
+        file_path="app.py",
+        content="x",
+        commit_message="feat: auto",
+        branch_name="codex/test-branch",
+        deploy_target="att-service",
+        restart_watchdog_retries=1,
+    )
+
+    result = await manager.execute(request)
+
+    assert result.success is False
+    assert result.restart_watchdog_status == "unstable"
+    assert result.health_status == "not_run"
+    assert result.rollback_performed is True
+    assert result.rollback_succeeded is True

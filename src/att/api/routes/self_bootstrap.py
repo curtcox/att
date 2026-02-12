@@ -39,6 +39,8 @@ async def run_self_bootstrap(
             health_check_target=request.health_check_target,
             health_check_retries=request.health_check_retries,
             health_check_interval_seconds=request.health_check_interval_seconds,
+            restart_watchdog_retries=request.restart_watchdog_retries,
+            restart_watchdog_interval_seconds=request.restart_watchdog_interval_seconds,
         )
     )
     return SelfBootstrapResponseModel(
@@ -48,6 +50,7 @@ async def run_self_bootstrap(
         ci_status=result.ci_status,
         pr_url=result.pr_url,
         merged=result.merged,
+        restart_watchdog_status=result.restart_watchdog_status,
         health_status=result.health_status,
         rollback_performed=result.rollback_performed,
         rollback_succeeded=result.rollback_succeeded,

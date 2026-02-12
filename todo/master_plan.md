@@ -31,6 +31,8 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Added self-bootstrap watchdog-style health retry controls before rollback (`health_check_retries`, `health_check_interval_seconds`).
 - [x] Wired baseline live self-bootstrap adapters in API deps (CI status from `gh run list`, PR create/merge hooks via `gh` CLI).
 - [x] Added CI status parser helper and unit coverage in `src/att/core/self_bootstrap_integrations.py` and `tests/unit/test_self_bootstrap_integrations.py`.
+- [x] Expanded self-bootstrap with restart-watchdog polling controls (`restart_watchdog_retries`, `restart_watchdog_interval_seconds`) and rollback on unstable post-deploy runtime.
+- [x] Wired baseline deploy/restart/rollback adapters into self-bootstrap deps (`DeployManager.run`, `RuntimeManager.status`, `RuntimeManager.stop`) and surfaced `restart_watchdog_status` in API responses.
 - [x] Expanded MCP transport endpoint at `POST /mcp` with MCP handshake methods (`initialize`, `notifications/initialized`, `ping`) and manager-backed ATT tool/resource handlers aligned to the registered catalog.
 - [x] Added MCP transport integration coverage in `tests/integration/test_mcp_transport.py` for handshake, tool invocation, resource reads, and error cases.
 - [x] Added project clone/download API coverage in `tests/integration/test_api_projects.py` and unit coverage for clone/download logic in `tests/unit/test_project_manager.py`.
@@ -40,10 +42,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (54 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (56 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P16 is in progress (baseline implemented; remaining work is production-grade restart watchdog execution and real deployment/rollback integration).
+- [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).
 - [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 

@@ -22,6 +22,7 @@ type Sleeper = Callable[[float], Awaitable[None]]
 type PRCreator = Callable[[str, str], Awaitable[str]]
 type PRMerger = Callable[[str, str], Awaitable[bool]]
 type Deployer = Callable[[str, str], Awaitable[bool]]
+type RestartWatchdog = Callable[[str, str], Awaitable[bool]]
 type RollbackExecutor = Callable[[str, str], Awaitable[bool]]
 
 
@@ -45,6 +46,8 @@ class SelfBootstrapRequest:
     health_check_target: str | None = None
     health_check_retries: int = 1
     health_check_interval_seconds: int = 5
+    restart_watchdog_retries: int = 3
+    restart_watchdog_interval_seconds: int = 5
 
 
 @dataclass(slots=True)
@@ -57,6 +60,7 @@ class SelfBootstrapResult:
     ci_status: str
     pr_url: str | None
     merged: bool
+    restart_watchdog_status: str
     health_status: str
     rollback_performed: bool
     rollback_succeeded: bool | None
@@ -78,6 +82,7 @@ class SelfBootstrapManager:
         pr_creator: PRCreator | None = None,
         pr_merger: PRMerger | None = None,
         deployer: Deployer | None = None,
+        restart_watchdog: RestartWatchdog | None = None,
         rollback_executor: RollbackExecutor | None = None,
         sleeper: Sleeper | None = None,
     ) -> None:
@@ -89,6 +94,7 @@ class SelfBootstrapManager:
         self._pr_creator = pr_creator
         self._pr_merger = pr_merger
         self._deployer = deployer
+        self._restart_watchdog = restart_watchdog
         self._rollback_executor = rollback_executor
         self._sleep = sleeper or asyncio.sleep
 
@@ -97,6 +103,7 @@ class SelfBootstrapManager:
         branch_name = request.branch_name or f"codex/self-bootstrap-{uuid4().hex[:8]}"
         pr_url: str | None = None
         merged = False
+        restart_watchdog_status = "not_run"
 
         self._git.branch(request.project_path, branch_name, checkout=True)
 
@@ -122,6 +129,7 @@ class SelfBootstrapManager:
                 ci_status="not_run",
                 pr_url=None,
                 merged=False,
+                restart_watchdog_status=restart_watchdog_status,
                 health_status="not_run",
                 rollback_performed=False,
                 rollback_succeeded=None,
@@ -166,6 +174,7 @@ class SelfBootstrapManager:
                     ci_status=ci_status,
                     pr_url=pr_url,
                     merged=False,
+                    restart_watchdog_status=restart_watchdog_status,
                     health_status="not_run",
                     rollback_performed=False,
                     rollback_succeeded=None,
@@ -194,6 +203,7 @@ class SelfBootstrapManager:
                     ci_status=ci_status,
                     pr_url=pr_url,
                     merged=False,
+                    restart_watchdog_status=restart_watchdog_status,
                     health_status="not_run",
                     rollback_performed=False,
                     rollback_succeeded=None,
@@ -235,9 +245,56 @@ class SelfBootstrapManager:
                     ci_status=ci_status,
                     pr_url=pr_url,
                     merged=merged,
+                    restart_watchdog_status=restart_watchdog_status,
                     health_status="not_run",
                     rollback_performed=False,
                     rollback_succeeded=None,
+                    success=False,
+                    workflow_result=workflow,
+                )
+
+        if self._restart_watchdog is not None and deploy_target is not None:
+            restart_stable = await self._poll_restart_watchdog(
+                project_id=request.project_id,
+                target=deploy_target,
+                retries=request.restart_watchdog_retries,
+                interval_seconds=request.restart_watchdog_interval_seconds,
+            )
+            restart_watchdog_status = "stable" if restart_stable else "unstable"
+            if not restart_stable:
+                await self._record_event(
+                    project_id=request.project_id,
+                    event_type=EventType.ERROR,
+                    payload={
+                        "phase": "restart_watchdog",
+                        "target": deploy_target,
+                        "message": "Runtime failed restart watchdog checks",
+                    },
+                )
+                rollback_performed, rollback_succeeded = await self._attempt_rollback(
+                    project_id=request.project_id,
+                    target=deploy_target,
+                )
+                await self._record_event(
+                    project_id=request.project_id,
+                    event_type=EventType.DEPLOY_COMPLETED,
+                    payload={
+                        "target": deploy_target,
+                        "healthy": False,
+                        "restart_watchdog_status": restart_watchdog_status,
+                    },
+                )
+                return SelfBootstrapResult(
+                    branch_name=branch_name,
+                    committed=True,
+                    pushed=True,
+                    ci_status=ci_status,
+                    pr_url=pr_url,
+                    merged=merged,
+                    restart_watchdog_status=restart_watchdog_status,
+                    health_status="not_run",
+                    rollback_performed=rollback_performed,
+                    rollback_succeeded=rollback_succeeded,
                     success=False,
                     workflow_result=workflow,
                 )
@@ -252,29 +309,17 @@ class SelfBootstrapManager:
             await self._record_event(
                 project_id=request.project_id,
                 event_type=EventType.DEPLOY_COMPLETED,
-                payload={"target": request.health_check_target, "healthy": healthy},
+                payload={
+                    "target": request.health_check_target,
+                    "healthy": healthy,
+                    "restart_watchdog_status": restart_watchdog_status,
+                },
             )
             if not healthy:
-                rollback_performed = (
-                    self._rollback_executor is not None and deploy_target is not None
-                )
-                if (
-                    rollback_performed
-                    and self._rollback_executor is not None
-                    and deploy_target is not None
-                ):
-                    rollback_succeeded = await self._rollback_executor(
-                        request.project_id,
-                        deploy_target,
-                    )
-                    await self._record_event(
+                if deploy_target is not None:
+                    rollback_performed, rollback_succeeded = await self._attempt_rollback(
                         project_id=request.project_id,
-                        event_type=EventType.ERROR,
-                        payload={
-                            "phase": "rollback",
-                            "target": deploy_target,
-                            "succeeded": rollback_succeeded,
-                        },
+                        target=deploy_target,
                     )
 
                 return SelfBootstrapResult(
@@ -284,12 +329,26 @@ class SelfBootstrapManager:
                     ci_status=ci_status,
                     pr_url=pr_url,
                     merged=merged,
+                    restart_watchdog_status=restart_watchdog_status,
                     health_status=health_status,
                     rollback_performed=rollback_performed,
                     rollback_succeeded=rollback_succeeded,
                     success=False,
                     workflow_result=workflow,
                 )
+
+        if deploy_target is not None and not (
+            self._health_checker is not None and request.health_check_target is not None
+        ):
+            await self._record_event(
+                project_id=request.project_id,
+                event_type=EventType.DEPLOY_COMPLETED,
+                payload={
+                    "target": deploy_target,
+                    "healthy": True,
+                    "restart_watchdog_status": restart_watchdog_status,
+                },
+            )
 
         return SelfBootstrapResult(
             branch_name=branch_name,
@@ -298,12 +357,28 @@ class SelfBootstrapManager:
             ci_status=ci_status,
             pr_url=pr_url,
             merged=merged,
+            restart_watchdog_status=restart_watchdog_status,
             health_status=health_status,
             rollback_performed=rollback_performed,
             rollback_succeeded=rollback_succeeded,
             success=True,
             workflow_result=workflow,
         )
+
+    async def _attempt_rollback(self, *, project_id: str, target: str) -> tuple[bool, bool | None]:
+        if self._rollback_executor is None:
+            return False, None
+        rollback_succeeded = await self._rollback_executor(project_id, target)
+        await self._record_event(
+            project_id=project_id,
+            event_type=EventType.ERROR,
+            payload={
+                "phase": "rollback",
+                "target": target,
+                "succeeded": rollback_succeeded,
+            },
+        )
+        return True, rollback_succeeded
 
     async def _poll_health(
         self,
@@ -318,6 +393,25 @@ class SelfBootstrapManager:
                 return True
             healthy = await self._health_checker(target)
             if healthy:
+                return True
+            if attempt < attempts - 1:
+                await self._sleep(float(interval_seconds))
+        return False
+
+    async def _poll_restart_watchdog(
+        self,
+        *,
+        project_id: str,
+        target: str,
+        retries: int,
+        interval_seconds: int,
+    ) -> bool:
+        attempts = max(1, retries)
+        for attempt in range(attempts):
+            if self._restart_watchdog is None:
+                return True
+            stable = await self._restart_watchdog(project_id, target)
+            if stable:
                 return True
             if attempt < attempts - 1:
                 await self._sleep(float(interval_seconds))

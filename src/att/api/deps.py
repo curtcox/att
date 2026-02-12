@@ -79,6 +79,8 @@ def get_tool_orchestrator() -> ToolOrchestrator:
 def get_self_bootstrap_manager() -> SelfBootstrapManager:
     store = get_store()
     git = get_git_manager()
+    deploy = get_deploy_manager()
+    runtime = get_runtime_manager()
 
     async def ci_checker(
         project_id: str,
@@ -117,6 +119,28 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
             return False
         return True
 
+    async def deployer(project_id: str, target: str) -> bool:
+        del target
+        project = await store.get_project(project_id)
+        if project is None or project.nat_config_path is None:
+            return False
+        config_path = (
+            project.nat_config_path
+            if project.nat_config_path.is_absolute()
+            else project.path / project.nat_config_path
+        )
+        status = deploy.run(project.path, config_path)
+        return status.running
+
+    async def restart_watchdog(project_id: str, target: str) -> bool:
+        del project_id, target
+        return runtime.status().running
+
+    async def rollback_executor(project_id: str, target: str) -> bool:
+        del project_id, target
+        runtime.stop()
+        return True
+
     return SelfBootstrapManager(
         git_manager=git,
         orchestrator=get_tool_orchestrator(),
@@ -124,6 +148,9 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
         ci_checker=ci_checker,
         pr_creator=pr_creator,
         pr_merger=pr_merger,
+        deployer=deployer,
+        restart_watchdog=restart_watchdog,
+        rollback_executor=rollback_executor,
     )
 
 

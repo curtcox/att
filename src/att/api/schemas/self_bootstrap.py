@@ -22,6 +22,8 @@ class SelfBootstrapRequestModel(BaseModel):
     health_check_target: str | None = None
     health_check_retries: int = 1
     health_check_interval_seconds: int = 5
+    restart_watchdog_retries: int = 3
+    restart_watchdog_interval_seconds: int = 5
 
 
 class SelfBootstrapResponseModel(BaseModel):
@@ -33,6 +35,7 @@ class SelfBootstrapResponseModel(BaseModel):
     ci_status: str
     pr_url: str | None
     merged: bool
+    restart_watchdog_status: str
     health_status: str
     rollback_performed: bool
     rollback_succeeded: bool | None

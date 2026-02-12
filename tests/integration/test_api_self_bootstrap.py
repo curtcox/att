@@ -23,6 +23,7 @@ class FakeSelfBootstrapManager:
             ci_status="success",
             pr_url="https://example.com/pr/1",
             merged=True,
+            restart_watchdog_status="stable",
             health_status="healthy",
             rollback_performed=False,
             rollback_succeeded=None,
@@ -85,6 +86,7 @@ def test_self_bootstrap_run_endpoint(tmp_path: Path) -> None:
     assert payload["branch_name"] == "codex/self-bootstrap-demo"
     assert payload["pr_url"] == "https://example.com/pr/1"
     assert payload["merged"] is True
+    assert payload["restart_watchdog_status"] == "stable"
     assert payload["test_returncode"] == 0
     assert len(payload["event_ids"]) == 2
 
