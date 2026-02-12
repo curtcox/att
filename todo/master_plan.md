@@ -9,6 +9,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] P01 `project_skeleton.md` baseline implemented: `pyproject.toml`, `src/` package layout, test directories, config/ui folders, and package entrypoint.
 - [x] P03 `data_models.md` baseline implemented: `Project` + `ATTEvent` models, SQLite migrations, async store with CRUD and event queries.
 - [x] P04-P11 baseline manager interfaces implemented in `src/att/core/` (`project_manager`, `code_manager`, `git_manager`, `runtime_manager`, `test_runner`, `debug_manager`, `deploy_manager`, `tool_orchestrator`).
+- [x] Expanded `ProjectManager` with clone and archive-download operations (`clone`, `download`) including async git clone execution and archive creation.
 - [x] P14 baseline API scaffolding implemented: FastAPI app, project/code/git/runtime/test/debug/deploy routes, health endpoint, WebSocket endpoint, and MCP discovery endpoint.
 - [x] P02 CI workflows implemented: `.github/workflows/pr-quick.yml` and `.github/workflows/main-full.yml`.
 - [x] P12 MCP server baseline expanded: full ATT tool/resource catalog + lookup helpers in `src/att/mcp/server.py`.
@@ -32,12 +33,14 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Added CI status parser helper and unit coverage in `src/att/core/self_bootstrap_integrations.py` and `tests/unit/test_self_bootstrap_integrations.py`.
 - [x] Expanded MCP transport endpoint at `POST /mcp` with MCP handshake methods (`initialize`, `notifications/initialized`, `ping`) and manager-backed ATT tool/resource handlers aligned to the registered catalog.
 - [x] Added MCP transport integration coverage in `tests/integration/test_mcp_transport.py` for handshake, tool invocation, resource reads, and error cases.
+- [x] Added project clone/download API coverage in `tests/integration/test_api_projects.py` and unit coverage for clone/download logic in `tests/unit/test_project_manager.py`.
+- [x] Implemented `att.project.download` in MCP transport and added defensive JSON-RPC error wrapping for unexpected tool/resource handler exceptions.
 - [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
 - [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (51 tests).
+- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (54 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (baseline implemented; remaining work is production-grade restart watchdog execution and real deployment/rollback integration).

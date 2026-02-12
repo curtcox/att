@@ -18,6 +18,15 @@ class CreateProjectRequest(BaseModel):
     nat_config_path: Path | None = None
 
 
+class CloneProjectRequest(BaseModel):
+    """Payload for cloning a project from git remote."""
+
+    name: str
+    path: Path
+    git_remote: str
+    nat_config_path: Path | None = None
+
+
 class ProjectsResponse(BaseModel):
     """Collection response for projects."""
 

@@ -128,6 +128,23 @@ def test_mcp_transport_tool_call_and_resource_read(tmp_path: Path) -> None:
     assert listed.status_code == 200
     assert "app.py" in listed.json()["result"]["files"]
 
+    downloaded = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": "6b",
+            "method": "tools/call",
+            "params": {
+                "name": "att.project.download",
+                "arguments": {"project_id": project_id},
+            },
+        },
+    )
+    assert downloaded.status_code == 200
+    archive_path = Path(downloaded.json()["result"]["archive_path"])
+    assert archive_path.suffix == ".zip"
+    assert archive_path.exists()
+
 
 def test_mcp_transport_reports_errors(tmp_path: Path) -> None:
     client = _client(tmp_path)

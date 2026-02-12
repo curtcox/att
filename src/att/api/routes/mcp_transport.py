@@ -138,19 +138,22 @@ async def mcp_transport(
             return _error(request_id, -32602, "Invalid tool arguments")
         if find_tool(tool_name) is None:
             return _error(request_id, -32601, f"Unknown tool: {tool_name}")
-        result = await _handle_tool_call(
-            tool_name=tool_name,
-            arguments=arguments,
-            project_manager=project_manager,
-            code_manager=code_manager,
-            git_manager=git_manager,
-            runtime_manager=runtime_manager,
-            test_runner=test_runner,
-            debug_manager=debug_manager,
-            deploy_manager=deploy_manager,
-            test_results=test_results,
-            debug_logs=debug_logs,
-        )
+        try:
+            result = await _handle_tool_call(
+                tool_name=tool_name,
+                arguments=arguments,
+                project_manager=project_manager,
+                code_manager=code_manager,
+                git_manager=git_manager,
+                runtime_manager=runtime_manager,
+                test_runner=test_runner,
+                debug_manager=debug_manager,
+                deploy_manager=deploy_manager,
+                test_results=test_results,
+                debug_logs=debug_logs,
+            )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            return _error(request_id, -32000, str(exc))
         if isinstance(result, dict) and "error" in result:
             return _error(request_id, -32000, str(result["error"]))
         return _response(request_id, result)
@@ -159,14 +162,17 @@ async def mcp_transport(
         uri = params.get("uri")
         if not isinstance(uri, str):
             return _error(request_id, -32602, "Missing resource uri")
-        result = await _handle_resource_read(
-            uri=uri,
-            project_manager=project_manager,
-            code_manager=code_manager,
-            git_manager=git_manager,
-            test_results=test_results,
-            debug_logs=debug_logs,
-        )
+        try:
+            result = await _handle_resource_read(
+                uri=uri,
+                project_manager=project_manager,
+                code_manager=code_manager,
+                git_manager=git_manager,
+                test_results=test_results,
+                debug_logs=debug_logs,
+            )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            return _error(request_id, -32000, str(exc))
         if isinstance(result, dict) and result.get("error"):
             return _error(request_id, -32000, str(result["error"]))
         return _response(request_id, result)
@@ -226,7 +232,11 @@ async def _handle_tool_call(
         return {"status": "deleted"}
 
     if tool_name == "att.project.download":
-        return {"error": "att.project.download is not yet implemented"}
+        project_id = str(arguments.get("project_id", ""))
+        if not project_id:
+            return {"error": "project_id is required"}
+        archive_path = await project_manager.download(project_id)
+        return {"archive_path": str(archive_path)}
 
     if tool_name == "att.code.list":
         project_id = str(arguments.get("project_id", ""))
