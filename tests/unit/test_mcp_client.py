@@ -326,8 +326,8 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
     assert calls[0] == (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
     assert calls[-1] == (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
 
-    primary = manager.get("primary")
-    backup = manager.get("backup")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
+    backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert primary is not None
     assert backup is not None
     assert primary.status is ServerStatus.DEGRADED
@@ -549,14 +549,14 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     manager.register("recovered", "http://recovered.local")
     manager.register("degraded", "http://degraded.local")
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     primary.status = ServerStatus.HEALTHY
     primary.initialized = True
     primary.last_initialized_at = clock.current
     primary.initialization_expires_at = clock.current + timedelta(seconds=60)
 
-    recovered = manager.get("recovered")
+    recovered = manager.get(UNIT_TEST_RECOVERED_SERVER)
     assert recovered is not None
     recovered.status = ServerStatus.HEALTHY
     recovered.initialized = False
@@ -578,8 +578,8 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     )
     assert calls[3] == (UNIT_TEST_RECOVERED_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
     assert (UNIT_TEST_DEGRADED_SERVER, UNIT_TEST_INITIALIZE_METHOD) not in calls
-    updated_primary = manager.get("primary")
-    updated_recovered = manager.get("recovered")
+    updated_primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
+    updated_recovered = manager.get(UNIT_TEST_RECOVERED_SERVER)
     assert updated_primary is not None
     assert updated_recovered is not None
     assert updated_primary.status is ServerStatus.DEGRADED
@@ -1297,14 +1297,14 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     manager.register("recovered", "http://recovered.local")
     manager.register("degraded", "http://degraded.local")
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     primary.status = ServerStatus.HEALTHY
     primary.initialized = True
     primary.last_initialized_at = clock.current
     primary.initialization_expires_at = clock.current + timedelta(seconds=60)
 
-    recovered = manager.get("recovered")
+    recovered = manager.get(UNIT_TEST_RECOVERED_SERVER)
     assert recovered is not None
     recovered.status = ServerStatus.HEALTHY
     recovered.initialized = False
@@ -1564,7 +1564,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         ]
         assert primary_events[3].error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.status is ServerStatus.DEGRADED
     assert primary.last_error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
@@ -1691,7 +1691,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     assert first.server == UNIT_TEST_PRIMARY_SERVER
     assert first.method == method
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.initialized is True
     if trigger == "stale_expiry":
@@ -1752,7 +1752,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     first = await invoke_once()
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.status is expected_status
 
@@ -1821,7 +1821,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     clock.advance(seconds=1)
     for _ in range(backup_failures):
         manager.record_check_result("backup", healthy=False, error="hold backup")
-    backup = manager.get("backup")
+    backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert backup is not None
     assert backup.status is expected_backup_status
 
@@ -1892,7 +1892,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         manager.record_check_result("backup", healthy=False, error="hold backup")
         with pytest.raises(MCPInvocationError):
             await invoke_once(["primary"])
-        primary = manager.get("primary")
+        primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
         assert primary is not None
         assert primary.status is ServerStatus.UNREACHABLE
 
@@ -1907,7 +1907,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     else:
         clock.advance(seconds=1)
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.status is expected_primary_status
 
@@ -1958,7 +1958,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     with pytest.raises(MCPInvocationError):
         await invoke_once(["primary"])
 
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.status is ServerStatus.UNREACHABLE
 
@@ -2016,13 +2016,13 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     clock.advance(seconds=1)
     for _ in range(backup_failures):
         manager.record_check_result("backup", healthy=False, error="hold backup")
-    backup = manager.get("backup")
+    backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert backup is not None
     assert backup.status is expected_backup_status
 
     with pytest.raises(MCPInvocationError):
         await invoke_once(["primary"])
-    primary = manager.get("primary")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.status is ServerStatus.UNREACHABLE
 
@@ -2072,8 +2072,8 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     manager.record_check_result("primary", healthy=False, error="hold primary")
     manager.record_check_result("backup", healthy=False, error="hold backup")
 
-    primary = manager.get("primary")
-    backup = manager.get("backup")
+    primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
+    backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert primary is not None
     assert backup is not None
     assert primary.status is ServerStatus.UNREACHABLE
