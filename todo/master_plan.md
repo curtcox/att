@@ -146,6 +146,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - converted method-specific call-order expectation constants to immutable tuple-based vectors.
   - updated call-order helper signatures to accept `Sequence[tuple[str, str]]` and normalized assertions for sequence-backed expectation constants.
   - preserved call-order literal semantics, diagnostics-filter assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Normalized primary phase/status expectation vector typing for consistency:
+  - converted primary unreachable-transition and retry-window gating phase/status expectation constants to immutable tuple-based inner vectors.
+  - updated shared primary diagnostics helper typing to accept `Sequence[Sequence[str]]` and normalized assertion-boundary inputs to concrete lists.
+  - preserved diagnostics-filter semantics, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.

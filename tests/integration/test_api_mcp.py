@@ -168,29 +168,29 @@ class SimultaneousUnreachableReopenSequence:
     calls_before_reopen: int
 
 
-PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES: tuple[list[str], ...] = (
-    ["initialize_start", "initialize_failure"],
-    [],
-    ["initialize_start", "initialize_failure"],
-    [],
-    ["initialize_start", "initialize_success", "invoke_start", "invoke_success"],
+PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES: tuple[tuple[str, ...], ...] = (
+    ("initialize_start", "initialize_failure"),
+    (),
+    ("initialize_start", "initialize_failure"),
+    (),
+    ("initialize_start", "initialize_success", "invoke_start", "invoke_success"),
 )
-PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES: tuple[list[str], ...] = (
-    [ServerStatus.DEGRADED.value],
-    [],
-    [ServerStatus.UNREACHABLE.value],
-    [],
-    [ServerStatus.HEALTHY.value],
+PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
+    (ServerStatus.DEGRADED.value,),
+    (),
+    (ServerStatus.UNREACHABLE.value,),
+    (),
+    (ServerStatus.HEALTHY.value,),
 )
-PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES: tuple[list[str], ...] = (
-    ["initialize_start", "initialize_success", "invoke_start", "invoke_failure"],
-    [],
-    ["initialize_start", "initialize_success", "invoke_start", "invoke_success"],
+PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES: tuple[tuple[str, ...], ...] = (
+    ("initialize_start", "initialize_success", "invoke_start", "invoke_failure"),
+    (),
+    ("initialize_start", "initialize_success", "invoke_start", "invoke_success"),
 )
-PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES: tuple[list[str], ...] = (
-    [ServerStatus.DEGRADED.value],
-    [],
-    [ServerStatus.HEALTHY.value],
+PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
+    (ServerStatus.DEGRADED.value,),
+    (),
+    (ServerStatus.HEALTHY.value,),
 )
 RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
@@ -417,8 +417,8 @@ def _assert_primary_request_diagnostics(
     client: TestClient,
     method: str,
     request_ids: Sequence[str],
-    expected_phases: Sequence[list[str]],
-    expected_statuses: Sequence[list[str]],
+    expected_phases: Sequence[Sequence[str]],
+    expected_statuses: Sequence[Sequence[str]],
 ) -> None:
     assert len(request_ids) == len(expected_phases) == len(expected_statuses)
     for request_id, phases, statuses in zip(
@@ -432,13 +432,13 @@ def _assert_primary_request_diagnostics(
             request_id=request_id,
             server="primary",
             method=method,
-            expected_phases=phases,
+            expected_phases=list(phases),
         )
         assert_connection_event_filters(
             client,
             request_id=request_id,
             server="primary",
-            expected_statuses=statuses,
+            expected_statuses=list(statuses),
         )
 
 
