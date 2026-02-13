@@ -273,9 +273,9 @@ async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
     manager.register("terminal", "http://terminal.local")
     manager.record_check_result(UNIT_TEST_TERMINAL_SERVER, healthy=False, error="down")
 
-    assert manager.should_retry("terminal") is False
+    assert manager.should_retry(UNIT_TEST_TERMINAL_SERVER) is False
     clock.advance(seconds=1)
-    assert manager.should_retry("terminal") is True
+    assert manager.should_retry(UNIT_TEST_TERMINAL_SERVER) is True
 
 
 def test_choose_server_prefers_healthy_then_degraded() -> None:
