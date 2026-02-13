@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit timeout-category constant reuse`)
+- Working tree at handoff creation: dirty (`unit non-timeout category constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Reduced non-timeout error-category assertion literal duplication in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_TRANSPORT_ERROR_CATEGORY`, `UNIT_TEST_RPC_ERROR_CATEGORY`, and `UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated non-timeout category assertion literals to the shared constants while keeping timeout/category mapping param matrices and transport exception setup literals explicit and unchanged.
+  - preserved invocation failure-trace semantics and transport error-category propagation assertions unchanged.
 - Extended timeout-category constant reuse into adjacent unit MCP client assertions:
   - added local unit-test constant `UNIT_TEST_TIMEOUT_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
   - replaced remaining inline `"network_timeout"` literals in timeout-category assertions with the shared unit-test constant while keeping the timeout exception-to-category param matrix explicit and unchanged.
@@ -329,10 +333,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing remaining error-category assertion literal duplication in unit MCP client coverage:
-1. Reuse shared constants for additional stable error-category assertions in `tests/unit/test_mcp_client.py`:
-   - identify repeated non-timeout category assertion literals (for example `"http_status"`, `"transport_error"`, `"rpc_error"`) and migrate assertion sites to local shared constants where reuse is meaningful.
-   - keep category-mapping param matrices explicit and unchanged.
+Continue `P12/P13` test-structure hardening by extending unit test constant reuse to stable non-category assertion literals in MCP client coverage:
+1. Reuse shared constants where repeated stable transport-method literals exist in `tests/unit/test_mcp_client.py`:
+   - identify repeated method-name literals in assertion expectations (for example `"initialize"`, `"invoke_start"`, `"invoke_failure"`, `"tools/call"`) and migrate only repeated assertion-site vectors to local constants where reuse is meaningful.
+   - keep setup payload literals and param matrices explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused constant regression coverage explicit for the canonical timeout-category constant.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.

@@ -24,6 +24,9 @@ from tests.support.mcp_nat_helpers import (
 )
 
 UNIT_TEST_TIMEOUT_ERROR_CATEGORY = "network_timeout"
+UNIT_TEST_TRANSPORT_ERROR_CATEGORY = "transport_error"
+UNIT_TEST_RPC_ERROR_CATEGORY = "rpc_error"
+UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY = "http_status"
 
 
 @pytest.mark.asyncio
@@ -254,7 +257,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     assert error.attempts[0].stage == "initialize"
     assert error.attempts[0].success is False
     assert error.attempts[0].error == "primary down"
-    assert error.attempts[0].error_category == "transport_error"
+    assert error.attempts[0].error_category == UNIT_TEST_TRANSPORT_ERROR_CATEGORY
     assert error.attempts[1].server == "backup"
     assert error.attempts[1].stage == "initialize"
     assert error.attempts[1].success is True
@@ -263,7 +266,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     assert error.attempts[2].stage == "invoke"
     assert error.attempts[2].success is False
     assert error.attempts[2].error == "rpc error: rpc failure"
-    assert error.attempts[2].error_category == "rpc_error"
+    assert error.attempts[2].error_category == UNIT_TEST_RPC_ERROR_CATEGORY
 
 
 @pytest.mark.asyncio
@@ -337,10 +340,10 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
     error = exc_info.value
     assert len(error.attempts) == 2
     assert error.attempts[1].stage == "invoke"
-    assert error.attempts[1].error_category == "http_status"
+    assert error.attempts[1].error_category == UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY
     server = manager.get("codex")
     assert server is not None
-    assert server.last_error_category == "http_status"
+    assert server.last_error_category == UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY
 
 
 @pytest.mark.asyncio

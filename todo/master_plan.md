@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Reduced non-timeout error-category assertion literal duplication in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_TRANSPORT_ERROR_CATEGORY`, `UNIT_TEST_RPC_ERROR_CATEGORY`, and `UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated non-timeout category assertion literals to shared constants while keeping timeout/category mapping param matrices and transport exception setup literals explicit and unchanged.
+  - preserved invocation failure-trace semantics and transport error-category propagation assertions unchanged.
 - [x] Extended timeout-category constant reuse into adjacent unit MCP client assertions:
   - added local unit-test constant `UNIT_TEST_TIMEOUT_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
   - replaced remaining inline `"network_timeout"` literals in timeout-category assertions with the shared unit-test constant while keeping the timeout exception-to-category param matrix explicit and unchanged.
