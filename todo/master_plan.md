@@ -154,6 +154,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper that derives expected call-order from request ids and performs subsequence assertion against observed transport order.
   - migrated retry-window/unreachable-transition and adjacent call-order tests to the shared helper while preserving explicit observed-call-order literals.
   - preserved diagnostics-filter semantics and phase-start/transport subsequence behavior unchanged.
+- [x] Reduced duplicated retry-window invoke-builder scaffolding:
+  - added dedicated tool/resource invoke-builder wrapper helpers around shared preferred-server invoke construction.
+  - migrated tool/resource retry-window gating and unreachable-transition tests to wrapper helpers, removing repeated inline invoke-path/payload scaffolding.
+  - preserved request progression semantics, diagnostics assertions, and call-order parity checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.

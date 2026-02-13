@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `7db96c2172072a7d473052c75b3a86d845b58fdb`
-- Last commit: `7db96c2 2026-02-13 09:38:46 -0600 Normalize primary phase/status expectation typing`
-- Working tree at handoff creation: dirty (`call-order subsequence assertion helper extraction`)
+- HEAD: `476ec728a8ba512f86fbe6375c4d613590272ad4`
+- Last commit: `476ec72 2026-02-13 09:40:03 -0600 Extract call-order subsequence assertion helper`
+- Working tree at handoff creation: dirty (`retry-window invoke-builder wrapper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated retry-window invoke-builder scaffolding:
+  - added dedicated tool/resource invoke-builder helper wrappers around shared preferred-server invoke construction.
+  - migrated tool/resource retry-window gating and unreachable-transition tests to wrapper helpers, removing repeated inline invoke-path/payload scaffolding.
+  - preserved request progression semantics, diagnostics assertions, and call-order parity checks unchanged.
 - Reduced duplicated call-order subsequence assertion wiring with shared helper:
   - added shared helper that derives expected call-order from request ids and performs subsequence assertion against observed transport order.
   - migrated retry-window/unreachable-transition and adjacent call-order tests to the helper while preserving explicit observed-call-order literals.
@@ -201,17 +205,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening with a focused duplication sweep:
-1. Identify and extract the next smallest repeated assertion scaffold in `tests/integration/test_api_mcp.py`:
-   - target one high-signal repeated block (diagnostics filter, call-order literal, or progression wiring) with low behavioral risk.
-   - keep expected vectors and explicit observed-call-order literals audit-friendly at call sites.
+Continue `P12/P13` test-structure hardening by reducing duplicated unreachable-transition bootstrap wiring:
+1. Extract shared bootstrap helper for retry-window unreachable-transition tests:
+   - factor repeated harness + primary initialize failure-script setup + method-specific invoke-builder wiring in tool/resource unreachable-transition tests into a small helper.
+   - keep explicit per-method expected diagnostics/call-order vectors at each test call site.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current helper signatures and assertion behavior unchanged.
+   - keep current sequence progression helpers and call-order literal assertions unchanged.
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing helper style and prioritize the smallest safe extraction first.
+- Reuse helper style from the new invoke-builder wrappers and existing retry-window progression helpers.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

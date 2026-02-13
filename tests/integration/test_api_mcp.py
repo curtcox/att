@@ -280,6 +280,22 @@ def _build_invoke_with_preferred(
     return invoke
 
 
+def _build_tool_invoke_with_preferred(client: TestClient) -> Callable[[list[str]], Any]:
+    return _build_invoke_with_preferred(
+        client,
+        invoke_path="/api/v1/mcp/invoke/tool",
+        payload={"tool_name": "att.project.list", "arguments": {}},
+    )
+
+
+def _build_resource_invoke_with_preferred(client: TestClient) -> Callable[[list[str]], Any]:
+    return _build_invoke_with_preferred(
+        client,
+        invoke_path="/api/v1/mcp/invoke/resource",
+        payload={"uri": "att://projects"},
+    )
+
+
 def _run_retry_window_gating_sequence(
     *,
     invoke: Callable[[list[str]], Any],
@@ -2241,11 +2257,7 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
 def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
     harness = _create_retry_window_harness(unreachable_after=2)
     harness.factory.set_failure_script("primary", "tools/call", ["timeout", "ok"])
-    invoke = _build_invoke_with_preferred(
-        harness.client,
-        invoke_path="/api/v1/mcp/invoke/tool",
-        payload={"tool_name": "att.project.list", "arguments": {}},
-    )
+    invoke = _build_tool_invoke_with_preferred(harness.client)
 
     sequence = _run_retry_window_gating_sequence(
         invoke=invoke,
@@ -2281,11 +2293,7 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
 def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None:
     harness = _create_retry_window_harness(unreachable_after=2)
     harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
-    invoke = _build_invoke_with_preferred(
-        harness.client,
-        invoke_path="/api/v1/mcp/invoke/tool",
-        payload={"tool_name": "att.project.list", "arguments": {}},
-    )
+    invoke = _build_tool_invoke_with_preferred(harness.client)
 
     sequence = _run_unreachable_transition_sequence(
         invoke=invoke,
@@ -2321,11 +2329,7 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
 def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
     harness = _create_retry_window_harness(unreachable_after=2)
     harness.factory.set_failure_script("primary", "resources/read", ["timeout", "ok"])
-    invoke = _build_invoke_with_preferred(
-        harness.client,
-        invoke_path="/api/v1/mcp/invoke/resource",
-        payload={"uri": "att://projects"},
-    )
+    invoke = _build_resource_invoke_with_preferred(harness.client)
 
     sequence = _run_retry_window_gating_sequence(
         invoke=invoke,
@@ -2361,11 +2365,7 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
 def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> None:
     harness = _create_retry_window_harness(unreachable_after=2)
     harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
-    invoke = _build_invoke_with_preferred(
-        harness.client,
-        invoke_path="/api/v1/mcp/invoke/resource",
-        payload={"uri": "att://projects"},
-    )
+    invoke = _build_resource_invoke_with_preferred(harness.client)
 
     sequence = _run_unreachable_transition_sequence(
         invoke=invoke,
