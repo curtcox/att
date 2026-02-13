@@ -29,8 +29,13 @@ UNIT_TEST_RPC_ERROR_CATEGORY = "rpc_error"
 UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY = "http_status"
 UNIT_TEST_INITIALIZE_METHOD = "initialize"
 UNIT_TEST_TOOLS_CALL_METHOD = "tools/call"
+UNIT_TEST_RESOURCES_READ_METHOD = "resources/read"
+UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
+UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
+UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
 UNIT_TEST_INVOKE_START_PHASE = "invoke_start"
 UNIT_TEST_INVOKE_FAILURE_PHASE = "invoke_failure"
+UNIT_TEST_INVOKE_SUCCESS_PHASE = "invoke_success"
 
 
 @pytest.mark.asyncio
@@ -207,11 +212,11 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
         preferred=["primary", "secondary"],
     )
     assert result.server == "secondary"
-    assert result.method == "resources/read"
+    assert result.method == UNIT_TEST_RESOURCES_READ_METHOD
     assert isinstance(result.result, dict)
     assert result.result["uri"] == "att://projects"
     assert calls[0] == ("primary", UNIT_TEST_INITIALIZE_METHOD)
-    assert calls[-1] == ("secondary", "resources/read")
+    assert calls[-1] == ("secondary", UNIT_TEST_RESOURCES_READ_METHOD)
 
 
 @pytest.mark.asyncio
@@ -460,12 +465,12 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
     events = manager.list_invocation_events()
     phases = [event.phase for event in events]
     assert phases == [
-        "initialize_start",
-        "initialize_failure",
-        "initialize_start",
-        "initialize_success",
+        UNIT_TEST_INITIALIZE_START_PHASE,
+        UNIT_TEST_INITIALIZE_FAILURE_PHASE,
+        UNIT_TEST_INITIALIZE_START_PHASE,
+        UNIT_TEST_INITIALIZE_SUCCESS_PHASE,
         UNIT_TEST_INVOKE_START_PHASE,
-        "invoke_success",
+        UNIT_TEST_INVOKE_SUCCESS_PHASE,
     ]
     servers = [event.server for event in events]
     assert servers == ["primary", "primary", "backup", "backup", "backup", "backup"]
@@ -503,9 +508,9 @@ async def test_invocation_events_retention_is_bounded() -> None:
     events = manager.list_invocation_events()
     assert len(events) == 3
     assert [event.phase for event in events] == [
-        "initialize_success",
+        UNIT_TEST_INITIALIZE_SUCCESS_PHASE,
         UNIT_TEST_INVOKE_START_PHASE,
-        "invoke_success",
+        UNIT_TEST_INVOKE_SUCCESS_PHASE,
     ]
 
 
@@ -1173,8 +1178,8 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
     assert factory.consume_failure_action("primary", UNIT_TEST_TOOLS_CALL_METHOD) is None
 
     factory.set_failure_script("primary", "resources/read", ["ok"])
-    assert factory.consume_failure_action("primary", "resources/read") == "ok"
-    assert factory.consume_failure_action("primary", "resources/read") is None
+    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) == "ok"
+    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) is None
 
     factory.set_failure_script("primary", "initialize", ["invalid"])
     with pytest.raises(ValueError, match="unsupported scripted action"):
@@ -1191,23 +1196,23 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
 
     assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "timeout"
     assert factory.failure_scripts[("primary", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[("primary", "resources/read")] == ["error"]
+    assert factory.failure_scripts[("primary", UNIT_TEST_RESOURCES_READ_METHOD)] == ["error"]
     assert factory.failure_scripts[("backup", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
     assert factory.failure_scripts[("backup", UNIT_TEST_TOOLS_CALL_METHOD)] == ["error", "ok"]
 
     assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) == "error"
     assert factory.failure_scripts[("primary", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[("primary", "resources/read")] == ["error"]
+    assert factory.failure_scripts[("primary", UNIT_TEST_RESOURCES_READ_METHOD)] == ["error"]
     assert factory.failure_scripts[("backup", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
     assert factory.failure_scripts[("backup", UNIT_TEST_TOOLS_CALL_METHOD)] == ["ok"]
 
-    assert factory.consume_failure_action("primary", "resources/read") == "error"
+    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) == "error"
     assert factory.consume_failure_action("backup", UNIT_TEST_INITIALIZE_METHOD) == "ok"
     assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "ok"
     assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) == "ok"
 
     assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) is None
-    assert factory.consume_failure_action("primary", "resources/read") is None
+    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) is None
     assert factory.consume_failure_action("backup", UNIT_TEST_INITIALIZE_METHOD) is None
     assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) is None
 
@@ -1268,14 +1273,14 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     )
     if method_key == "initialize":
         assert [event.phase for event in primary_events] == [
-            "initialize_start",
-            "initialize_failure",
+            UNIT_TEST_INITIALIZE_START_PHASE,
+            UNIT_TEST_INITIALIZE_FAILURE_PHASE,
         ]
         assert primary_events[1].error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
     else:
         assert [event.phase for event in primary_events] == [
-            "initialize_start",
-            "initialize_success",
+            UNIT_TEST_INITIALIZE_START_PHASE,
+            UNIT_TEST_INITIALIZE_SUCCESS_PHASE,
             UNIT_TEST_INVOKE_START_PHASE,
             UNIT_TEST_INVOKE_FAILURE_PHASE,
         ]
@@ -1317,16 +1322,21 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     call_order = [
         (server, method)
         for server, _, method in factory.calls
-        if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_TOOLS_CALL_METHOD, "resources/read"}
+        if method
+        in {
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+        }
     ]
     assert call_order == [
         ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", UNIT_TEST_TOOLS_CALL_METHOD),
         ("backup", UNIT_TEST_INITIALIZE_METHOD),
         ("backup", UNIT_TEST_TOOLS_CALL_METHOD),
-        ("backup", "resources/read"),
+        ("backup", UNIT_TEST_RESOURCES_READ_METHOD),
         ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", "resources/read"),
+        ("primary", UNIT_TEST_RESOURCES_READ_METHOD),
     ]
 
 
@@ -1560,11 +1570,11 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     third_slice = [
         (server, method)
         for server, _, method in factory.calls[calls_before_third:]
-        if method in {UNIT_TEST_INITIALIZE_METHOD, "resources/read"}
+        if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_RESOURCES_READ_METHOD}
     ]
     assert third_slice == [
         ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", "resources/read"),
+        ("primary", UNIT_TEST_RESOURCES_READ_METHOD),
     ]
 
 
@@ -1824,7 +1834,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     assert reopened.method == method
     reopen_events = manager.list_invocation_events(request_id=reopened.request_id)
     initialize_starts = [
-        event.server for event in reopen_events if event.phase == "initialize_start"
+        event.server for event in reopen_events if event.phase == UNIT_TEST_INITIALIZE_START_PHASE
     ]
     assert initialize_starts == [expected_first, expected_second]
 
@@ -1901,14 +1911,14 @@ async def test_event_list_filters_and_limits() -> None:
 
     primary_invocation = manager.list_invocation_events(server="primary", request_id=request_id)
     assert [event.phase for event in primary_invocation] == [
-        "initialize_start",
-        "initialize_failure",
+        UNIT_TEST_INITIALIZE_START_PHASE,
+        UNIT_TEST_INITIALIZE_FAILURE_PHASE,
     ]
 
     latest_invocation = manager.list_invocation_events(limit=2)
     assert [event.phase for event in latest_invocation] == [
         UNIT_TEST_INVOKE_START_PHASE,
-        "invoke_success",
+        UNIT_TEST_INVOKE_SUCCESS_PHASE,
     ]
 
     correlated_connection = manager.list_events(correlation_id=request_id)

@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended stable `resources/read` and invocation phase assertion-literal constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_RESOURCES_READ_METHOD`, `UNIT_TEST_INITIALIZE_START_PHASE`, `UNIT_TEST_INITIALIZE_FAILURE_PHASE`, `UNIT_TEST_INITIALIZE_SUCCESS_PHASE`, and `UNIT_TEST_INVOKE_SUCCESS_PHASE` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `resources/read` method literals and repeated invocation phase literals to shared constants across fallback, failure-script isolation, call-order, and event-filter assertions while keeping scripted setup inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended cluster failure-script and call-order assertion method-literal reuse in unit MCP client coverage:
   - reused `UNIT_TEST_INITIALIZE_METHOD` and `UNIT_TEST_TOOLS_CALL_METHOD` across repeated cluster failure-script assertions (`consume_failure_action` + `failure_scripts` key checks) and cluster call-order expectation vectors/filter sets in `tests/unit/test_mcp_client.py`.
   - kept scripted setup inputs (`set_failure_script(...)`) and method-branch conditionals explicit and unchanged.

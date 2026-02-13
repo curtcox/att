@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit cluster assertion method constant reuse`)
+- Working tree at handoff creation: dirty (`unit resources-read and phase assertion constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended stable `resources/read` and invocation phase assertion-literal constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_RESOURCES_READ_METHOD`, `UNIT_TEST_INITIALIZE_START_PHASE`, `UNIT_TEST_INITIALIZE_FAILURE_PHASE`, `UNIT_TEST_INITIALIZE_SUCCESS_PHASE`, and `UNIT_TEST_INVOKE_SUCCESS_PHASE` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `resources/read` method literals and repeated invocation phase literals to shared constants across fallback, failure-script isolation, call-order, and event-filter assertions while keeping scripted setup inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended cluster failure-script and call-order assertion method-literal reuse in unit MCP client coverage:
   - reused `UNIT_TEST_INITIALIZE_METHOD` and `UNIT_TEST_TOOLS_CALL_METHOD` across repeated cluster failure-script assertions (`consume_failure_action` + `failure_scripts` key checks) and cluster call-order expectation vectors/filter sets in `tests/unit/test_mcp_client.py`.
   - kept scripted setup inputs (`set_failure_script(...)`) and method-branch conditionals explicit and unchanged.
@@ -341,10 +345,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable assertion-literal constant reuse in remaining unit MCP client checks:
-1. Reuse local constants for remaining repeated assertion-side method/phase literals in `tests/unit/test_mcp_client.py`:
-   - target repeated `"resources/read"` method assertions and repeated invocation phase literals such as `"initialize_start"`, `"initialize_failure"`, `"initialize_success"`, and `"invoke_success"` where reuse is meaningful.
-   - keep scripted setup inputs (`set_failure_script(...)`), transport payload literals, and method-branch conditionals explicit and unchanged.
+Continue `P12/P13` test-structure hardening by extending stable method-literal constant reuse for initialization-notify assertions in unit MCP client coverage:
+1. Reuse local constants for remaining repeated assertion-side `"notifications/initialized"` literals in `tests/unit/test_mcp_client.py`:
+   - target repeated call-order/assertion vectors and transport-call expectation assertions where reuse is meaningful.
+   - keep transport request payload literals and transport method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
