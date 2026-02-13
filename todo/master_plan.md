@@ -6,6 +6,14 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended adapter/session identity assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_SESSION_ID_FIRST` and `UNIT_TEST_SESSION_ID_SECOND` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side session-id literals (`"session-1"` / `"session-2"`) in adapter refresh/reconnect identity assertions to shared constants while keeping adapter/session setup behavior and transport method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended unit MCP client error-attempt assertion constant reuse for invoke-stage checks:
+  - added local unit-test constant `UNIT_TEST_INVOKE_STAGE` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining repeated assertion-side error-attempt stage literal `"invoke"` checks to the shared constant while keeping error setup payload literals, scripted setup inputs, and transport method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended stable server-name assertion literal reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_PRIMARY_SERVER`, `UNIT_TEST_BACKUP_SERVER`, `UNIT_TEST_SECONDARY_SERVER`, `UNIT_TEST_RECOVERED_SERVER`, and `UNIT_TEST_DEGRADED_SERVER` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side server literals across failover/call-order/failure-script assertion vectors to shared constants while keeping server-registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.

@@ -39,9 +39,12 @@ UNIT_TEST_DEGRADED_SERVER = "degraded"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
+UNIT_TEST_INVOKE_STAGE = "invoke"
 UNIT_TEST_INVOKE_START_PHASE = "invoke_start"
 UNIT_TEST_INVOKE_FAILURE_PHASE = "invoke_failure"
 UNIT_TEST_INVOKE_SUCCESS_PHASE = "invoke_success"
+UNIT_TEST_SESSION_ID_FIRST = "session-1"
+UNIT_TEST_SESSION_ID_SECOND = "session-2"
 
 
 @pytest.mark.asyncio
@@ -278,7 +281,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     assert error.attempts[1].success is True
     assert error.attempts[1].error_category is None
     assert error.attempts[2].server == UNIT_TEST_BACKUP_SERVER
-    assert error.attempts[2].stage == "invoke"
+    assert error.attempts[2].stage == UNIT_TEST_INVOKE_STAGE
     assert error.attempts[2].success is False
     assert error.attempts[2].error == "rpc error: rpc failure"
     assert error.attempts[2].error_category == UNIT_TEST_RPC_ERROR_CATEGORY
@@ -354,7 +357,7 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
 
     error = exc_info.value
     assert len(error.attempts) == 2
-    assert error.attempts[1].stage == "invoke"
+    assert error.attempts[1].stage == UNIT_TEST_INVOKE_STAGE
     assert error.attempts[1].error_category == UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY
     server = manager.get("codex")
     assert server is not None
@@ -1029,7 +1032,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     first = await manager.invoke_tool("att.project.list", preferred=["nat"])
     assert isinstance(first.result, dict)
     first_session_id = first.result["structuredContent"]["session_id"]
-    assert first_session_id == "session-1"
+    assert first_session_id == UNIT_TEST_SESSION_ID_FIRST
 
     refreshed = await manager.refresh_adapter_session("nat")
     assert refreshed is not None
@@ -1040,7 +1043,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     second = await manager.invoke_tool("att.project.list", preferred=["nat"])
     assert isinstance(second.result, dict)
     second_session_id = second.result["structuredContent"]["session_id"]
-    assert second_session_id == "session-2"
+    assert second_session_id == UNIT_TEST_SESSION_ID_SECOND
     assert second_session_id != first_session_id
 
 
@@ -1073,7 +1076,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     retry = await manager.invoke_tool("att.project.list", preferred=["nat"])
     assert retry.server == "nat"
     assert isinstance(retry.result, dict)
-    assert retry.result["structuredContent"]["session_id"] == "session-2"
+    assert retry.result["structuredContent"]["session_id"] == UNIT_TEST_SESSION_ID_SECOND
     assert factory.created == 2
 
 
