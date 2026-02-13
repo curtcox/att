@@ -3,17 +3,21 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `5704279e91ade27b1d7ff2dd9b662788ebd18c33`
-- Last commit: `5704279 2026-02-13 08:39:10 -0600 Refactor MCP unreachable-transition test scaffolding`
-- Working tree at handoff creation: dirty (`remaining call-order helper migration + simultaneous unreachable reopen matrix`)
+- HEAD: `f32d487bcfe2fe2307bcd8338ea3436fc2574cc5`
+- Last commit: `f32d487 2026-02-13 09:17:53 -0600 Complete call-order helper migration and unreachable reopen matrix`
+- Working tree at handoff creation: dirty (`API simultaneous unreachable retry-window reopen parity`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`221 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Added API-level simultaneous `UNREACHABLE` retry-window reopen parity coverage across tool/resource invoke paths:
+  - added a parametrized integration regression covering both `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` under both preferred-order permutations.
+  - assertions verify closed-window no-candidate behavior (503 + no invocation events + no transport calls), then deterministic preferred-order `initialize_start` attempt sequencing after simultaneous retry-window reopen.
+  - assertions preserve helper-aligned transport semantics by checking only successful transport call literals and validating phase-start/transport subsequence parity plus deterministic diagnostics filters (`server`, `method`, `request_id`, `correlation_id`, `limit`).
 - Completed call-order helper migration for remaining integration parity scenarios and added simultaneous unreachable reopen ordering matrix:
   - migrated remaining call-order parity integrations (`scripted call-order`, `repeated same-server initialize-cache`, and `force-reinitialize trigger`) to shared helpers: `collect_invocation_events_for_requests`, `expected_call_order_from_phase_starts`, and `assert_call_order_subsequence`.
   - removed repeated per-test request-id event aggregation and cursor-subsequence loops while keeping explicit observed transport-call literals unchanged.
@@ -133,18 +137,18 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening by adding API parity for simultaneous unreachable reopen behavior:
-1. Add API-level retry-window regression where both `primary` and `backup` become `UNREACHABLE` with closed windows, then reopen simultaneously:
-   - cover both `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource`.
-   - assert no-candidate behavior while windows are closed, then deterministic preferred-order candidate attempts on reopen via invocation `initialize_start` sequencing.
-2. Keep transport-order assertions aligned with helper semantics:
-   - assert successful transport-call sequence literals only (do not assume initialize timeout attempts create transport call entries).
-   - retain deterministic diagnostics-filter checks (`server`, `method`, `request_id`, `correlation_id`, `limit`) for the reopen request sequence.
+Continue `P12/P13` call-order hardening by reducing duplicated retry-window API scenario scaffolding:
+1. Extract shared API retry-window progression helper(s) for tool/resource paths:
+   - unify repeated setup + invoke/clock progression + diagnostics assertion scaffolding across gating, unreachable-transition, and simultaneous-reopen regressions.
+   - keep endpoint-specific payload differences and explicit expected transport-call literals local to each test.
+2. Preserve deterministic semantics while refactoring:
+   - keep request-correlated invocation/connection filter assertions explicit (`server`, `method`, `request_id`, `correlation_id`, `limit`).
+   - retain subsequence parity checks and avoid assuming every `initialize_start` produces a transport `initialize` call entry.
 
 Suggested implementation direction:
-- Reuse `ClusterNatSessionFactory`, `MCPTestClock`, and `mcp_convergence_helpers` utilities.
-- Mirror unit-level simultaneous reopen semantics at API level without direct retry-window field mutation.
-- Preserve subsequence parity checks between invocation phase starts and observed transport calls.
+- Extend existing `_run_unreachable_transition_sequence(...)` pattern to cover shared closed-window/reopen progression primitives.
+- Reuse `mcp_convergence_helpers` for event aggregation/call-order derivation; avoid introducing new ad-hoc parsing helpers.
+- Keep behavior unchanged; this slice should be test-structure refactoring + parity retention only.
 
 ## Resume Checklist
 1. Sync and verify environment:

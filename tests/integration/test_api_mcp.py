@@ -2472,6 +2472,142 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     )
 
 
+@pytest.mark.parametrize(
+    ("invoke_path", "payload", "method"),
+    [
+        (
+            "/api/v1/mcp/invoke/tool",
+            {"tool_name": "att.project.list", "arguments": {}},
+            "tools/call",
+        ),
+        (
+            "/api/v1/mcp/invoke/resource",
+            {"uri": "att://projects"},
+            "resources/read",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    ("preferred", "expected_first", "expected_second"),
+    [
+        (["primary", "backup"], "primary", "backup"),
+        (["backup", "primary"], "backup", "primary"),
+    ],
+)
+def test_mcp_simultaneous_unreachable_retry_window_reopen_prefers_ordered_candidates(
+    invoke_path: str,
+    payload: dict[str, object],
+    method: str,
+    preferred: list[str],
+    expected_first: str,
+    expected_second: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=1,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    manager.record_check_result("primary", healthy=False, error="hold primary")
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+    primary = manager.get("primary")
+    backup = manager.get("backup")
+    assert primary is not None
+    assert backup is not None
+    assert primary.status is ServerStatus.UNREACHABLE
+    assert backup.status is ServerStatus.UNREACHABLE
+
+    def invoke_once(preferred_servers: list[str]) -> Any:
+        return client.post(
+            invoke_path,
+            json={**payload, "preferred_servers": preferred_servers},
+        )
+
+    calls_before_closed = len(factory.calls)
+    invocation_count_before_closed = len(
+        client.get("/api/v1/mcp/invocation-events").json()["items"]
+    )
+    closed = invoke_once(preferred)
+    assert closed.status_code == 503
+    assert closed.json()["detail"]["message"] == "No reachable MCP servers are currently available"
+    invocation_count_after_closed = len(client.get("/api/v1/mcp/invocation-events").json()["items"])
+    assert invocation_count_after_closed == invocation_count_before_closed
+    assert len(factory.calls) == calls_before_closed
+
+    factory.set_failure_script(expected_first, "initialize", ["timeout"])
+    factory.set_failure_script(expected_second, "initialize", ["ok"])
+    clock.advance(seconds=1)
+
+    calls_before_reopen = len(factory.calls)
+    reopened = invoke_once(preferred)
+    assert reopened.status_code == 200
+    assert reopened.json()["server"] == expected_second
+    assert reopened.json()["method"] == method
+    request_id = reopened.json()["request_id"]
+
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id,
+        server=expected_first,
+        method=method,
+        expected_phases=[
+            "initialize_start",
+            "initialize_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id,
+        server=expected_first,
+        expected_statuses=[],
+    )
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id,
+        server=expected_second,
+        method=method,
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id,
+        server=expected_second,
+        expected_statuses=[ServerStatus.HEALTHY.value],
+    )
+
+    events = collect_invocation_events_for_requests(client, request_ids=(request_id,))
+    initialize_starts = [
+        str(item["server"]) for item in events if item["phase"] == "initialize_start"
+    ]
+    assert initialize_starts == [expected_first, expected_second]
+    expected_call_order = expected_call_order_from_phase_starts(events)
+
+    reopen_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[calls_before_reopen:]
+        if call_method in {"initialize", method}
+    ]
+    assert reopen_slice == [
+        (expected_second, "initialize"),
+        (expected_second, method),
+    ]
+    assert_call_order_subsequence(
+        observed_call_order=reopen_slice,
+        expected_call_order=expected_call_order,
+    )
+
+
 def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() -> None:
     factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
