@@ -166,6 +166,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added a shared helper for method-specific retry-window gating bootstrap (harness setup + method-specific invoke failure script + invoke wiring + gating sequence run).
   - migrated tool/resource retry-window gating tests to this helper while preserving explicit per-method diagnostics/call-order vectors.
   - preserved progression semantics, diagnostics-filter assertions, and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated primary success diagnostics assertion wiring in mixed-method call-order tests:
+  - added shared helper for primary successful-request diagnostics (`initialize_success` + `invoke_success` phases) with per-request expected status handling.
+  - migrated loop-based diagnostics assertions in repeated-same-server and force-reinitialize call-order tests to this helper.
+  - preserved request sequencing, call-order literal assertions, and phase-start/transport subsequence checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.

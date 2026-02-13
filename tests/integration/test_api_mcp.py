@@ -192,6 +192,12 @@ PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
     (),
     (ServerStatus.HEALTHY.value,),
 )
+PRIMARY_SUCCESS_EXPECTED_PHASES: tuple[str, ...] = (
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_success",
+)
 RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
@@ -492,6 +498,28 @@ def _assert_primary_request_diagnostics(
             server="primary",
             expected_statuses=list(statuses),
         )
+
+
+def _assert_primary_success_request_diagnostics(
+    *,
+    client: TestClient,
+    request_id: str,
+    method: str,
+    expected_statuses: Sequence[str],
+) -> None:
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id,
+        server="primary",
+        method=method,
+        expected_phases=list(PRIMARY_SUCCESS_EXPECTED_PHASES),
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id,
+        server="primary",
+        expected_statuses=list(expected_statuses),
+    )
 
 
 def _collect_method_call_order(
@@ -2150,23 +2178,11 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         assert response.json()["server"] == "primary"
         request_id = response.json()["request_id"]
         request_ids.append(request_id)
-        assert_invocation_event_filters(
-            client,
+        _assert_primary_success_request_diagnostics(
+            client=client,
             request_id=request_id,
-            server="primary",
             method=method,
-            expected_phases=[
-                "initialize_start",
-                "initialize_success",
-                "invoke_start",
-                "invoke_success",
-            ],
-        )
-        assert_connection_event_filters(
-            client,
-            request_id=request_id,
-            server="primary",
-            expected_statuses=[],
+            expected_statuses=(),
         )
 
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
@@ -2253,22 +2269,10 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
         assert response.json()["server"] == "primary"
         request_id = response.json()["request_id"]
         request_ids.append(request_id)
-        assert_invocation_event_filters(
-            client,
+        _assert_primary_success_request_diagnostics(
+            client=client,
             request_id=request_id,
-            server="primary",
             method=method,
-            expected_phases=[
-                "initialize_start",
-                "initialize_success",
-                "invoke_start",
-                "invoke_success",
-            ],
-        )
-        assert_connection_event_filters(
-            client,
-            request_id=request_id,
-            server="primary",
             expected_statuses=expected_statuses,
         )
 

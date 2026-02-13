@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `b1916452b1fe7f636cc64a92e805d06e4dd89239`
-- Last commit: `b191645 2026-02-13 09:42:42 -0600 Extract retry-window unreachable bootstrap helper`
-- Working tree at handoff creation: dirty (`retry-window gating bootstrap helper extraction`)
+- HEAD: `81e7f528d7b697ff9ec6c22435700eeaa0f1f855`
+- Last commit: `81e7f52 2026-02-13 09:43:52 -0600 Extract retry-window gating bootstrap helper`
+- Working tree at handoff creation: dirty (`primary success diagnostics helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated primary success diagnostics assertion wiring in mixed-method call-order tests:
+  - added shared helper for primary successful-request diagnostics (`initialize_success` + `invoke_success` phases) with per-request expected status handling.
+  - migrated loop-based diagnostics assertions in repeated-same-server and force-reinitialize call-order tests to the helper.
+  - preserved existing request sequencing, call-order literal assertions, and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated retry-window gating bootstrap wiring:
   - added shared helper for method-specific retry-window gating bootstrap (harness setup + method-specific invoke failure script + invoke wiring + gating sequence run).
   - migrated tool/resource retry-window gating tests to this helper while preserving explicit per-method diagnostics/call-order vectors.
@@ -213,17 +217,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening with a focused small-extraction sweep:
-1. Identify the next smallest repeated assertion/progression scaffold in `tests/integration/test_api_mcp.py`:
-   - prioritize one low-risk extraction that keeps explicit expected vectors and observed call-order literals readable at call sites.
-   - avoid broad restructures; keep changes scoped to one helper + call-site rewires.
+Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method request-spec scaffolding:
+1. Extract shared request-spec constants/helpers for mixed-method call-order tests:
+   - factor repeated tool/resource request-spec tuples used by repeated-same-server and force-reinitialize call-order tests into shared constants/helpers.
+   - keep per-test behavior-specific expected-status vectors and reinitialize trigger mutations explicit.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current progression helpers and call-order literal assertions unchanged.
+   - keep current diagnostics and call-order assertions unchanged.
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse helper style from the new gating/unreachable bootstrap helpers and invoke-builder wrappers.
+- Reuse helper style from the new primary-success diagnostics helper and nearby call-order tests.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist
