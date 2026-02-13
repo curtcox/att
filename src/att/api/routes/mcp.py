@@ -14,6 +14,8 @@ from att.api.schemas.mcp import (
     MCPConnectionEventsResponse,
     MCPInvocationAttemptResponse,
     MCPInvocationErrorDetailResponse,
+    MCPInvocationEventResponse,
+    MCPInvocationEventsResponse,
     MCPInvocationResponse,
     MCPResourceResponse,
     MCPServerResponse,
@@ -205,6 +207,25 @@ async def mcp_connection_events(
         for event in manager.list_events()
     ]
     return MCPConnectionEventsResponse(items=events)
+
+
+@router.get("/invocation-events", response_model=MCPInvocationEventsResponse)
+async def mcp_invocation_events(
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPInvocationEventsResponse:
+    events = [
+        MCPInvocationEventResponse(
+            server=event.server,
+            method=event.method,
+            request_id=event.request_id,
+            phase=event.phase,
+            timestamp=event.timestamp,
+            error=event.error,
+            error_category=event.error_category,
+        )
+        for event in manager.list_invocation_events()
+    ]
+    return MCPInvocationEventsResponse(items=events)
 
 
 @router.post("/invoke/tool", response_model=MCPInvocationResponse)

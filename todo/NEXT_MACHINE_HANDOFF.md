@@ -5,35 +5,43 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (MCP transport error-categorization hardening + plan doc updates)
+- Working tree at handoff creation: dirty (MCP invocation-lifecycle event auditing + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`138 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`140 passed`)
 
 ## Recent Delivered Work
-- MCP transport failure categorization and diagnostics hardening delivered (`P13`):
-  - added stable `ErrorCategory` model and `MCPTransportError` in MCP client manager.
-  - default transport now classifies timeout/http-status/transport/malformed-payload failures.
-  - server state now tracks categorized failures via `last_error_category`.
-  - invocation attempt diagnostics now include `error_category` in 503 error details.
-- Extended stale/recovery lifecycle metadata in server payloads:
-  - `initialization_expires_at` now surfaced in API responses.
+- MCP invocation lifecycle auditing delivered (`P13`):
+  - added bounded in-memory invocation lifecycle event buffer in `MCPClientManager`.
+  - per-server lifecycle phases emitted during invocation:
+    - `initialize_start`
+    - `initialize_success`
+    - `initialize_failure`
+    - `invoke_start`
+    - `invoke_success`
+    - `invoke_failure`
+  - events include `method`, `request_id`, `server`, `timestamp`, and optional error/category metadata.
+- API exposure added:
+  - new endpoint `GET /api/v1/mcp/invocation-events`.
+  - new response schemas for invocation lifecycle events.
+- Existing diagnostics preserved and expanded:
+  - category-aware server failures (`last_error_category`) and invocation attempt errors (`error_category`) remain intact.
 - Test coverage expanded:
-  - unit tests for transport category propagation.
-  - integration tests for category-aware 503 detail payloads and server last-error category mapping.
+  - unit tests for lifecycle event ordering and retention bounds.
+  - integration tests for `/api/v1/mcp/invocation-events` ordering/payload behavior under fallback.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` toward live external transport realism:
-1. Add per-server initialization/transport event audit records for invocation lifecycle (`initialize_start/success/failure`, `invoke_start/success/failure`).
-2. Expose these invocation lifecycle events via API for diagnostics and recovery orchestration verification.
+Continue `P12/P13` with external transport realism and convergence:
+1. Add invocation lifecycle linkage to existing connection transition events (shared correlation identifiers and cross-event traceability).
+2. Extend API diagnostics with filter/query controls (e.g., by server, method, request_id, recent limit) for both connection and invocation event streams.
 
 Suggested implementation direction:
-- Add a lightweight invocation event model in `MCPClientManager` with bounded retention.
-- Emit lifecycle events alongside existing connection transitions.
-- Add API endpoint(s) and integration tests to validate event ordering and payload stability under mixed-state failover.
+- Add optional event query params in MCP event endpoints with deterministic ordering and limit semantics.
+- Add manager-side filtered readers to avoid route-level post-filtering complexity.
+- Expand integration tests to validate filter behavior and correlation consistency in mixed-state failover sequences.
 
 ## Resume Checklist
 1. Sync and verify environment:

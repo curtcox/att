@@ -388,6 +388,89 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
 
 
 @pytest.mark.asyncio
+async def test_invocation_events_emitted_in_order_for_fallback() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if server.name == "primary":
+            raise RuntimeError("primary unavailable")
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    result = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+    assert result.server == "backup"
+
+    events = manager.list_invocation_events()
+    phases = [event.phase for event in events]
+    assert phases == [
+        "initialize_start",
+        "initialize_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    servers = [event.server for event in events]
+    assert servers == ["primary", "primary", "backup", "backup", "backup", "backup"]
+    request_ids = {event.request_id for event in events}
+    assert len(request_ids) == 1
+
+
+@pytest.mark.asyncio
+async def test_invocation_events_retention_is_bounded() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True},
+        }
+
+    manager = MCPClientManager(transport=transport, max_invocation_events=3)
+    manager.register("codex", "http://codex.local")
+
+    await manager.invoke_tool("att.project.list")
+
+    events = manager.list_invocation_events()
+    assert len(events) == 3
+    assert [event.phase for event in events] == [
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_initialize_server_updates_state_on_success() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

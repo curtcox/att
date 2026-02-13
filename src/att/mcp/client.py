@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -21,6 +22,14 @@ type ErrorCategory = Literal[
     "rpc_error",
     "transport_error",
     "unknown",
+]
+type InvocationPhase = Literal[
+    "initialize_start",
+    "initialize_success",
+    "initialize_failure",
+    "invoke_start",
+    "invoke_success",
+    "invoke_failure",
 ]
 
 
@@ -99,6 +108,19 @@ class MCPInvocationAttempt:
     error_category: ErrorCategory | None = None
 
 
+@dataclass(slots=True)
+class MCPInvocationEvent:
+    """Lifecycle event for one invocation step against one server."""
+
+    server: str
+    method: str
+    request_id: str
+    phase: InvocationPhase
+    timestamp: datetime
+    error: str | None = None
+    error_category: ErrorCategory | None = None
+
+
 class MCPInvocationError(RuntimeError):
     """Raised when invocation fails across all available servers."""
 
@@ -147,9 +169,13 @@ class MCPClientManager:
         max_backoff_seconds: int = 8,
         unreachable_after: int = 3,
         max_initialization_age_seconds: int | None = 300,
+        max_invocation_events: int = 500,
     ) -> None:
         self._servers: dict[str, ExternalServer] = {}
         self._events: list[ConnectionEvent] = []
+        self._invocation_events: deque[MCPInvocationEvent] = deque(
+            maxlen=max(1, max_invocation_events)
+        )
         self._probe = probe
         self._transport = transport
         self._max_backoff_seconds = max_backoff_seconds
@@ -177,6 +203,10 @@ class MCPClientManager:
     def list_events(self) -> list[ConnectionEvent]:
         """List connection status transition events."""
         return list(self._events)
+
+    def list_invocation_events(self) -> list[MCPInvocationEvent]:
+        """List invocation lifecycle events (bounded retention)."""
+        return list(self._invocation_events)
 
     def choose_server(self, preferred: list[str] | None = None) -> ExternalServer | None:
         """Choose best available server with healthy-first policy."""
@@ -444,11 +474,25 @@ class MCPClientManager:
         errors: list[str] = []
 
         for server in candidates:
+            self._record_invocation_event(
+                server=server.name,
+                method=method,
+                request_id=request_id,
+                phase="initialize_start",
+            )
             initialized = await self.initialize_server(
                 server.name,
                 force=self._should_force_reinitialize(server),
             )
             if initialized is None:
+                self._record_invocation_event(
+                    server=server.name,
+                    method=method,
+                    request_id=request_id,
+                    phase="initialize_failure",
+                    error="server not found",
+                    error_category="initialize_error",
+                )
                 attempts.append(
                     MCPInvocationAttempt(
                         server=server.name,
@@ -462,6 +506,14 @@ class MCPClientManager:
                 continue
             if not initialized.initialized:
                 init_error = initialized.last_error or "initialize failed"
+                self._record_invocation_event(
+                    server=server.name,
+                    method=method,
+                    request_id=request_id,
+                    phase="initialize_failure",
+                    error=init_error,
+                    error_category=initialized.last_error_category or "initialize_error",
+                )
                 attempts.append(
                     MCPInvocationAttempt(
                         server=server.name,
@@ -473,6 +525,12 @@ class MCPClientManager:
                 )
                 errors.append(f"{server.name}: initialize failed ({init_error})")
                 continue
+            self._record_invocation_event(
+                server=initialized.name,
+                method=method,
+                request_id=request_id,
+                phase="initialize_success",
+            )
             attempts.append(
                 MCPInvocationAttempt(
                     server=initialized.name,
@@ -480,11 +538,25 @@ class MCPClientManager:
                     success=True,
                 )
             )
+            self._record_invocation_event(
+                server=initialized.name,
+                method=method,
+                request_id=request_id,
+                phase="invoke_start",
+            )
             try:
                 response = await transport(initialized, request)
             except Exception as exc:  # noqa: BLE001
                 message = str(exc)
                 error_category = self._error_category_from_exception(exc)
+                self._record_invocation_event(
+                    server=initialized.name,
+                    method=method,
+                    request_id=request_id,
+                    phase="invoke_failure",
+                    error=message,
+                    error_category=error_category,
+                )
                 self.record_check_result(
                     initialized.name,
                     healthy=False,
@@ -506,6 +578,14 @@ class MCPClientManager:
             rpc_error = self._extract_error(response)
             if rpc_error is not None:
                 invocation_error = f"rpc error: {rpc_error}"
+                self._record_invocation_event(
+                    server=initialized.name,
+                    method=method,
+                    request_id=request_id,
+                    phase="invoke_failure",
+                    error=invocation_error,
+                    error_category="rpc_error",
+                )
                 self.record_check_result(
                     initialized.name,
                     healthy=False,
@@ -526,6 +606,14 @@ class MCPClientManager:
 
             if "result" not in response:
                 missing_result = "rpc error: missing result"
+                self._record_invocation_event(
+                    server=initialized.name,
+                    method=method,
+                    request_id=request_id,
+                    phase="invoke_failure",
+                    error=missing_result,
+                    error_category="invalid_payload",
+                )
                 self.record_check_result(
                     initialized.name,
                     healthy=False,
@@ -544,6 +632,12 @@ class MCPClientManager:
                 errors.append(f"{initialized.name}: {missing_result}")
                 continue
 
+            self._record_invocation_event(
+                server=initialized.name,
+                method=method,
+                request_id=request_id,
+                phase="invoke_success",
+            )
             attempts.append(
                 MCPInvocationAttempt(
                     server=initialized.name,
@@ -622,6 +716,28 @@ class MCPClientManager:
         if max_age is None:
             return None
         return initialized_at + timedelta(seconds=max(0, max_age))
+
+    def _record_invocation_event(
+        self,
+        *,
+        server: str,
+        method: str,
+        request_id: str,
+        phase: InvocationPhase,
+        error: str | None = None,
+        error_category: ErrorCategory | None = None,
+    ) -> None:
+        self._invocation_events.append(
+            MCPInvocationEvent(
+                server=server,
+                method=method,
+                request_id=request_id,
+                phase=phase,
+                timestamp=datetime.now(UTC),
+                error=error,
+                error_category=error_category,
+            )
+        )
 
     @staticmethod
     async def _default_probe(server: ExternalServer) -> tuple[bool, str | None]:

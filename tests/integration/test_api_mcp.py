@@ -308,6 +308,29 @@ def test_mcp_invoke_tool_with_fallback() -> None:
     assert initialized["codex"] is False
     assert initialized["github"] is True
 
+    invocation_events = client.get("/api/v1/mcp/invocation-events")
+    assert invocation_events.status_code == 200
+    items = invocation_events.json()["items"]
+    assert [item["phase"] for item in items] == [
+        "initialize_start",
+        "initialize_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in items] == [
+        "codex",
+        "codex",
+        "github",
+        "github",
+        "github",
+        "github",
+    ]
+    assert items[1]["error_category"] == "transport_error"
+    assert items[1]["error"] == "codex unavailable"
+    assert items[5]["error"] is None
+
 
 def test_mcp_invoke_resource_and_error_when_unavailable() -> None:
     transport = FallbackTransport()

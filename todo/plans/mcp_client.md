@@ -64,3 +64,9 @@ P11
 - Added integration coverage for category mapping:
   - invocation 503 detail now includes category-aware attempts.
   - server state payloads expose categorized last error for deterministic diagnostics.
+- Added invocation lifecycle event auditing with bounded retention:
+  - `MCPClientManager` now records per-server invocation lifecycle events (`initialize_start/success/failure`, `invoke_start/success/failure`).
+  - lifecycle events are retained in a bounded in-memory buffer (`max_invocation_events`) and include method/request/server/timestamp/error metadata.
+- Added invocation lifecycle API exposure:
+  - new endpoint `GET /api/v1/mcp/invocation-events` returns ordered invocation lifecycle records.
+  - integration tests assert event ordering/payload stability under fallback and failover scenarios.

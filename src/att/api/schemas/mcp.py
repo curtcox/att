@@ -66,6 +66,31 @@ class MCPConnectionEventsResponse(BaseModel):
     items: list[MCPConnectionEventResponse]
 
 
+class MCPInvocationEventResponse(BaseModel):
+    """Invocation lifecycle event response."""
+
+    server: str
+    method: str
+    request_id: str
+    phase: Literal[
+        "initialize_start",
+        "initialize_success",
+        "initialize_failure",
+        "invoke_start",
+        "invoke_success",
+        "invoke_failure",
+    ]
+    timestamp: datetime
+    error: str | None = None
+    error_category: ErrorCategory | None = None
+
+
+class MCPInvocationEventsResponse(BaseModel):
+    """Collection of invocation lifecycle events."""
+
+    items: list[MCPInvocationEventResponse]
+
+
 class MCPToolResponse(BaseModel):
     """MCP tool descriptor response."""
 
