@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended cluster failure-script and call-order assertion method-literal reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_INITIALIZE_METHOD` and `UNIT_TEST_TOOLS_CALL_METHOD` across repeated cluster failure-script assertions (`consume_failure_action` + `failure_scripts` key checks) and cluster call-order expectation vectors/filter sets in `tests/unit/test_mcp_client.py`.
+  - kept scripted setup inputs (`set_failure_script(...)`) and method-branch conditionals explicit and unchanged.
+  - preserved retry-window/call-order parity semantics and invocation/connection filter behavior unchanged.
 - [x] Extended stable method/phase assertion literal reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_INITIALIZE_METHOD`, `UNIT_TEST_TOOLS_CALL_METHOD`, `UNIT_TEST_INVOKE_START_PHASE`, and `UNIT_TEST_INVOKE_FAILURE_PHASE` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side method/phase literals in invocation result, call-order, and invocation-phase stream checks to shared constants while keeping setup payload literals and param matrices explicit and unchanged.

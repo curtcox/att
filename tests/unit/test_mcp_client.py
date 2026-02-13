@@ -1163,14 +1163,14 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory = ClusterNatSessionFactory()
 
     factory.set_failure_script("primary", "initialize", ["ok", "timeout", "error"])
-    assert factory.consume_failure_action("primary", "initialize") == "ok"
-    assert factory.consume_failure_action("primary", "initialize") == "timeout"
-    assert factory.consume_failure_action("primary", "initialize") == "error"
-    assert factory.consume_failure_action("primary", "initialize") is None
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "ok"
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "timeout"
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "error"
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) is None
 
     factory.set_failure_script("primary", "tools/call", ["ok"])
-    assert factory.consume_failure_action("primary", "tools/call") == "ok"
-    assert factory.consume_failure_action("primary", "tools/call") is None
+    assert factory.consume_failure_action("primary", UNIT_TEST_TOOLS_CALL_METHOD) == "ok"
+    assert factory.consume_failure_action("primary", UNIT_TEST_TOOLS_CALL_METHOD) is None
 
     factory.set_failure_script("primary", "resources/read", ["ok"])
     assert factory.consume_failure_action("primary", "resources/read") == "ok"
@@ -1178,7 +1178,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
 
     factory.set_failure_script("primary", "initialize", ["invalid"])
     with pytest.raises(ValueError, match="unsupported scripted action"):
-        factory.consume_failure_action("primary", "initialize")
+        factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD)
 
 
 def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> None:
@@ -1189,27 +1189,27 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
     factory.set_failure_script("backup", "initialize", ["ok"])
     factory.set_failure_script("backup", "tools/call", ["error", "ok"])
 
-    assert factory.consume_failure_action("primary", "initialize") == "timeout"
-    assert factory.failure_scripts[("primary", "initialize")] == ["ok"]
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "timeout"
+    assert factory.failure_scripts[("primary", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
     assert factory.failure_scripts[("primary", "resources/read")] == ["error"]
-    assert factory.failure_scripts[("backup", "initialize")] == ["ok"]
-    assert factory.failure_scripts[("backup", "tools/call")] == ["error", "ok"]
+    assert factory.failure_scripts[("backup", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
+    assert factory.failure_scripts[("backup", UNIT_TEST_TOOLS_CALL_METHOD)] == ["error", "ok"]
 
-    assert factory.consume_failure_action("backup", "tools/call") == "error"
-    assert factory.failure_scripts[("primary", "initialize")] == ["ok"]
+    assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) == "error"
+    assert factory.failure_scripts[("primary", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
     assert factory.failure_scripts[("primary", "resources/read")] == ["error"]
-    assert factory.failure_scripts[("backup", "initialize")] == ["ok"]
-    assert factory.failure_scripts[("backup", "tools/call")] == ["ok"]
+    assert factory.failure_scripts[("backup", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
+    assert factory.failure_scripts[("backup", UNIT_TEST_TOOLS_CALL_METHOD)] == ["ok"]
 
     assert factory.consume_failure_action("primary", "resources/read") == "error"
-    assert factory.consume_failure_action("backup", "initialize") == "ok"
-    assert factory.consume_failure_action("primary", "initialize") == "ok"
-    assert factory.consume_failure_action("backup", "tools/call") == "ok"
+    assert factory.consume_failure_action("backup", UNIT_TEST_INITIALIZE_METHOD) == "ok"
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "ok"
+    assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) == "ok"
 
-    assert factory.consume_failure_action("primary", "initialize") is None
+    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) is None
     assert factory.consume_failure_action("primary", "resources/read") is None
-    assert factory.consume_failure_action("backup", "initialize") is None
-    assert factory.consume_failure_action("backup", "tools/call") is None
+    assert factory.consume_failure_action("backup", UNIT_TEST_INITIALIZE_METHOD) is None
+    assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) is None
 
 
 @pytest.mark.asyncio
@@ -1317,15 +1317,15 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     call_order = [
         (server, method)
         for server, _, method in factory.calls
-        if method in {"initialize", "tools/call", "resources/read"}
+        if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_TOOLS_CALL_METHOD, "resources/read"}
     ]
     assert call_order == [
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-        ("backup", "initialize"),
-        ("backup", "tools/call"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
+        ("primary", UNIT_TEST_TOOLS_CALL_METHOD),
+        ("backup", UNIT_TEST_INITIALIZE_METHOD),
+        ("backup", UNIT_TEST_TOOLS_CALL_METHOD),
         ("backup", "resources/read"),
-        ("primary", "initialize"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", "resources/read"),
     ]
 
@@ -1356,10 +1356,10 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     before_invalidate = [
         (server, session_id, call_method)
         for server, session_id, call_method in factory.calls
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert [call_method for _, _, call_method in before_invalidate] == [
-        "initialize",
+        UNIT_TEST_INITIALIZE_METHOD,
         method,
         method,
     ]
@@ -1376,13 +1376,13 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     call_order = [
         (server, session_id, call_method)
         for server, session_id, call_method in factory.calls
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert [call_method for _, _, call_method in call_order] == [
-        "initialize",
+        UNIT_TEST_INITIALIZE_METHOD,
         method,
         method,
-        "initialize",
+        UNIT_TEST_INITIALIZE_METHOD,
         method,
     ]
     assert call_order[3][1] != call_order[2][1]
@@ -1428,12 +1428,12 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     call_order = [
         (server, call_method)
         for server, _, call_method in factory.calls
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert call_order == [
-        ("primary", "initialize"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", method),
-        ("primary", "initialize"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", method),
     ]
 
@@ -1500,10 +1500,10 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     third_slice = [
         (server, call_method)
         for server, _, call_method in factory.calls[calls_before_third:]
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert third_slice == [
-        ("primary", "initialize"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", method),
     ]
 
@@ -1560,10 +1560,10 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     third_slice = [
         (server, method)
         for server, _, method in factory.calls[calls_before_third:]
-        if method in {"initialize", "resources/read"}
+        if method in {UNIT_TEST_INITIALIZE_METHOD, "resources/read"}
     ]
     assert third_slice == [
-        ("primary", "initialize"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", "resources/read"),
     ]
 
@@ -1642,10 +1642,10 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     reentry_slice = [
         (server, call_method)
         for server, _, call_method in factory.calls[calls_before_reentry:]
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reentry_slice == [
-        ("primary", "initialize"),
+        ("primary", UNIT_TEST_INITIALIZE_METHOD),
         ("primary", method),
     ]
 
@@ -1692,10 +1692,10 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     backup_reentry_slice = [
         (server, call_method)
         for server, _, call_method in factory.calls[calls_before_backup_reentry:]
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert backup_reentry_slice == [
-        ("backup", "initialize"),
+        ("backup", UNIT_TEST_INITIALIZE_METHOD),
         ("backup", method),
     ]
 
@@ -1761,10 +1761,10 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     reentry_slice = [
         (server, call_method)
         for server, _, call_method in factory.calls[calls_before_reentry:]
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reentry_slice == [
-        ("backup", "initialize"),
+        ("backup", UNIT_TEST_INITIALIZE_METHOD),
         ("backup", method),
     ]
 
@@ -1831,10 +1831,10 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     reopen_slice = [
         (server, call_method)
         for server, _, call_method in factory.calls[calls_before_reopen:]
-        if call_method in {"initialize", method}
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reopen_slice == [
-        (expected_second, "initialize"),
+        (expected_second, UNIT_TEST_INITIALIZE_METHOD),
         (expected_second, method),
     ]
 
