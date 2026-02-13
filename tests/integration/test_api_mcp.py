@@ -192,6 +192,32 @@ PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES: tuple[list[str], ...] = (
     [],
     [ServerStatus.HEALTHY.value],
 )
+RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: list[tuple[str, str]] = [
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+]
+RETRY_WINDOW_GATING_TOOL_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+    ("backup", "initialize"),
+    ("backup", "tools/call"),
+    ("backup", "tools/call"),
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+]
+RETRY_WINDOW_GATING_RESOURCE_EXPECTED_THIRD_SLICE: list[tuple[str, str]] = [
+    ("primary", "initialize"),
+    ("primary", "resources/read"),
+]
+RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+    ("primary", "initialize"),
+    ("primary", "resources/read"),
+    ("backup", "initialize"),
+    ("backup", "resources/read"),
+    ("backup", "resources/read"),
+    ("primary", "initialize"),
+    ("primary", "resources/read"),
+]
 
 
 def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarness:
@@ -2206,25 +2232,12 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         expected_phases=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES,
         expected_statuses=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES,
     )
-    expected_third_slice = [
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-    ]
-    expected_observed_call_order = [
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-        ("backup", "initialize"),
-        ("backup", "tools/call"),
-        ("backup", "tools/call"),
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-    ]
     observed_call_order = _assert_retry_window_gating_call_order_literals(
         factory=harness.factory,
         sequence=sequence,
         method="tools/call",
-        expected_third_slice=expected_third_slice,
-        expected_observed_call_order=expected_observed_call_order,
+        expected_third_slice=RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE,
+        expected_observed_call_order=RETRY_WINDOW_GATING_TOOL_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
     events = collect_invocation_events_for_requests(
@@ -2332,25 +2345,12 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         expected_phases=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES,
         expected_statuses=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES,
     )
-    expected_third_slice = [
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-    ]
-    expected_observed_call_order = [
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-        ("backup", "initialize"),
-        ("backup", "resources/read"),
-        ("backup", "resources/read"),
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-    ]
     observed_call_order = _assert_retry_window_gating_call_order_literals(
         factory=harness.factory,
         sequence=sequence,
         method="resources/read",
-        expected_third_slice=expected_third_slice,
-        expected_observed_call_order=expected_observed_call_order,
+        expected_third_slice=RETRY_WINDOW_GATING_RESOURCE_EXPECTED_THIRD_SLICE,
+        expected_observed_call_order=RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
     events = collect_invocation_events_for_requests(
