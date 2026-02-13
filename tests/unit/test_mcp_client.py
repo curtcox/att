@@ -52,6 +52,9 @@ UNIT_TEST_SESSION_ID_FIRST = "session-1"
 UNIT_TEST_SESSION_ID_SECOND = "session-2"
 UNIT_TEST_PROTOCOL_VERSION = "2025-11-25"
 UNIT_TEST_PROJECTS_URI = "att://projects"
+UNIT_TEST_FRESHNESS_UNKNOWN = "unknown"
+UNIT_TEST_FRESHNESS_ACTIVE_RECENT = "active_recent"
+UNIT_TEST_FRESHNESS_STALE = "stale"
 
 
 @pytest.mark.asyncio
@@ -980,14 +983,14 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
 
     initial = manager.adapter_session_diagnostics("nat")
     assert initial is not None
-    assert initial.freshness == "unknown"
+    assert initial.freshness == UNIT_TEST_FRESHNESS_UNKNOWN
 
     await manager.invoke_tool("att.project.list", preferred=["nat"])
 
     recent = manager.adapter_session_diagnostics("nat")
     assert recent is not None
     assert recent.active is True
-    assert recent.freshness == "active_recent"
+    assert recent.freshness == UNIT_TEST_FRESHNESS_ACTIVE_RECENT
 
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
@@ -995,11 +998,11 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
 
     stale = manager.adapter_session_diagnostics("nat")
     assert stale is not None
-    assert stale.freshness == "stale"
+    assert stale.freshness == UNIT_TEST_FRESHNESS_STALE
 
     listing = manager.list_adapter_sessions(server_name="nat")
     assert len(listing) == 1
-    assert listing[0].freshness == "stale"
+    assert listing[0].freshness == UNIT_TEST_FRESHNESS_STALE
 
 
 @pytest.mark.asyncio
