@@ -240,6 +240,22 @@ FORCE_REINITIALIZE_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
     (),
     (ServerStatus.HEALTHY.value,),
 )
+MIXED_METHOD_REPEATED_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+    ("primary", "tools/call"),
+    ("primary", "resources/read"),
+    ("primary", "resources/read"),
+)
+MIXED_METHOD_FORCE_REINITIALIZE_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+    ("primary", "resources/read"),
+    ("primary", "initialize"),
+    ("primary", "resources/read"),
+)
 RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
@@ -2192,13 +2208,7 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         )
 
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
-    assert observed_call_order == [
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-        ("primary", "tools/call"),
-        ("primary", "resources/read"),
-        ("primary", "resources/read"),
-    ]
+    assert observed_call_order == list(MIXED_METHOD_REPEATED_EXPECTED_OBSERVED_CALL_ORDER)
 
     _assert_call_order_subsequence_for_requests(
         client=client,
@@ -2248,15 +2258,7 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
         )
 
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
-    assert observed_call_order == [
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-        ("primary", "resources/read"),
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-    ]
+    assert observed_call_order == list(MIXED_METHOD_FORCE_REINITIALIZE_EXPECTED_OBSERVED_CALL_ORDER)
 
     _assert_call_order_subsequence_for_requests(
         client=client,
