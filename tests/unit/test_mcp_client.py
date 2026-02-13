@@ -41,6 +41,7 @@ UNIT_TEST_SERVER_A = "a"
 UNIT_TEST_SERVER_B = "b"
 UNIT_TEST_SERVER_C = "c"
 UNIT_TEST_CODEX_SERVER = "codex"
+UNIT_TEST_GITHUB_SERVER = "github"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -458,7 +459,7 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
     manager = MCPClientManager(transport=transport, max_initialization_age_seconds=0)
     manager.register("codex", "http://codex.local")
 
-    await manager.initialize_server("codex")
+    await manager.initialize_server(UNIT_TEST_CODEX_SERVER)
     result = await manager.invoke_tool("att.project.list")
 
     assert result.server == UNIT_TEST_CODEX_SERVER
@@ -705,7 +706,7 @@ async def test_initialize_server_updates_state_on_success() -> None:
     manager = MCPClientManager(transport=transport)
     manager.register("codex", "http://codex.local")
 
-    initialized = await manager.initialize_server("codex")
+    initialized = await manager.initialize_server(UNIT_TEST_CODEX_SERVER)
 
     assert initialized is not None
     assert initialized.status is ServerStatus.HEALTHY
@@ -729,7 +730,7 @@ async def test_initialize_server_marks_degraded_on_error() -> None:
     manager = MCPClientManager(transport=transport)
     manager.register("github", "http://github.local")
 
-    initialized = await manager.initialize_server("github")
+    initialized = await manager.initialize_server(UNIT_TEST_GITHUB_SERVER)
 
     assert initialized is not None
     assert initialized.status is ServerStatus.DEGRADED
@@ -766,8 +767,8 @@ async def test_initialize_server_failure_preserves_last_capability_snapshot() ->
     manager = MCPClientManager(transport=transport)
     manager.register("github", "http://github.local")
 
-    first = await manager.initialize_server("github")
-    second = await manager.initialize_server("github", force=True)
+    first = await manager.initialize_server(UNIT_TEST_GITHUB_SERVER)
+    second = await manager.initialize_server(UNIT_TEST_GITHUB_SERVER, force=True)
 
     assert first is not None
     assert first.capability_snapshot is not None
@@ -1097,7 +1098,7 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     active_only = manager.list_adapter_sessions(active_only=True)
     assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C]
 
-    only_c = manager.list_adapter_sessions(server_name="c")
+    only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
     assert [item.server for item in only_c] == list(UNIT_TEST_SERVER_C_VECTOR)
     assert only_c[0].active is True
 

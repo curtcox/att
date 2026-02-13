@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `9bd49994bffb9132152243399976c639d0d73a38`
-- Last commit: `9bd4999 2026-02-13 15:30:29 -0600 - Continue active next slice`
+- HEAD: `5a5026fecaa18587d48da2263d841b60d1974dc9`
+- Last commit: `5a5026f 2026-02-13 15:32:48 -0600 - Continue active handoff work`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended initialize/list-filter server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `initialize_server("codex")`, `initialize_server("github")`, and `list_adapter_sessions(server_name="c")` call arguments to constants (`UNIT_TEST_CODEX_SERVER`, new `UNIT_TEST_GITHUB_SERVER`, and `UNIT_TEST_SERVER_C`) in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended adapter-scoped helper server-name constant reuse in unit MCP client coverage:
   - migrated remaining inline `adapter.session_diagnostics("nat")`, `adapter.invalidate_session("nat")`, and `list_adapter_sessions(server_name="nat")` call arguments to `UNIT_TEST_NAT_SERVER` in `tests/unit/test_mcp_client.py`.
@@ -93,7 +98,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
 1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in adapter control calls:
-   - target remaining inline `initialize_server("codex")`, `initialize_server("github")`, and `list_adapter_sessions(server_name="c")` call arguments by reusing existing constants and adding a dedicated GitHub server-name constant if needed.
+   - target remaining inline state-inspection accessor arguments `manager.get("codex")` and `manager.get("github")` where reuse is meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
