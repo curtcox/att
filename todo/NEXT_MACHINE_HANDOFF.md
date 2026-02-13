@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
-- Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit method-scoped re-entry pair collector reuse`)
+- HEAD: `7922f0beda7dbcec58357b80729b9e293a951ed1`
+- Last commit: `7922f0b 2026-02-13 14:27:05 -0600 Reuse re-entry call-order collector in unit retry test`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
