@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Consolidated timeout-category constant naming across scripted and non-scripted failover diagnostics assertions:
+  - introduced neutral `FAILOVER_TIMEOUT_ERROR_CATEGORY` and migrated timeout-category assertion call sites away from scripted-only naming.
+  - updated focused constant regression coverage to assert neutral timeout-category value plus compatibility-alias equivalence.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
 - [x] Retired degraded-status compatibility alias debt after canonical ownership migration:
   - removed `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` compatibility alias and retained only canonical `FAILOVER_DEGRADED_EXPECTED_STATUSES` for degraded-status expectations.
   - updated focused constant regression coverage to assert canonical degraded-status vector semantics without alias coupling.

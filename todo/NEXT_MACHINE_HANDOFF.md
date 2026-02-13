@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`degraded-status alias retirement`)
+- Working tree at handoff creation: dirty (`timeout-category neutral alias adoption`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Consolidated timeout-category constant naming across scripted and non-scripted failover diagnostics assertions:
+  - introduced neutral `FAILOVER_TIMEOUT_ERROR_CATEGORY` and rewired timeout-category assertions to use the neutral constant instead of scripted-only naming.
+  - updated focused constant regression coverage to assert neutral timeout-category value plus compatibility-alias equivalence.
+  - preserved invocation/connection filter behavior and call-order/subsequence parity semantics unchanged.
 - Retired degraded-status compatibility alias debt after canonical ownership migration:
   - removed `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` compatibility alias and retained only canonical `FAILOVER_DEGRADED_EXPECTED_STATUSES` for degraded-status expectations.
   - updated focused constant regression coverage to assert canonical degraded-status vector semantics without alias coupling.
@@ -317,12 +321,12 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by canonicalizing timeout-category constant naming across scripted and non-scripted failover assertions:
-1. Make timeout-category constant naming neutral where cross-slice usage already exists:
-   - introduce `FAILOVER_TIMEOUT_ERROR_CATEGORY` alias from `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` (or migrate ownership directly if low risk).
-   - migrate call-site assertions that no longer require scripted-only naming to the neutral constant while keeping assertion sites explicit.
+Continue `P12/P13` test-structure hardening by retiring timeout-category compatibility alias debt after neutral adoption:
+1. Remove scripted timeout compatibility alias if unused at call sites:
+   - replace remaining compatibility-only references of `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` with canonical `FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+   - remove `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` constant if it becomes unused after migration.
 2. Preserve regression and semantics:
-   - keep focused constant regression coverage explicit for whichever timeout constant names remain exported in this module.
+   - keep focused constant regression coverage explicit for the canonical timeout-category constant.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 3. Preserve existing helper/filter/subsequence semantics:
    - keep current invocation-event and connection-event filter behavior unchanged.
