@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `3f7ce4b60cd8af9a0d34db128e9802e9cae96f8e`
-- Last commit: `3f7ce4b 2026-02-13 09:56:20 -0600 Extract mixed-method call-order literal helper`
-- Working tree at handoff creation: dirty (`mixed-method request-sequence execution helper extraction`)
+- HEAD: `768c6db4f9e9d450cb23474e4fad50f4205a9e5f`
+- Last commit: `768c6db 2026-02-13 09:59:43 -0600 Extract mixed-method request-sequence helper`
+- Working tree at handoff creation: dirty (`mixed-method primary setup helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated mixed-method primary setup scaffolding in call-order tests:
+  - added shared helper for primary mixed-method harness setup (`ClusterNatSessionFactory` + `MCPClientManager` + `TestClient` + primary server registration).
+  - helper supports optional `now_provider` injection and force-reinitialize coverage now consumes it to preserve deterministic stale-expiry trigger behavior.
+  - migrated repeated-same-server and force-reinitialize tests to helper-driven setup while preserving explicit trigger mutations and call-order expectations.
 - Reduced duplicated mixed-method request-execution scaffolding in call-order tests:
   - added shared helper that executes mixed-method request sequences (request post + request-id collection + primary success diagnostics assertions).
   - added optional per-index pre-request mutation hook and migrated force-reinitialize trigger mutations to the hook while preserving explicit trigger conditions.
@@ -233,11 +237,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method primary test setup scaffolding:
-1. Extract shared mixed-method primary setup helper:
-   - factor repeated `ClusterNatSessionFactory` + `MCPClientManager` + `TestClient` + primary-server registration scaffolding in repeated-same-server and force-reinitialize tests into one helper.
-   - support optional `now_provider` injection so force-reinitialize stale-expiry trigger coverage remains deterministic.
-   - keep test-local trigger/call-order expectations explicit at call sites for auditability.
+Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method final parity assertion wiring:
+1. Extract shared mixed-method parity assertion helper:
+   - factor repeated `_assert_call_order_subsequence_for_requests(...)` invocation scaffolding in repeated-same-server and force-reinitialize tests into one helper.
+   - keep request-id vectors and expected call-order literals explicit at test call sites for auditability.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current diagnostics and call-order assertion behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.

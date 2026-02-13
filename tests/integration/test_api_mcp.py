@@ -335,6 +335,25 @@ def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarnes
     )
 
 
+def _create_mixed_method_primary_harness(
+    *,
+    now_provider: Callable[[], datetime] | None = None,
+) -> tuple[ClusterNatSessionFactory, MCPClientManager, TestClient]:
+    factory = ClusterNatSessionFactory()
+    if now_provider is None:
+        manager = MCPClientManager(
+            transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        )
+    else:
+        manager = MCPClientManager(
+            transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+            now_provider=now_provider,
+        )
+    client = _client_with_manager(manager)
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    return factory, manager, client
+
+
 def _build_invoke_with_preferred(
     client: TestClient,
     *,
@@ -2231,13 +2250,7 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
 
 
 def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
-    factory = ClusterNatSessionFactory()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-    )
-    client = _client_with_manager(manager)
-
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    factory, _, client = _create_mixed_method_primary_harness()
     request_ids = _run_mixed_method_primary_request_sequence(
         client=client,
         request_specs=MIXED_METHOD_PRIMARY_REQUEST_SPECS,
@@ -2257,15 +2270,8 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
 
 
 def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
-    factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        now_provider=clock,
-    )
-    client = _client_with_manager(manager)
-
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    factory, manager, client = _create_mixed_method_primary_harness(now_provider=clock)
 
     def _mutate_primary_before_request(index: int) -> None:
         if index == 1:

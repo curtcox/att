@@ -186,6 +186,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper that executes mixed-method request sequences (request post + request-id collection + primary success diagnostics assertions).
   - added optional per-index pre-request mutation hook and migrated force-reinitialize trigger mutations to this hook while preserving explicit trigger conditions.
   - migrated repeated-same-server and force-reinitialize tests to helper-driven request execution while preserving explicit request-spec/status vectors and call-order expectations.
+- [x] Reduced duplicated mixed-method primary setup scaffolding in call-order tests:
+  - added shared helper for primary mixed-method harness setup (`ClusterNatSessionFactory` + `MCPClientManager` + `TestClient` + primary server registration).
+  - helper supports optional `now_provider` injection and force-reinitialize coverage now consumes it to preserve deterministic stale-expiry trigger behavior.
+  - migrated repeated-same-server and force-reinitialize tests to helper-driven setup while preserving explicit trigger mutations and call-order expectations.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
