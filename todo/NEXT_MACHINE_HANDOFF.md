@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `97b89636c379d0e765f1d4d814326a1a940143be`
-- Last commit: `97b8963 2026-02-13 14:42:11 -0600 Reuse server constant in unit invocation filter`
+- HEAD: `0895653cb63d176547348b1dd1cbdec8eaa7a3f6`
+- Last commit: `0895653 2026-02-13 14:52:33 -0600 Archive older planning detail into done folder`
 - Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
