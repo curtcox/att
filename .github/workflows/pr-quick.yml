@@ -1,8 +1,23 @@
 name: PR Quick Checks
 
 on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - test
   pull_request:
-    branches: [dev]
+    branches:
+      - main
+      - master
+      - dev
+      - test
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
 
 jobs:
   quick:

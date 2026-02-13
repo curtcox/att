@@ -7,3 +7,12 @@
 
 ## Continuity Rule
 - If the user says "Continue", resume from `todo/NEXT_MACHINE_HANDOFF.md` without re-planning from scratch.
+
+# Development Process
+Use TDD for new features and bug fixes.
+Red, green, refactor.
+Commit often.
+
+When I report a bug, don't start by trying to fix it.
+Instead, start by writing a test that reproduces the bug.
+Then, try to fix the bug and prove it with a passing test.
