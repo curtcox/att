@@ -1318,6 +1318,64 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
+    method: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    manager.register("primary", "http://primary.local")
+
+    async def invoke_once() -> object:
+        if method == "resources/read":
+            return await manager.read_resource("att://projects", preferred=["primary"])
+        return await manager.invoke_tool("att.project.list", preferred=["primary"])
+
+    first = await invoke_once()
+    second = await invoke_once()
+    assert first.server == "primary"
+    assert second.server == "primary"
+    assert first.method == method
+    assert second.method == method
+
+    before_invalidate = [
+        (server, session_id, call_method)
+        for server, session_id, call_method in factory.calls
+        if call_method in {"initialize", method}
+    ]
+    assert [call_method for _, _, call_method in before_invalidate] == [
+        "initialize",
+        method,
+        method,
+    ]
+    assert before_invalidate[0][0] == "primary"
+    assert before_invalidate[1][1] == before_invalidate[2][1]
+
+    invalidated = await manager.invalidate_adapter_session("primary")
+    assert invalidated is True
+
+    third = await invoke_once()
+    assert third.server == "primary"
+    assert third.method == method
+
+    call_order = [
+        (server, session_id, call_method)
+        for server, session_id, call_method in factory.calls
+        if call_method in {"initialize", method}
+    ]
+    assert [call_method for _, _, call_method in call_order] == [
+        "initialize",
+        method,
+        method,
+        "initialize",
+        method,
+    ]
+    assert call_order[3][1] != call_order[2][1]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

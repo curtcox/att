@@ -3,15 +3,15 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `c688f53565e67eb8e38d7d704605e6f27503833a`
-- Last commit: `c688f53 2026-02-13 07:29:53 -0600 Add MCP scripted initialize parity and API isolation coverage`
-- Working tree at handoff creation: dirty (helper/API call-order parity coverage + plan doc updates)
+- HEAD: `a42c78b11dbecf489f2e897fa0a188f8452dc57b`
+- Last commit: `a42c78b 2026-02-13 07:57:42 -0600 Add MCP scripted call-order parity coverage`
+- Working tree at handoff creation: dirty (initialize-cache call-order parity coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`189 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`192 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -92,20 +92,26 @@
   - added unit coverage asserting deterministic `ClusterNatSessionFactory.calls` ordering across mixed `initialize` + `tools/call` + `resources/read` scripted actions for paired `primary`/`backup` failover.
   - added API integration coverage that cross-checks `factory.calls` against invocation-event `initialize_start`/`invoke_start` ordering for one mixed scripted `tools/call` + `resources/read` sequence.
   - call-order comparison now intentionally uses subsequence semantics so event streams that include stage markers without matching transport calls remain deterministic and non-flaky.
+- Added initialize-cache call-order parity coverage for repeated requests:
+  - added unit coverage proving repeated same-server invokes skip extra transport `initialize` calls until explicit adapter invalidation, with paired checks for both `tools/call` and `resources/read`.
+  - unit assertions now also verify invalidation forces exactly one subsequent transport `initialize` and rotates to a new adapter session id.
+  - added API coverage for repeated same-server `tools/call` + `resources/read` requests without invalidation, asserting call-order remains one `initialize` followed by invoke methods while invocation-phase start streams remain aligned via subsequence parity.
+  - retained deterministic diagnostics-filter checks (`server`, `method`, `request_id`, `correlation_id`, `limit`) per request in the new API scenario.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` scripted-controls hardening with initialize-cache call-order parity:
-1. Add helper-level no-reinitialize call-order unit coverage:
-   - add unit assertions proving repeated invokes on an already-initialized server do not emit extra transport `initialize` calls unless adapter/session state is explicitly invalidated.
-   - include paired checks for both `tools/call` and `resources/read` to ensure method parity.
-2. Add API-level repeated-request call-order regression:
-   - add integration coverage that performs repeated same-server invocations without invalidation and cross-checks transport call order against invocation-event phase starts using the same subsequence contract.
-   - preserve existing deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) for each request.
+Continue `P12/P13` call-order hardening with force-reinitialize trigger parity:
+1. Add helper-level force-reinitialize call-order unit coverage:
+   - add unit assertions proving `_should_force_reinitialize` trigger paths (`initialization_expires_at` stale and non-healthy status) each produce a transport `initialize` before invoke on the next request.
+   - include paired checks for `tools/call` and `resources/read` so reinitialize trigger parity is method-consistent.
+2. Add API-level force-reinitialize call-order regression:
+   - add integration coverage that drives one stale-expiry or degraded-status transition between repeated same-server requests and validates transport call order includes the expected extra `initialize`.
+   - cross-check the resulting `factory.calls` sequence against invocation-event `initialize_start`/`invoke_start` ordering using the same subsequence contract.
+   - preserve deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) for each request in the scenario.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
 - Reuse existing fake NAT session factories and shared clock/helper modules rather than introducing new ad-hoc transport scaffolding.
-- Preserve current event/filter semantics and correlation determinism, and avoid introducing expectations that require transport-level initialize calls for every `initialize_start` event.
+- Preserve current event/filter semantics and correlation determinism, and avoid introducing expectations that require transport-level initialize calls for every `initialize_start` event outside explicit force-reinitialize trigger paths.
 
 ## Resume Checklist
 1. Sync and verify environment:
