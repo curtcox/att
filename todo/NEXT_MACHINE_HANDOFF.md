@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (manager clock seam + clock-driven retry-window convergence coverage + plan doc updates)
+- Working tree at handoff creation: dirty (expanded mixed-state clock migration + clock-driven snapshot timing assertions + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -22,15 +22,21 @@
   - removed direct `next_retry_at` mutation in the convergence integration scenario; progression now uses `clock.advance(...)` + manager APIs (`record_check_result`).
   - retained deterministic failover/recovery assertions across timeout, retry-window skip, unreachable transition, and recovery initialize.
   - preserved correlation/event determinism checks and freshness assertions after recovery.
+- Expanded clock-seam adoption in remaining mixed-state tests:
+  - unit and integration mixed-state recovery/fallback tests now use injected test clocks for retry-window progression instead of direct retry-window state mutation.
+  - retained existing preferred-order fallback and status-transition assertions while reducing coupling to server internals.
+- Extended convergence matrix with clock-driven capability snapshot timing assertions:
+  - convergence scenario now explicitly verifies server-local `capability_snapshot.captured_at` retention on failure paths and replacement on recovery initialize.
+  - assertions remain request-correlated and deterministic under controlled clock progression.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Expand clock-seam adoption to remaining mixed-state tests:
-   - migrate older mixed-state tests that still mutate `next_retry_at` directly to clock-driven progression for consistency.
-   - centralize small test clock helper usage across unit/integration MCP suites to reduce duplicated timing setup.
-2. Extend convergence matrix with capability-snapshot timing assertions under clock control:
-   - add assertions that snapshot `captured_at` replacement/retention follows server-local rules across timeout stage permutations with deterministic clock advancement.
-   - keep correlation/event sequence assertions deterministic per request.
+1. Consolidate duplicated test clock helpers:
+   - move `_TestClock` into shared MCP test support to avoid repeated local definitions across unit/integration suites.
+   - keep existing test behavior unchanged while reducing maintenance overhead.
+2. Expand stage-specific timeout convergence matrix:
+   - add explicit paired scenarios for initialize-time vs invoke-time timeouts under the same clock progression and preferred order.
+   - ensure retry/backoff/status deltas and capability snapshot timing outcomes remain deterministic and server-local.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

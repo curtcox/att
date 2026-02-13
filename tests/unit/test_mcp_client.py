@@ -344,6 +344,7 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
 @pytest.mark.asyncio
 async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> None:
     calls: list[tuple[str, str]] = []
+    clock = _TestClock()
 
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
@@ -372,7 +373,11 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
             "result": {"ok": True, "served_by": server.name},
         }
 
-    manager = MCPClientManager(transport=transport, max_initialization_age_seconds=None)
+    manager = MCPClientManager(
+        transport=transport,
+        max_initialization_age_seconds=None,
+        now_provider=clock,
+    )
     manager.register("primary", "http://primary.local")
     manager.register("recovered", "http://recovered.local")
     manager.register("degraded", "http://degraded.local")
@@ -381,8 +386,8 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     assert primary is not None
     primary.status = ServerStatus.HEALTHY
     primary.initialized = True
-    primary.last_initialized_at = datetime.now(UTC)
-    primary.initialization_expires_at = datetime.now(UTC) + timedelta(seconds=60)
+    primary.last_initialized_at = clock.current
+    primary.initialization_expires_at = clock.current + timedelta(seconds=60)
 
     recovered = manager.get("recovered")
     assert recovered is not None
@@ -390,9 +395,7 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     recovered.initialized = False
 
     manager.record_check_result("degraded", healthy=False, error="down")
-    degraded = manager.get("degraded")
-    assert degraded is not None
-    degraded.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+    clock.advance(seconds=2)
 
     result = await manager.invoke_tool(
         "att.project.list",
@@ -1171,6 +1174,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
 @pytest.mark.asyncio
 async def test_adapter_transport_fallback_across_mixed_states() -> None:
     sessions: dict[str, _FakeNatSession] = {}
+    clock = _TestClock()
 
     @asynccontextmanager
     async def session_context(endpoint: str) -> Any:
@@ -1188,6 +1192,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=session_context),
         max_initialization_age_seconds=None,
+        now_provider=clock,
     )
     manager.register("primary", "http://primary.local")
     manager.register("recovered", "http://recovered.local")
@@ -1197,8 +1202,8 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     assert primary is not None
     primary.status = ServerStatus.HEALTHY
     primary.initialized = True
-    primary.last_initialized_at = datetime.now(UTC)
-    primary.initialization_expires_at = datetime.now(UTC) + timedelta(seconds=60)
+    primary.last_initialized_at = clock.current
+    primary.initialization_expires_at = clock.current + timedelta(seconds=60)
 
     recovered = manager.get("recovered")
     assert recovered is not None
@@ -1206,9 +1211,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     recovered.initialized = False
 
     manager.record_check_result("degraded", healthy=False, error="down")
-    degraded = manager.get("degraded")
-    assert degraded is not None
-    degraded.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+    clock.advance(seconds=2)
 
     result = await manager.invoke_tool(
         "att.project.list",

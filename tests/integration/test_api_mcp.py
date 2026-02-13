@@ -628,7 +628,12 @@ def test_mcp_invoke_tool_reinitializes_stale_server_before_call() -> None:
 
 def test_mcp_invoke_mixed_state_cluster_recovers_in_order() -> None:
     transport = RecoveringTransport()
-    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    clock = _TestClock()
+    manager = MCPClientManager(
+        probe=StaticProbe(healthy=True),
+        transport=transport,
+        now_provider=clock,
+    )
     client = _client_with_manager(manager)
 
     client.post(
@@ -648,8 +653,8 @@ def test_mcp_invoke_mixed_state_cluster_recovers_in_order() -> None:
     assert primary is not None
     primary.status = ServerStatus.HEALTHY
     primary.initialized = True
-    primary.last_initialized_at = datetime.now(UTC)
-    primary.initialization_expires_at = datetime.now(UTC) + timedelta(seconds=120)
+    primary.last_initialized_at = clock.current
+    primary.initialization_expires_at = clock.current + timedelta(seconds=120)
 
     recovered = manager.get("recovered")
     assert recovered is not None
@@ -657,9 +662,7 @@ def test_mcp_invoke_mixed_state_cluster_recovers_in_order() -> None:
     recovered.initialized = False
 
     manager.record_check_result("degraded", healthy=False, error="down")
-    degraded = manager.get("degraded")
-    assert degraded is not None
-    degraded.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+    clock.advance(seconds=2)
 
     invoke = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -1398,6 +1401,16 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     assert warm_backup.status_code == 200
     assert warm_backup.json()["server"] == "backup"
 
+    primary_warm = client.get("/api/v1/mcp/servers/primary")
+    assert primary_warm.status_code == 200
+    primary_snapshot_initial = primary_warm.json()["capability_snapshot"]
+    assert primary_snapshot_initial is not None
+
+    backup_warm = client.get("/api/v1/mcp/servers/backup")
+    assert backup_warm.status_code == 200
+    backup_snapshot_initial = backup_warm.json()["capability_snapshot"]
+    assert backup_snapshot_initial is not None
+
     factory.fail_on_timeout_tool_calls.add("primary")
 
     first_failover = client.post(
@@ -1445,6 +1458,10 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     assert primary_after_first.json()["status"] == ServerStatus.DEGRADED.value
     assert primary_after_first.json()["retry_count"] == 1
     assert primary_after_first.json()["next_retry_at"] is not None
+    assert (
+        primary_after_first.json()["capability_snapshot"]["captured_at"]
+        == primary_snapshot_initial["captured_at"]
+    )
 
     during_window = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -1526,6 +1543,17 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     assert primary_after_second.status_code == 200
     assert primary_after_second.json()["status"] == ServerStatus.UNREACHABLE.value
     assert primary_after_second.json()["retry_count"] == 2
+    assert (
+        primary_after_second.json()["capability_snapshot"]["captured_at"]
+        == primary_snapshot_initial["captured_at"]
+    )
+
+    backup_after_second = client.get("/api/v1/mcp/servers/backup")
+    assert backup_after_second.status_code == 200
+    assert (
+        backup_after_second.json()["capability_snapshot"]["captured_at"]
+        != backup_snapshot_initial["captured_at"]
+    )
 
     correlation_unreachable = client.get(
         "/api/v1/mcp/events",
@@ -1587,6 +1615,10 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     assert primary_final.status_code == 200
     assert primary_final.json()["status"] == ServerStatus.HEALTHY.value
     assert primary_final.json()["retry_count"] == 0
+    assert (
+        primary_final.json()["capability_snapshot"]["captured_at"]
+        != primary_snapshot_initial["captured_at"]
+    )
 
     primary_sessions = client.get(
         "/api/v1/mcp/adapter-sessions",

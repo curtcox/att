@@ -125,3 +125,9 @@ P11
 - Migrated convergence scenario timing control from internal-state mutation to clock progression:
   - retry-window advancement now uses clock increments plus manager APIs rather than direct `next_retry_at` assignment.
   - keeps degraded/unreachable/recovered transition assertions while reducing test coupling to server internals.
+- Expanded clock progression usage across remaining mixed-state tests:
+  - unit and integration mixed-state fallback/recovery tests now use injected test clocks and time advancement rather than direct retry-window mutation.
+  - preserves preferred-order and status assertions while reducing internal-state coupling.
+- Added clock-driven capability snapshot timing assertions in convergence flow:
+  - verifies `capability_snapshot.captured_at` remains stable across failure/no-reinitialize paths and updates on recovery initialize.
+  - keeps assertions server-local and deterministic per request/correlation cycle.

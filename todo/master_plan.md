@@ -39,6 +39,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Expanded aggregated adapter diagnostics controls with `freshness` query filtering, preserving manager-sourced deterministic ordering and cross-surface freshness consistency.
 - [x] Added retry-window convergence integration coverage across consecutive failover/recovery cycles, including timeout-stage-specific degraded/unreachable transitions with deterministic correlation streams.
 - [x] Added `MCPClientManager` clock seam (`now_provider`) for deterministic retry-window and freshness-time progression in tests without direct retry-window state mutation.
+- [x] Expanded clock-driven mixed-state MCP coverage by migrating remaining retry-window mutations to injected clock progression and adding capability-snapshot timing retention/replacement assertions under deterministic convergence flows.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
