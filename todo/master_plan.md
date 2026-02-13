@@ -158,6 +158,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added dedicated tool/resource invoke-builder wrapper helpers around shared preferred-server invoke construction.
   - migrated tool/resource retry-window gating and unreachable-transition tests to wrapper helpers, removing repeated inline invoke-path/payload scaffolding.
   - preserved request progression semantics, diagnostics assertions, and call-order parity checks unchanged.
+- [x] Reduced duplicated retry-window unreachable-transition bootstrap wiring:
+  - added a shared helper for method-specific unreachable-transition bootstrap (harness setup + primary initialize timeout script + invoke wiring + sequence run).
+  - migrated tool/resource unreachable-transition retry-window tests to this helper while preserving explicit per-method diagnostics and call-order expectation constants.
+  - preserved progression semantics, diagnostics-filter assertions, and phase-start/transport subsequence checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.

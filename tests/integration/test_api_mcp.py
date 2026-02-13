@@ -408,6 +408,23 @@ def _run_unreachable_transition_sequence(
     )
 
 
+def _run_retry_window_unreachable_transition_method_sequence(
+    *,
+    build_invoke_with_preferred: Callable[[TestClient], Callable[[list[str]], Any]],
+) -> tuple[RetryWindowHarness, UnreachableTransitionSequence]:
+    harness = _create_retry_window_harness(unreachable_after=2)
+    harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+    invoke = build_invoke_with_preferred(harness.client)
+    sequence = _run_unreachable_transition_sequence(
+        invoke=invoke,
+        client=harness.client,
+        manager=harness.manager,
+        clock=harness.clock,
+        factory=harness.factory,
+    )
+    return harness, sequence
+
+
 def _retry_window_request_ids(sequence: RetryWindowGatingSequence) -> tuple[str, str, str]:
     return (
         sequence.request_id_1,
@@ -2291,16 +2308,8 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
 
 
 def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None:
-    harness = _create_retry_window_harness(unreachable_after=2)
-    harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
-    invoke = _build_tool_invoke_with_preferred(harness.client)
-
-    sequence = _run_unreachable_transition_sequence(
-        invoke=invoke,
-        client=harness.client,
-        manager=harness.manager,
-        clock=harness.clock,
-        factory=harness.factory,
+    harness, sequence = _run_retry_window_unreachable_transition_method_sequence(
+        build_invoke_with_preferred=_build_tool_invoke_with_preferred,
     )
 
     request_ids = _unreachable_transition_request_ids(sequence)
@@ -2363,16 +2372,8 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
 
 
 def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> None:
-    harness = _create_retry_window_harness(unreachable_after=2)
-    harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
-    invoke = _build_resource_invoke_with_preferred(harness.client)
-
-    sequence = _run_unreachable_transition_sequence(
-        invoke=invoke,
-        client=harness.client,
-        manager=harness.manager,
-        clock=harness.clock,
-        factory=harness.factory,
+    harness, sequence = _run_retry_window_unreachable_transition_method_sequence(
+        build_invoke_with_preferred=_build_resource_invoke_with_preferred,
     )
 
     request_ids = _unreachable_transition_request_ids(sequence)
