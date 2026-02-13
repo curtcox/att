@@ -36,6 +36,9 @@ UNIT_TEST_BACKUP_SERVER = "backup"
 UNIT_TEST_SECONDARY_SERVER = "secondary"
 UNIT_TEST_RECOVERED_SERVER = "recovered"
 UNIT_TEST_DEGRADED_SERVER = "degraded"
+UNIT_TEST_NAT_SERVER = "nat"
+UNIT_TEST_SERVER_A = "a"
+UNIT_TEST_SERVER_B = "b"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -910,8 +913,8 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
     manager.register("nat", "http://nat.local")
 
     assert manager.supports_adapter_session_controls() is False
-    assert manager.adapter_session_diagnostics("nat") is None
-    assert await manager.invalidate_adapter_session("nat") is False
+    assert manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER) is None
+    assert await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER) is False
     assert manager.list_adapter_sessions() == []
 
 
@@ -925,17 +928,17 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     manager.register("a", "http://a.local")
 
     before = manager.list_adapter_sessions()
-    assert [item.server for item in before] == ["a", "b"]
+    assert [item.server for item in before] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B]
     assert all(item.active is False for item in before)
 
     await manager.invoke_tool("att.project.list", preferred=["b"])
 
     after = manager.list_adapter_sessions()
     by_name = {item.server: item for item in after}
-    assert by_name["b"].active is True
-    assert by_name["b"].initialized is True
-    assert by_name["b"].last_activity_at is not None
-    assert by_name["a"].active is False
+    assert by_name[UNIT_TEST_SERVER_B].active is True
+    assert by_name[UNIT_TEST_SERVER_B].initialized is True
+    assert by_name[UNIT_TEST_SERVER_B].last_activity_at is not None
+    assert by_name[UNIT_TEST_SERVER_A].active is False
 
 
 @pytest.mark.asyncio
@@ -952,7 +955,7 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     await manager.invoke_tool("att.project.list", preferred=["c"])
 
     active_only = manager.list_adapter_sessions(active_only=True)
-    assert [item.server for item in active_only] == ["a", "c"]
+    assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, "c"]
 
     only_c = manager.list_adapter_sessions(server_name="c")
     assert [item.server for item in only_c] == ["c"]
@@ -1012,10 +1015,10 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     adapter._sessions["a"].last_activity_at = datetime.now(UTC) - timedelta(seconds=61)
 
     stale = manager.list_adapter_sessions(freshness="stale")
-    assert [item.server for item in stale] == ["a"]
+    assert [item.server for item in stale] == [UNIT_TEST_SERVER_A]
 
     unknown = manager.list_adapter_sessions(freshness="unknown")
-    assert [item.server for item in unknown] == ["b"]
+    assert [item.server for item in unknown] == [UNIT_TEST_SERVER_B]
 
     recent = manager.list_adapter_sessions(freshness="active_recent")
     assert recent == []
@@ -1074,7 +1077,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     assert factory.closed == 1
 
     retry = await manager.invoke_tool("att.project.list", preferred=["nat"])
-    assert retry.server == "nat"
+    assert retry.server == UNIT_TEST_NAT_SERVER
     assert isinstance(retry.result, dict)
     assert retry.result["structuredContent"]["session_id"] == UNIT_TEST_SESSION_ID_SECOND
     assert factory.created == 2
