@@ -1593,6 +1593,120 @@ def test_mcp_scripted_initialize_precedence_and_failover() -> None:
     )
 
 
+@pytest.mark.parametrize("error_stage", ["initialize", "invoke"])
+def test_mcp_scripted_error_actions_preserve_transport_error_failover_and_correlation(
+    error_stage: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    if error_stage == "initialize":
+        factory.set_failure_script("primary", "initialize", ["error"])
+        expected_phases = [
+            "initialize_start",
+            "initialize_failure",
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ]
+        expected_servers = [
+            "primary",
+            "primary",
+            "backup",
+            "backup",
+            "backup",
+            "backup",
+        ]
+        primary_expected_phases = ["initialize_start", "initialize_failure"]
+        failure_event_index = 1
+    else:
+        factory.set_failure_script("primary", "tools/call", ["error"])
+        expected_phases = [
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ]
+        expected_servers = [
+            "primary",
+            "primary",
+            "primary",
+            "primary",
+            "backup",
+            "backup",
+            "backup",
+            "backup",
+        ]
+        primary_expected_phases = [
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ]
+        failure_event_index = 3
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert invoke.status_code == 200
+    assert invoke.json()["server"] == "backup"
+    request_id = invoke.json()["request_id"]
+
+    invocation_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id},
+    )
+    assert invocation_events.status_code == 200
+    items = invocation_events.json()["items"]
+    assert [item["phase"] for item in items] == expected_phases
+    assert [item["server"] for item in items] == expected_servers
+    assert items[failure_event_index]["error_category"] == "transport_error"
+
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id,
+        server="primary",
+        method="tools/call",
+        expected_phases=primary_expected_phases,
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})
+    assert correlated.status_code == 200
+    correlated_items = correlated.json()["items"]
+    assert len(correlated_items) == 1
+    assert correlated_items[0]["server"] == "primary"
+    assert correlated_items[0]["to_status"] == ServerStatus.DEGRADED.value
+    assert correlated_items[0]["correlation_id"] == request_id
+
+    primary = client.get("/api/v1/mcp/servers/primary")
+    assert primary.status_code == 200
+    assert primary.json()["status"] == ServerStatus.DEGRADED.value
+    assert primary.json()["last_error_category"] == "transport_error"
+    assert primary.json()["retry_count"] == 1
+
+
 @pytest.mark.parametrize("timeout_stage", ["initialize", "invoke"])
 def test_mcp_retry_window_convergence_stage_specific_timeouts(
     timeout_stage: str,

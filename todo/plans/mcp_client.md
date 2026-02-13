@@ -165,3 +165,8 @@ P11
   - integration coverage validates script-precedence semantics (scripted `ok` overriding set timeout) plus scripted initialize-timeout failover determinism.
 - Expanded convergence-helper adoption:
   - migrated remaining diagnostics-filter integration assertions in `tests/integration/test_api_mcp.py` to `tests/support/mcp_convergence_helpers.py` to reduce repeated route/filter boilerplate.
+- Added focused scripted-helper unit coverage:
+  - unit tests now validate `set_failure_script`/`consume_failure_action` ordering, unsupported-action validation, script exhaustion behavior, and fallback to set-based toggles.
+  - explicit method-key coverage added for `initialize`, `tools/call`, and `resources/read`.
+- Added scripted `error` action convergence coverage:
+  - integration matrix now validates `transport_error` classification and deterministic failover/correlation behavior for scripted `error` at initialize-stage and invoke-stage paths.

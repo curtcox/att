@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (initialize-script precedence + diagnostics-helper migration + plan doc updates)
+- Working tree at handoff creation: dirty (scripted-helper unit coverage + scripted-error convergence + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`175 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`181 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -65,14 +65,20 @@
 - Expanded convergence-helper adoption in diagnostics tests:
   - migrated remaining diagnostics-filter assertions in `tests/integration/test_api_mcp.py` to `tests/support/mcp_convergence_helpers.py`.
   - preserved existing filter semantics (`server`, `method`, `request_id`, `correlation_id`, `limit`) while reducing repeated test-local assertion boilerplate.
+- Added focused unit coverage for scripted helper semantics:
+  - added unit tests for `ClusterNatSessionFactory.set_failure_script/consume_failure_action` covering ordering, unsupported actions, script exhaustion, and fallback to set-based toggles.
+  - explicit method-key checks cover `initialize`, `tools/call`, and `resources/read`.
+- Added scripted `error` action convergence coverage:
+  - integration coverage now exercises scripted `error` at initialize-stage and invoke-stage paths, asserting stable `transport_error` classification and deterministic failover/correlation behavior.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` with scripted-failure hardening and helper reliability:
-1. Add focused unit coverage for scripted helper semantics:
-   - add tests for `ClusterNatSessionFactory.set_failure_script/consume_failure_action` covering unsupported actions, script exhaustion, and fallback to set-based toggles after scripts are consumed.
-   - include explicit checks for `tools/call`, `resources/read`, and `initialize` method keys.
-2. Add scripted `error` action convergence coverage:
-   - add an integration scenario using scripted `error` (non-timeout transport failure) for `initialize` and `invoke` paths to assert stable `transport_error` classification and deterministic failover/correlation behavior.
+Continue `P12/P13` with cross-method scripted-error parity:
+1. Extend scripted `error` convergence to `resources/read`:
+   - add paired initialize/invoke scripted-error scenarios for `/api/v1/mcp/invoke/resource` with deterministic failover order and `transport_error` classification.
+   - assert matching invocation/connection filter behavior (`server`, `method`, `request_id`, `correlation_id`, `limit`) for correlated requests.
+2. Add helper-level script isolation checks:
+   - add unit tests proving per-server/per-method scripts are isolated (consuming one server/method script does not affect others).
+   - include regression checks for mixed scripts on `primary` vs `backup` under shared factory state.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
@@ -103,7 +109,6 @@ Suggested implementation direction:
 - `tests/integration/test_api_mcp.py`
 - `tests/support/mcp_convergence_helpers.py`
 - `tests/support/mcp_nat_helpers.py`
-- `tests/unit/test_mcp_client.py`
 - `src/att/api/deps.py`
 
 ## Remaining Program-Level Milestones

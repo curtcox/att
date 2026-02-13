@@ -17,7 +17,11 @@ from att.mcp.client import (
     ServerStatus,
 )
 from tests.support.mcp_helpers import MCPTestClock
-from tests.support.mcp_nat_helpers import FakeNatSession, FakeNatSessionFactory
+from tests.support.mcp_nat_helpers import (
+    ClusterNatSessionFactory,
+    FakeNatSession,
+    FakeNatSessionFactory,
+)
 
 
 @pytest.mark.asyncio
@@ -1140,6 +1144,103 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
         ("tool", "att.project.list"),
     ]
     assert "degraded" not in sessions
+
+
+def test_cluster_nat_failure_script_order_and_validation() -> None:
+    factory = ClusterNatSessionFactory()
+
+    factory.set_failure_script("primary", "initialize", ["ok", "timeout", "error"])
+    assert factory.consume_failure_action("primary", "initialize") == "ok"
+    assert factory.consume_failure_action("primary", "initialize") == "timeout"
+    assert factory.consume_failure_action("primary", "initialize") == "error"
+    assert factory.consume_failure_action("primary", "initialize") is None
+
+    factory.set_failure_script("primary", "tools/call", ["ok"])
+    assert factory.consume_failure_action("primary", "tools/call") == "ok"
+    assert factory.consume_failure_action("primary", "tools/call") is None
+
+    factory.set_failure_script("primary", "resources/read", ["ok"])
+    assert factory.consume_failure_action("primary", "resources/read") == "ok"
+    assert factory.consume_failure_action("primary", "resources/read") is None
+
+    factory.set_failure_script("primary", "initialize", ["invalid"])
+    with pytest.raises(ValueError, match="unsupported scripted action"):
+        factory.consume_failure_action("primary", "initialize")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method_key", "expected_method"),
+    [
+        ("initialize", "tools/call"),
+        ("tools/call", "tools/call"),
+        ("resources/read", "resources/read"),
+    ],
+)
+async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
+    method_key: str,
+    expected_method: str,
+) -> None:
+    clock = MCPTestClock()
+    factory = ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    if method_key == "initialize":
+        factory.fail_on_timeout_initialize.add("primary")
+        factory.set_failure_script("primary", "initialize", ["ok"])
+    elif method_key == "tools/call":
+        factory.fail_on_timeout_tool_calls.add("primary")
+        factory.set_failure_script("primary", "tools/call", ["ok"])
+    else:
+        factory.fail_on_timeout_resource_reads.add("primary")
+        factory.set_failure_script("primary", "resources/read", ["ok"])
+
+    if method_key == "resources/read":
+        first = await manager.read_resource("att://projects", preferred=["primary", "backup"])
+    else:
+        first = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+    assert first.server == "primary"
+
+    if method_key == "initialize":
+        invalidated = await manager.invalidate_adapter_session("primary")
+        assert invalidated is True
+
+    if method_key == "resources/read":
+        second = await manager.read_resource("att://projects", preferred=["primary", "backup"])
+    else:
+        second = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+    assert second.server == "backup"
+    assert second.method == expected_method
+
+    primary_events = manager.list_invocation_events(
+        server="primary",
+        method=expected_method,
+        request_id=second.request_id,
+    )
+    if method_key == "initialize":
+        assert [event.phase for event in primary_events] == [
+            "initialize_start",
+            "initialize_failure",
+        ]
+        assert primary_events[1].error_category == "network_timeout"
+    else:
+        assert [event.phase for event in primary_events] == [
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ]
+        assert primary_events[3].error_category == "network_timeout"
+
+    primary = manager.get("primary")
+    assert primary is not None
+    assert primary.status is ServerStatus.DEGRADED
+    assert primary.last_error_category == "network_timeout"
 
 
 @pytest.mark.asyncio
