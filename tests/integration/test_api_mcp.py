@@ -123,6 +123,9 @@ class _ModelPayload:
 
 
 class _APIFakeNatSession:
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+
     async def initialize(self) -> _ModelPayload:
         return _ModelPayload(
             {
@@ -153,6 +156,7 @@ class _APIFakeNatSession:
             {
                 "content": [{"type": "text", "text": "ok"}],
                 "structuredContent": {
+                    "session_id": self.session_id,
                     "tool": name,
                     "arguments": arguments or {},
                 },
@@ -177,7 +181,7 @@ class _APIFakeNatSessionFactory:
     async def __call__(self, _: str) -> Any:
         self.created += 1
         try:
-            yield _APIFakeNatSession()
+            yield _APIFakeNatSession(session_id=f"session-{self.created}")
         finally:
             self.closed += 1
 
@@ -741,13 +745,19 @@ def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
         json={"name": "nat", "url": "http://nat.local"},
     )
 
+    listing = client.get("/api/v1/mcp/servers")
+    assert listing.status_code == 200
+    assert listing.json()["adapter_controls_available"] is True
+    assert listing.json()["items"][0]["adapter_controls_available"] is True
+
     before = client.get("/api/v1/mcp/servers/nat")
     assert before.status_code == 200
+    assert before.json()["adapter_controls_available"] is True
     assert before.json()["adapter_session"]["active"] is False
     assert before.json()["adapter_session"]["initialized"] is False
     assert before.json()["adapter_session"]["last_activity_at"] is None
 
-    invoke = client.post(
+    invoke_before_refresh = client.post(
         "/api/v1/mcp/invoke/tool",
         json={
             "tool_name": "att.project.list",
@@ -755,7 +765,10 @@ def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
             "preferred_servers": ["nat"],
         },
     )
-    assert invoke.status_code == 200
+    assert invoke_before_refresh.status_code == 200
+    session_id_before_refresh = invoke_before_refresh.json()["result"]["structuredContent"][
+        "session_id"
+    ]
 
     after_invoke = client.get("/api/v1/mcp/servers/nat")
     assert after_invoke.status_code == 200
@@ -774,6 +787,21 @@ def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
     assert refreshed.json()["initialized"] is True
     assert refreshed.json()["adapter_session"]["active"] is True
     assert refreshed.json()["adapter_session"]["initialized"] is True
+
+    invoke_after_refresh = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["nat"],
+        },
+    )
+    assert invoke_after_refresh.status_code == 200
+    session_id_after_refresh = invoke_after_refresh.json()["result"]["structuredContent"][
+        "session_id"
+    ]
+    assert session_id_after_refresh != session_id_before_refresh
+
     assert factory.created >= 2
     assert factory.closed >= 1
 
@@ -786,6 +814,11 @@ def test_mcp_adapter_session_lifecycle_conflict_without_nat_controls() -> None:
         "/api/v1/mcp/servers",
         json={"name": "nat", "url": "http://nat.local"},
     )
+
+    listing = client.get("/api/v1/mcp/servers")
+    assert listing.status_code == 200
+    assert listing.json()["adapter_controls_available"] is False
+    assert listing.json()["items"][0]["adapter_controls_available"] is False
 
     invalidate = client.post("/api/v1/mcp/servers/nat/adapter/invalidate")
     assert invalidate.status_code == 409

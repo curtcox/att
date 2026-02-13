@@ -49,6 +49,7 @@ class MCPServerResponse(BaseModel):
     protocol_version: str | None
     last_initialized_at: datetime | None
     initialization_expires_at: datetime | None
+    adapter_controls_available: bool
     capability_snapshot: MCPCapabilitySnapshotResponse | None = None
     adapter_session: MCPAdapterSessionResponse | None = None
 
@@ -57,6 +58,7 @@ class MCPServersResponse(BaseModel):
     """Collection of MCP servers."""
 
     items: list[MCPServerResponse]
+    adapter_controls_available: bool
 
 
 class MCPConnectionEventResponse(BaseModel):

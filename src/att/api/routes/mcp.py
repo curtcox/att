@@ -39,6 +39,7 @@ router = APIRouter(prefix="/api/v1/mcp", tags=["mcp"])
 
 def _as_response(server: ExternalServer, manager: MCPClientManager) -> MCPServerResponse:
     adapter_session = manager.adapter_session_diagnostics(server.name)
+    adapter_controls_available = manager.supports_adapter_session_controls()
     return MCPServerResponse(
         name=server.name,
         url=server.url,
@@ -52,6 +53,7 @@ def _as_response(server: ExternalServer, manager: MCPClientManager) -> MCPServer
         protocol_version=server.protocol_version,
         last_initialized_at=server.last_initialized_at,
         initialization_expires_at=server.initialization_expires_at,
+        adapter_controls_available=adapter_controls_available,
         capability_snapshot=(
             MCPCapabilitySnapshotResponse(
                 protocol_version=server.capability_snapshot.protocol_version,
@@ -111,7 +113,8 @@ async def list_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server, manager) for server in manager.list_servers()]
+        items=[_as_response(server, manager) for server in manager.list_servers()],
+        adapter_controls_available=manager.supports_adapter_session_controls(),
     )
 
 
@@ -161,7 +164,8 @@ async def check_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server, manager) for server in await manager.health_check_all()]
+        items=[_as_response(server, manager) for server in await manager.health_check_all()],
+        adapter_controls_available=manager.supports_adapter_session_controls(),
     )
 
 
@@ -181,7 +185,8 @@ async def initialize_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server, manager) for server in await manager.initialize_all()]
+        items=[_as_response(server, manager) for server in await manager.initialize_all()],
+        adapter_controls_available=manager.supports_adapter_session_controls(),
     )
 
 
@@ -201,7 +206,8 @@ async def connect_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server, manager) for server in await manager.connect_all()]
+        items=[_as_response(server, manager) for server in await manager.connect_all()],
+        adapter_controls_available=manager.supports_adapter_session_controls(),
     )
 
 

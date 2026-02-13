@@ -87,3 +87,7 @@ P11
     - `POST /api/v1/mcp/servers/{name}/adapter/invalidate`
     - `POST /api/v1/mcp/servers/{name}/adapter/refresh`
   - endpoints return `409` when lifecycle controls are unavailable (non-NAT adapter path), with integration coverage.
+- Added explicit recovery-semantics and capability-visibility coverage:
+  - refresh now validated to recreate underlying adapter session identity (new session instance) rather than reusing stale state.
+  - transport-triggered invalidation (e.g., timeout/disconnect category) now validated to recreate session on next invocation.
+  - MCP server/list payloads now expose `adapter_controls_available` so clients can gate lifecycle operations without probing for `409`.

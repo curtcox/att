@@ -706,7 +706,8 @@ class _ModelPayload:
 
 
 class _FakeNatSession:
-    def __init__(self) -> None:
+    def __init__(self, *, session_id: str = "session-0") -> None:
+        self.session_id = session_id
         self.initialized = False
         self.calls: list[tuple[str, str]] = []
         self.fail_with: Exception | None = None
@@ -746,7 +747,10 @@ class _FakeNatSession:
         return _ModelPayload(
             {
                 "content": [{"type": "text", "text": "ok"}],
-                "structuredContent": {"arguments": arguments or {}},
+                "structuredContent": {
+                    "arguments": arguments or {},
+                    "session_id": self.session_id,
+                },
                 "isError": False,
             }
         )
@@ -768,7 +772,7 @@ class _FakeNatSessionFactory:
 
     @asynccontextmanager
     async def __call__(self, _: str) -> Any:
-        session = _FakeNatSession()
+        session = _FakeNatSession(session_id=f"session-{self.created + 1}")
         self.created += 1
         self.sessions.append(session)
         try:
@@ -927,6 +931,65 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
     assert manager.supports_adapter_session_controls() is False
     assert manager.adapter_session_diagnostics("nat") is None
     assert await manager.invalidate_adapter_session("nat") is False
+
+
+@pytest.mark.asyncio
+async def test_refresh_adapter_session_recreates_underlying_session_identity() -> None:
+    factory = _FakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    manager.register("nat", "http://nat.local")
+
+    first = await manager.invoke_tool("att.project.list", preferred=["nat"])
+    assert isinstance(first.result, dict)
+    first_session_id = first.result["structuredContent"]["session_id"]
+    assert first_session_id == "session-1"
+
+    refreshed = await manager.refresh_adapter_session("nat")
+    assert refreshed is not None
+    assert factory.created == 2
+    assert factory.closed == 1
+    assert factory.sessions[0] is not factory.sessions[1]
+
+    second = await manager.invoke_tool("att.project.list", preferred=["nat"])
+    assert isinstance(second.result, dict)
+    second_session_id = second.result["structuredContent"]["session_id"]
+    assert second_session_id == "session-2"
+    assert second_session_id != first_session_id
+
+
+@pytest.mark.asyncio
+async def test_transport_disconnect_invalidation_recreates_session_on_next_invoke() -> None:
+    factory = _FakeNatSessionFactory()
+
+    @asynccontextmanager
+    async def session_context(endpoint: str) -> Any:
+        async with factory(endpoint) as session:
+            if session.session_id == "session-1":
+                session.fail_with = httpx.ReadTimeout("timed out")
+            yield session
+
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=session_context),
+        max_backoff_seconds=0,
+    )
+    manager.register("nat", "http://nat.local")
+
+    with pytest.raises(MCPInvocationError):
+        await manager.invoke_tool("att.project.list", preferred=["nat"])
+
+    first_diag = manager.adapter_session_diagnostics("nat")
+    assert first_diag is not None
+    assert first_diag.active is False
+    assert factory.created == 1
+    assert factory.closed == 1
+
+    retry = await manager.invoke_tool("att.project.list", preferred=["nat"])
+    assert retry.server == "nat"
+    assert isinstance(retry.result, dict)
+    assert retry.result["structuredContent"]["session_id"] == "session-2"
+    assert factory.created == 2
 
 
 @pytest.mark.asyncio
