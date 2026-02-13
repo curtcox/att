@@ -981,7 +981,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     adapter = NATMCPTransportAdapter(session_factory=session_context)
     server = ExternalServer(name="nat", url="http://nat.local")
 
-    before = adapter.session_diagnostics("nat")
+    before = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert before.active is False
     assert before.initialized is False
     assert before.last_activity_at is None
@@ -996,15 +996,15 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
         },
     )
 
-    after = adapter.session_diagnostics("nat")
+    after = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert after.active is True
     assert after.initialized is True
     assert after.last_activity_at is not None
 
-    invalidated = await adapter.invalidate_session("nat")
+    invalidated = await adapter.invalidate_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
 
-    final = adapter.session_diagnostics("nat")
+    final = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert final.active is False
     assert final.initialized is False
     assert final.last_activity_at is None
@@ -1133,7 +1133,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert stale is not None
     assert stale.freshness == UNIT_TEST_FRESHNESS_STALE
 
-    listing = manager.list_adapter_sessions(server_name="nat")
+    listing = manager.list_adapter_sessions(server_name=UNIT_TEST_NAT_SERVER)
     assert len(listing) == 1
     assert listing[0].freshness == UNIT_TEST_FRESHNESS_STALE
 
