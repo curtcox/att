@@ -760,6 +760,23 @@ class _FakeNatSession:
         )
 
 
+class _FakeNatSessionFactory:
+    def __init__(self) -> None:
+        self.created = 0
+        self.closed = 0
+        self.sessions: list[_FakeNatSession] = []
+
+    @asynccontextmanager
+    async def __call__(self, _: str) -> Any:
+        session = _FakeNatSession()
+        self.created += 1
+        self.sessions.append(session)
+        try:
+            yield session
+        finally:
+            self.closed += 1
+
+
 @pytest.mark.asyncio
 async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
     session = _FakeNatSession()
@@ -823,6 +840,93 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         ("tool", "att.project.list"),
         ("resource", "att://projects"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> None:
+    session = _FakeNatSession()
+
+    @asynccontextmanager
+    async def session_context(_: str) -> Any:
+        yield session
+
+    adapter = NATMCPTransportAdapter(session_factory=session_context)
+    server = ExternalServer(name="nat", url="http://nat.local")
+
+    before = adapter.session_diagnostics("nat")
+    assert before.active is False
+    assert before.initialized is False
+    assert before.last_activity_at is None
+
+    await adapter(
+        server,
+        {
+            "jsonrpc": "2.0",
+            "id": "tool-1",
+            "method": "tools/call",
+            "params": {"name": "att.project.list", "arguments": {}},
+        },
+    )
+
+    after = adapter.session_diagnostics("nat")
+    assert after.active is True
+    assert after.initialized is True
+    assert after.last_activity_at is not None
+
+    invalidated = await adapter.invalidate_session("nat")
+    assert invalidated is True
+
+    final = adapter.session_diagnostics("nat")
+    assert final.active is False
+    assert final.initialized is False
+    assert final.last_activity_at is None
+
+
+@pytest.mark.asyncio
+async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None:
+    factory = _FakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    manager.register("nat", "http://nat.local")
+
+    assert manager.supports_adapter_session_controls() is True
+    diagnostics = manager.adapter_session_diagnostics("nat")
+    assert diagnostics is not None
+    assert diagnostics.active is False
+
+    initialized = await manager.initialize_server("nat")
+    assert initialized is not None
+    assert initialized.initialized is True
+    assert factory.created == 1
+
+    after_initialize = manager.adapter_session_diagnostics("nat")
+    assert after_initialize is not None
+    assert after_initialize.active is True
+    assert after_initialize.initialized is True
+    assert after_initialize.last_activity_at is not None
+
+    invalidated = await manager.invalidate_adapter_session("nat")
+    assert invalidated is True
+    assert factory.closed == 1
+    server = manager.get("nat")
+    assert server is not None
+    assert server.initialized is False
+
+    refreshed = await manager.refresh_adapter_session("nat")
+    assert refreshed is not None
+    assert refreshed.initialized is True
+    assert factory.created == 2
+
+
+@pytest.mark.asyncio
+async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> None:
+    manager = MCPClientManager(transport_adapter=_FakeNatSession())  # type: ignore[arg-type]
+    manager.register("nat", "http://nat.local")
+
+    assert manager.supports_adapter_session_controls() is False
+    assert manager.adapter_session_diagnostics("nat") is None
+    assert await manager.invalidate_adapter_session("nat") is False
 
 
 @pytest.mark.asyncio

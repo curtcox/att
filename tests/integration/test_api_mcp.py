@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -11,6 +13,7 @@ from att.mcp.client import (
     JSONObject,
     MCPClientManager,
     MCPTransportError,
+    NATMCPTransportAdapter,
     ServerStatus,
 )
 
@@ -108,6 +111,75 @@ class ShouldNotBeCalledTransport:
         del server, request
         msg = "legacy transport path should not be used when adapter is configured"
         raise AssertionError(msg)
+
+
+class _ModelPayload:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self._payload = payload
+
+    def model_dump(self, *, mode: str = "python", exclude_none: bool = False) -> dict[str, Any]:
+        del mode, exclude_none
+        return self._payload
+
+
+class _APIFakeNatSession:
+    async def initialize(self) -> _ModelPayload:
+        return _ModelPayload(
+            {
+                "protocolVersion": "2025-11-25",
+                "serverInfo": {"name": "nat"},
+                "capabilities": {"tools": {}, "resources": {}},
+            }
+        )
+
+    async def send_notification(
+        self,
+        notification: object,
+        related_request_id: str | int | None = None,
+    ) -> None:
+        del notification, related_request_id
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        read_timeout_seconds: timedelta | None = None,
+        progress_callback: object | None = None,
+        *,
+        meta: dict[str, Any] | None = None,
+    ) -> _ModelPayload:
+        del read_timeout_seconds, progress_callback, meta
+        return _ModelPayload(
+            {
+                "content": [{"type": "text", "text": "ok"}],
+                "structuredContent": {
+                    "tool": name,
+                    "arguments": arguments or {},
+                },
+                "isError": False,
+            }
+        )
+
+    async def read_resource(self, uri: object) -> _ModelPayload:
+        return _ModelPayload(
+            {
+                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
+            }
+        )
+
+
+class _APIFakeNatSessionFactory:
+    def __init__(self) -> None:
+        self.created = 0
+        self.closed = 0
+
+    @asynccontextmanager
+    async def __call__(self, _: str) -> Any:
+        self.created += 1
+        try:
+            yield _APIFakeNatSession()
+        finally:
+            self.closed += 1
 
 
 def _client_with_manager(manager: MCPClientManager) -> TestClient:
@@ -655,3 +727,70 @@ def test_mcp_invoke_uses_adapter_transport_when_configured() -> None:
     assert invoke.json()["server"] == "github"
     assert adapter.calls[0] == ("codex", "initialize")
     assert adapter.calls[-1] == ("github", "tools/call")
+
+
+def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
+    factory = _APIFakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "nat", "url": "http://nat.local"},
+    )
+
+    before = client.get("/api/v1/mcp/servers/nat")
+    assert before.status_code == 200
+    assert before.json()["adapter_session"]["active"] is False
+    assert before.json()["adapter_session"]["initialized"] is False
+    assert before.json()["adapter_session"]["last_activity_at"] is None
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["nat"],
+        },
+    )
+    assert invoke.status_code == 200
+
+    after_invoke = client.get("/api/v1/mcp/servers/nat")
+    assert after_invoke.status_code == 200
+    assert after_invoke.json()["adapter_session"]["active"] is True
+    assert after_invoke.json()["adapter_session"]["initialized"] is True
+    assert after_invoke.json()["adapter_session"]["last_activity_at"] is not None
+
+    invalidated = client.post("/api/v1/mcp/servers/nat/adapter/invalidate")
+    assert invalidated.status_code == 200
+    assert invalidated.json()["initialized"] is False
+    assert invalidated.json()["adapter_session"]["active"] is False
+    assert invalidated.json()["adapter_session"]["initialized"] is False
+
+    refreshed = client.post("/api/v1/mcp/servers/nat/adapter/refresh")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["initialized"] is True
+    assert refreshed.json()["adapter_session"]["active"] is True
+    assert refreshed.json()["adapter_session"]["initialized"] is True
+    assert factory.created >= 2
+    assert factory.closed >= 1
+
+
+def test_mcp_adapter_session_lifecycle_conflict_without_nat_controls() -> None:
+    manager = MCPClientManager(transport_adapter=FallbackTransport())
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "nat", "url": "http://nat.local"},
+    )
+
+    invalidate = client.post("/api/v1/mcp/servers/nat/adapter/invalidate")
+    assert invalidate.status_code == 409
+    assert "not available" in invalidate.json()["detail"]
+
+    refresh = client.post("/api/v1/mcp/servers/nat/adapter/refresh")
+    assert refresh.status_code == 409
+    assert "not available" in refresh.json()["detail"]

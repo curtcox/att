@@ -80,3 +80,10 @@ P11
   - `MCPClientManager` now supports adapter-first transport resolution (`transport_adapter` then legacy/custom transport then default HTTP transport).
   - added `create_nat_mcp_transport_adapter()` for optional SDK-backed adapter construction in API deps without breaking local/test fallback behavior.
   - expanded unit/integration tests for adapter happy path, timeout/http-status/malformed category parity, and mixed-state failover sequencing when adapter calls fail.
+- Added adapter lifecycle controls + diagnostics surfaces:
+  - manager-level controls for adapter-backed sessions (`supports_adapter_session_controls`, `adapter_session_diagnostics`, `invalidate_adapter_session`, `refresh_adapter_session`).
+  - adapter-level diagnostics include non-sensitive `active`, `initialized`, and `last_activity_at`.
+  - API server payloads now include `adapter_session` metadata and expose explicit lifecycle endpoints:
+    - `POST /api/v1/mcp/servers/{name}/adapter/invalidate`
+    - `POST /api/v1/mcp/servers/{name}/adapter/refresh`
+  - endpoints return `409` when lifecycle controls are unavailable (non-NAT adapter path), with integration coverage.

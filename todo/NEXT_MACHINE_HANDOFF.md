@@ -5,40 +5,47 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (NAT MCP transport adapter slice + plan doc updates)
+- Working tree at handoff creation: dirty (adapter lifecycle controls + session diagnostics slice + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`149 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`154 passed`)
 
 ## Recent Delivered Work
-- Added production-facing NAT/MCP transport adapter path:
-  - introduced `NATMCPTransportAdapter` in `src/att/mcp/client.py`.
-  - adapter uses MCP SDK streamable HTTP sessions per server with session reuse across requests.
-  - supports `initialize`, `notifications/initialized`, `tools/call`, and `resources/read`.
-- Preserved transport fallback behavior:
-  - `MCPClientManager` now supports `transport_adapter` and resolves transport with adapter-first priority:
-    `transport_adapter` -> legacy injected `transport` -> existing HTTP JSON-RPC default transport.
-  - added `create_nat_mcp_transport_adapter()` helper for safe optional adapter construction.
-  - API dependency wiring now uses this helper (`src/att/api/deps.py`) so local/test flows still work if SDK path is unavailable.
-- Added adapter error-category parity and fallback coverage:
-  - timeout/http-status/malformed payload mapping parity in unit tests.
-  - mixed healthy/degraded fallback sequencing with adapter failures in unit tests.
-  - API integration assertion that adapter path is used when both adapter and legacy transport are configured.
+- Added explicit adapter lifecycle controls in manager:
+  - `supports_adapter_session_controls()`
+  - `adapter_session_diagnostics(name)`
+  - `invalidate_adapter_session(name)`
+  - `refresh_adapter_session(name)`
+  - implemented non-sensitive diagnostics via `AdapterSessionDiagnostics` (`active`, `initialized`, `last_activity_at`).
+- Added NAT adapter session observability:
+  - `NATMCPTransportAdapter` now tracks per-server `last_activity_at`.
+  - public adapter operations now include `session_diagnostics()` and `invalidate_session()`.
+- Exposed adapter diagnostics and lifecycle APIs:
+  - server payloads now include optional `adapter_session` object.
+  - new endpoints:
+    - `POST /api/v1/mcp/servers/{name}/adapter/invalidate`
+    - `POST /api/v1/mcp/servers/{name}/adapter/refresh`
+  - routes return `409` when adapter lifecycle controls are unavailable.
+- Added/expanded coverage:
+  - unit tests for adapter diagnostics/invalidate and manager invalidate/refresh controls.
+  - integration tests for adapter lifecycle endpoints and diagnostics payload behavior.
+  - integration test for conflict behavior when non-NAT adapter controls are not available.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Add explicit adapter lifecycle controls and observability:
-   - manager/admin control to invalidate/refresh cached adapter sessions per server.
-   - diagnostic metadata for active adapter sessions (initialized flag + last activity timestamp) without exposing sensitive transport internals.
-2. Extend integration coverage against a real external MCP endpoint (or deterministic local fixture) to validate session reuse and recovery after forced invalidation.
+1. Add deterministic external-transport realism coverage around session recovery semantics:
+   - explicit assertion that forced adapter refresh yields a new underlying session identity (not just reinitialize on old state).
+   - verify recovery behavior after transport-level disconnect/error invalidates cached session and next invocation recreates state.
+2. Add optional operator visibility for adapter capabilities at server list level:
+   - include whether adapter controls are supported globally and/or per-server to avoid trial-and-error 409s in clients.
 
 Suggested implementation direction:
-- Keep NAT adapter internals encapsulated in `src/att/mcp/client.py`; expose only manager-level methods needed by routes/tests.
-- Add lifecycle hooks first in unit tests (server refresh/invalidate), then wire focused API endpoint(s) if needed.
-- Maintain deterministic failover ordering and existing correlation/filter semantics.
+- Keep adapter internals encapsulated in `src/att/mcp/client.py`; prefer tests that use deterministic fake session factories with identity tracking.
+- Start with unit tests for recreated-session identity and auto-recovery after invalidation-on-error, then add one integration endpoint assertion.
+- Maintain existing event/correlation semantics and transport category mapping parity.
 
 ## Resume Checklist
 1. Sync and verify environment:
@@ -59,6 +66,7 @@ Suggested implementation direction:
 ## Key Files for Next Slice
 - `src/att/mcp/client.py`
 - `src/att/api/routes/mcp.py`
+- `src/att/api/schemas/mcp.py`
 - `tests/unit/test_mcp_client.py`
 - `tests/integration/test_api_mcp.py`
 - `src/att/api/deps.py`

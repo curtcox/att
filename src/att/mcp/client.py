@@ -124,6 +124,15 @@ class MCPInvocationEvent:
     error_category: ErrorCategory | None = None
 
 
+@dataclass(slots=True)
+class AdapterSessionDiagnostics:
+    """Non-sensitive diagnostics for one adapter-backed server session."""
+
+    active: bool
+    initialized: bool
+    last_activity_at: datetime | None
+
+
 class MCPInvocationError(RuntimeError):
     """Raised when invocation fails across all available servers."""
 
@@ -203,6 +212,7 @@ class _NATSessionState:
     exit_stack: AsyncExitStack
     session: NATMCPSession
     initialized: bool = False
+    last_activity_at: datetime | None = None
 
 
 class NATMCPTransportAdapter:
@@ -232,10 +242,11 @@ class NATMCPTransportAdapter:
 
         try:
             state = await self._session_state(server)
+            state.last_activity_at = datetime.now(UTC)
             return await self._dispatch(state, request, method, request_id)
         except MCPTransportError as exc:
             if exc.category in {"network_timeout", "http_status", "transport_error"}:
-                await self._invalidate(server.name)
+                await self.invalidate_session(server.name)
             raise
         except Exception as exc:  # noqa: BLE001
             if self._is_mcp_rpc_error(exc):
@@ -246,7 +257,7 @@ class NATMCPTransportAdapter:
                 )
             mapped = self._map_exception(exc)
             if mapped.category in {"network_timeout", "http_status", "transport_error"}:
-                await self._invalidate(server.name)
+                await self.invalidate_session(server.name)
             raise mapped from exc
 
     async def _dispatch(
@@ -347,14 +358,37 @@ class NATMCPTransportAdapter:
         exit_stack = AsyncExitStack()
         session_context = self._session_factory(endpoint)
         session = await exit_stack.enter_async_context(session_context)
-        created = _NATSessionState(exit_stack=exit_stack, session=session, initialized=False)
+        created = _NATSessionState(
+            exit_stack=exit_stack,
+            session=session,
+            initialized=False,
+            last_activity_at=datetime.now(UTC),
+        )
         self._sessions[server.name] = created
         return created
 
-    async def _invalidate(self, server_name: str) -> None:
+    async def invalidate_session(self, server_name: str) -> bool:
+        """Invalidate one cached server session."""
         state = self._sessions.pop(server_name, None)
         if state is not None:
             await state.exit_stack.aclose()
+            return True
+        return False
+
+    def session_diagnostics(self, server_name: str) -> AdapterSessionDiagnostics:
+        """Return non-sensitive diagnostics for one server session."""
+        state = self._sessions.get(server_name)
+        if state is None:
+            return AdapterSessionDiagnostics(
+                active=False,
+                initialized=False,
+                last_activity_at=None,
+            )
+        return AdapterSessionDiagnostics(
+            active=True,
+            initialized=state.initialized,
+            last_activity_at=state.last_activity_at,
+        )
 
     def _default_session_factory(
         self,
@@ -783,6 +817,37 @@ class MCPClientManager:
         """Manual healthy marker for one server."""
         self.record_check_result(name, healthy=True)
 
+    def supports_adapter_session_controls(self) -> bool:
+        """Whether adapter-specific invalidate/refresh controls are available."""
+        return self._adapter_with_session_controls() is not None
+
+    def adapter_session_diagnostics(self, name: str) -> AdapterSessionDiagnostics | None:
+        """Return adapter session diagnostics for one server when supported."""
+        adapter = self._adapter_with_session_controls()
+        if adapter is None:
+            return None
+        return adapter.session_diagnostics(name)
+
+    async def invalidate_adapter_session(self, name: str) -> bool:
+        """Invalidate adapter session for one server when supported."""
+        adapter = self._adapter_with_session_controls()
+        if adapter is None:
+            return False
+        invalidated = await adapter.invalidate_session(name)
+        server = self._servers.get(name)
+        if server is not None:
+            server.initialized = False
+            server.initialization_expires_at = None
+        return invalidated
+
+    async def refresh_adapter_session(self, name: str) -> ExternalServer | None:
+        """Force refresh adapter session and reinitialize server."""
+        server = self._servers.get(name)
+        if server is None:
+            return None
+        await self.invalidate_adapter_session(name)
+        return await self.initialize_server(name, force=True)
+
     async def _invoke(
         self,
         method: str,
@@ -1080,6 +1145,12 @@ class MCPClientManager:
 
     def _resolve_transport(self) -> MCPTransport:
         return self._transport_adapter or self._transport or self._default_transport
+
+    def _adapter_with_session_controls(self) -> NATMCPTransportAdapter | None:
+        adapter = self._transport_adapter
+        if isinstance(adapter, NATMCPTransportAdapter):
+            return adapter
+        return None
 
     @staticmethod
     async def _default_probe(server: ExternalServer) -> tuple[bool, str | None]:

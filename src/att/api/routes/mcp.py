@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from att.api.deps import get_mcp_client_manager
 from att.api.schemas.mcp import (
     InvokeToolRequest,
+    MCPAdapterSessionResponse,
     MCPCapabilitySnapshotResponse,
     MCPConnectionEventResponse,
     MCPConnectionEventsResponse,
@@ -36,7 +37,8 @@ from att.mcp.server import registered_resources, registered_tools
 router = APIRouter(prefix="/api/v1/mcp", tags=["mcp"])
 
 
-def _as_response(server: ExternalServer) -> MCPServerResponse:
+def _as_response(server: ExternalServer, manager: MCPClientManager) -> MCPServerResponse:
+    adapter_session = manager.adapter_session_diagnostics(server.name)
     return MCPServerResponse(
         name=server.name,
         url=server.url,
@@ -58,6 +60,15 @@ def _as_response(server: ExternalServer) -> MCPServerResponse:
                 captured_at=server.capability_snapshot.captured_at,
             )
             if server.capability_snapshot is not None
+            else None
+        ),
+        adapter_session=(
+            MCPAdapterSessionResponse(
+                active=adapter_session.active,
+                initialized=adapter_session.initialized,
+                last_activity_at=adapter_session.last_activity_at,
+            )
+            if adapter_session is not None
             else None
         ),
     )
@@ -99,7 +110,9 @@ async def mcp_resources() -> list[MCPResourceResponse]:
 async def list_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
-    return MCPServersResponse(items=[_as_response(server) for server in manager.list_servers()])
+    return MCPServersResponse(
+        items=[_as_response(server, manager) for server in manager.list_servers()]
+    )
 
 
 @router.get("/servers/{name}", response_model=MCPServerResponse)
@@ -110,7 +123,7 @@ async def get_mcp_server(
     server = manager.get(name)
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
-    return _as_response(server)
+    return _as_response(server, manager)
 
 
 @router.post("/servers", response_model=MCPServerResponse, status_code=status.HTTP_201_CREATED)
@@ -119,7 +132,7 @@ async def register_mcp_server(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServerResponse:
     server = manager.register(request.name, str(request.url))
-    return _as_response(server)
+    return _as_response(server, manager)
 
 
 @router.delete("/servers/{name}", status_code=status.HTTP_204_NO_CONTENT)
@@ -140,7 +153,7 @@ async def check_mcp_server(
     server = await manager.health_check_server(name)
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
-    return _as_response(server)
+    return _as_response(server, manager)
 
 
 @router.post("/servers/health-check", response_model=MCPServersResponse)
@@ -148,7 +161,7 @@ async def check_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server) for server in await manager.health_check_all()]
+        items=[_as_response(server, manager) for server in await manager.health_check_all()]
     )
 
 
@@ -160,7 +173,7 @@ async def initialize_mcp_server(
     server = await manager.initialize_server(name)
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
-    return _as_response(server)
+    return _as_response(server, manager)
 
 
 @router.post("/servers/initialize", response_model=MCPServersResponse)
@@ -168,7 +181,7 @@ async def initialize_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server) for server in await manager.initialize_all()]
+        items=[_as_response(server, manager) for server in await manager.initialize_all()]
     )
 
 
@@ -180,7 +193,7 @@ async def connect_mcp_server(
     server = await manager.connect_server(name)
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
-    return _as_response(server)
+    return _as_response(server, manager)
 
 
 @router.post("/servers/connect", response_model=MCPServersResponse)
@@ -188,8 +201,46 @@ async def connect_mcp_servers(
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPServersResponse:
     return MCPServersResponse(
-        items=[_as_response(server) for server in await manager.connect_all()]
+        items=[_as_response(server, manager) for server in await manager.connect_all()]
     )
+
+
+@router.post("/servers/{name}/adapter/invalidate", response_model=MCPServerResponse)
+async def invalidate_mcp_server_adapter_session(
+    name: str,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServerResponse:
+    server = manager.get(name)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    if not manager.supports_adapter_session_controls():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Adapter session controls are not available",
+        )
+    await manager.invalidate_adapter_session(name)
+    refreshed = manager.get(name)
+    if refreshed is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    return _as_response(refreshed, manager)
+
+
+@router.post("/servers/{name}/adapter/refresh", response_model=MCPServerResponse)
+async def refresh_mcp_server_adapter_session(
+    name: str,
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPServerResponse:
+    if manager.get(name) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    if not manager.supports_adapter_session_controls():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Adapter session controls are not available",
+        )
+    server = await manager.refresh_adapter_session(name)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+    return _as_response(server, manager)
 
 
 @router.get("/events", response_model=MCPConnectionEventsResponse)

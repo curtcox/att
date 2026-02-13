@@ -26,6 +26,14 @@ class MCPCapabilitySnapshotResponse(BaseModel):
     captured_at: datetime
 
 
+class MCPAdapterSessionResponse(BaseModel):
+    """Adapter session diagnostics for one server."""
+
+    active: bool
+    initialized: bool
+    last_activity_at: datetime | None
+
+
 class MCPServerResponse(BaseModel):
     """MCP server status payload."""
 
@@ -42,6 +50,7 @@ class MCPServerResponse(BaseModel):
     last_initialized_at: datetime | None
     initialization_expires_at: datetime | None
     capability_snapshot: MCPCapabilitySnapshotResponse | None = None
+    adapter_session: MCPAdapterSessionResponse | None = None
 
 
 class MCPServersResponse(BaseModel):
