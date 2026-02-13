@@ -949,6 +949,19 @@ def test_mcp_adapter_sessions_endpoint_aggregates_status() -> None:
     assert by_name["a"]["last_activity_at"] is not None
     assert by_name["b"]["active"] is False
 
+    active_only = client.get("/api/v1/mcp/adapter-sessions", params={"active_only": True})
+    assert active_only.status_code == 200
+    assert [item["server"] for item in active_only.json()["items"]] == ["a"]
+
+    server_b = client.get("/api/v1/mcp/adapter-sessions", params={"server": "b"})
+    assert server_b.status_code == 200
+    assert [item["server"] for item in server_b.json()["items"]] == ["b"]
+    assert server_b.json()["items"][0]["active"] is False
+
+    limited = client.get("/api/v1/mcp/adapter-sessions", params={"limit": 1})
+    assert limited.status_code == 200
+    assert [item["server"] for item in limited.json()["items"]] == ["b"]
+
 
 def test_mcp_adapter_sessions_endpoint_without_nat_controls() -> None:
     manager = MCPClientManager(transport_adapter=FallbackTransport())
@@ -1042,3 +1055,76 @@ def test_mcp_partial_cluster_refresh_failover_order_and_correlation() -> None:
     assert correlated_items[0]["server"] == "primary"
     assert correlated_items[0]["to_status"] == ServerStatus.DEGRADED.value
     assert correlated_items[0]["correlation_id"] == request_id
+
+
+def test_mcp_invalidate_one_server_preserves_other_server_identity_and_capabilities() -> None:
+    factory = _ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "primary", "url": "http://primary.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "backup", "url": "http://backup.local"},
+    )
+
+    first_backup = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert first_backup.status_code == 200
+    assert first_backup.json()["server"] == "backup"
+    backup_session_before = first_backup.json()["result"]["structuredContent"]["session_id"]
+
+    backup_server_before = client.get("/api/v1/mcp/servers/backup")
+    assert backup_server_before.status_code == 200
+    backup_snapshot_before = backup_server_before.json()["capability_snapshot"]
+    assert backup_snapshot_before is not None
+
+    first_primary = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first_primary.status_code == 200
+    assert first_primary.json()["server"] == "primary"
+
+    invalidate_primary = client.post("/api/v1/mcp/servers/primary/adapter/invalidate")
+    assert invalidate_primary.status_code == 200
+    assert invalidate_primary.json()["adapter_session"]["active"] is False
+
+    second_backup = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert second_backup.status_code == 200
+    assert second_backup.json()["server"] == "backup"
+    backup_session_after = second_backup.json()["result"]["structuredContent"]["session_id"]
+    assert backup_session_after == backup_session_before
+
+    backup_server_after = client.get("/api/v1/mcp/servers/backup")
+    assert backup_server_after.status_code == 200
+    backup_snapshot_after = backup_server_after.json()["capability_snapshot"]
+    assert backup_snapshot_after == backup_snapshot_before
+
+    adapter_sessions = client.get("/api/v1/mcp/adapter-sessions")
+    assert adapter_sessions.status_code == 200
+    by_name = {item["server"]: item for item in adapter_sessions.json()["items"]}
+    assert by_name["backup"]["active"] is True
+    assert by_name["primary"]["active"] is False

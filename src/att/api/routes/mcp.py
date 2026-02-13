@@ -215,6 +215,9 @@ async def connect_mcp_servers(
 
 @router.get("/adapter-sessions", response_model=MCPAdapterSessionsResponse)
 async def mcp_adapter_sessions(
+    server: str | None = None,
+    active_only: bool = False,
+    limit: int | None = Query(default=None, ge=1),
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPAdapterSessionsResponse:
     return MCPAdapterSessionsResponse(
@@ -226,7 +229,11 @@ async def mcp_adapter_sessions(
                 initialized=item.initialized,
                 last_activity_at=item.last_activity_at,
             )
-            for item in manager.list_adapter_sessions()
+            for item in manager.list_adapter_sessions(
+                server_name=server,
+                active_only=active_only,
+                limit=limit,
+            )
         ],
     )
 

@@ -95,3 +95,10 @@ P11
   - manager now exposes aggregated adapter session status across registered servers (`list_adapter_sessions`).
   - new API endpoint `GET /api/v1/mcp/adapter-sessions` returns fleet-level per-server adapter diagnostics plus control-capability status.
   - integration coverage validates deterministic fallback ordering and correlation linkage when refreshing one server in a mixed cluster and then inducing partial failure.
+- Expanded aggregated adapter diagnostics controls:
+  - `list_adapter_sessions` now supports source-of-truth filtering and limiting (`server_name`, `active_only`, `limit`).
+  - `GET /api/v1/mcp/adapter-sessions` now exposes matching query controls (`server`, `active_only`, `limit`) with deterministic server ordering.
+  - unit/integration coverage validates active-only filtering, single-server filtering, and deterministic tail-limit semantics.
+- Added mixed-state invalidate isolation coverage:
+  - integration test invalidates one server adapter session (`primary`) while confirming unaffected peer (`backup`) remains active and preferred.
+  - verifies unaffected server session identity remains stable and capability snapshot metadata is unchanged through subsequent invokes.

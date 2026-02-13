@@ -958,6 +958,30 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
 
 
 @pytest.mark.asyncio
+async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> None:
+    factory = _FakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    manager.register("a", "http://a.local")
+    manager.register("b", "http://b.local")
+    manager.register("c", "http://c.local")
+
+    await manager.invoke_tool("att.project.list", preferred=["a"])
+    await manager.invoke_tool("att.project.list", preferred=["c"])
+
+    active_only = manager.list_adapter_sessions(active_only=True)
+    assert [item.server for item in active_only] == ["a", "c"]
+
+    only_c = manager.list_adapter_sessions(server_name="c")
+    assert [item.server for item in only_c] == ["c"]
+    assert only_c[0].active is True
+
+    limited = manager.list_adapter_sessions(limit=1)
+    assert [item.server for item in limited] == ["c"]
+
+
+@pytest.mark.asyncio
 async def test_refresh_adapter_session_recreates_underlying_session_identity() -> None:
     factory = _FakeNatSessionFactory()
     manager = MCPClientManager(

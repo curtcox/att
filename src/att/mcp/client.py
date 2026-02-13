@@ -838,22 +838,36 @@ class MCPClientManager:
             return None
         return adapter.session_diagnostics(name)
 
-    def list_adapter_sessions(self) -> list[AdapterSessionStatus]:
-        """List adapter session status across all registered servers."""
+    def list_adapter_sessions(
+        self,
+        *,
+        server_name: str | None = None,
+        active_only: bool = False,
+        limit: int | None = None,
+    ) -> list[AdapterSessionStatus]:
+        """List adapter session status across registered servers with optional filtering."""
         adapter = self._adapter_with_session_controls()
         if adapter is None:
             return []
         statuses: list[AdapterSessionStatus] = []
-        for server in self.list_servers():
-            diagnostics = adapter.session_diagnostics(server.name)
+        for candidate in self.list_servers():
+            diagnostics = adapter.session_diagnostics(candidate.name)
             statuses.append(
                 AdapterSessionStatus(
-                    server=server.name,
+                    server=candidate.name,
                     active=diagnostics.active,
                     initialized=diagnostics.initialized,
                     last_activity_at=diagnostics.last_activity_at,
                 )
             )
+        if server_name is not None:
+            statuses = [item for item in statuses if item.server == server_name]
+        if active_only:
+            statuses = [item for item in statuses if item.active]
+        if limit is not None:
+            if limit <= 0:
+                return []
+            statuses = statuses[-limit:]
         return statuses
 
     async def invalidate_adapter_session(self, name: str) -> bool:
