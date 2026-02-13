@@ -110,3 +110,11 @@ P11
   - integration scenario combines `refresh(primary)`, `invalidate(backup)`, then induced `network_timeout` on primary invoke.
   - validates deterministic failover ordering/correlation linkage and timeout category mapping.
   - asserts capability snapshot replacement/retention remains server-local across mixed transitions while adapter session diagnostics reflect expected active/freshness state.
+- Expanded adapter diagnostics freshness query controls:
+  - `list_adapter_sessions` now supports `freshness` filtering (`unknown`, `active_recent`, `stale`) alongside existing `server`/`active_only`/`limit` filters.
+  - `GET /api/v1/mcp/adapter-sessions` now accepts `freshness` and delegates filtering to manager source-of-truth.
+  - integration coverage asserts freshness-filtered aggregation remains consistent with per-server `/api/v1/mcp/servers` diagnostics.
+- Added retry-window convergence coverage across consecutive recovery cycles:
+  - integration scenario now exercises timeout -> retry-window skip -> retry-window expiry -> unreachable transition -> recovery initialize.
+  - coverage includes initialize-time timeout stage to validate degraded/unreachable progression semantics independently from invoke-time timeout semantics.
+  - correlation/invocation event assertions remain deterministic per request across the full cycle sequence.

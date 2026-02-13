@@ -848,6 +848,7 @@ class MCPClientManager:
         self,
         *,
         server_name: str | None = None,
+        freshness: AdapterSessionFreshness | None = None,
         active_only: bool = False,
         limit: int | None = None,
     ) -> list[AdapterSessionStatus]:
@@ -873,6 +874,8 @@ class MCPClientManager:
             )
         if server_name is not None:
             statuses = [item for item in statuses if item.server == server_name]
+        if freshness is not None:
+            statuses = [item for item in statuses if item.freshness == freshness]
         if active_only:
             statuses = [item for item in statuses if item.active]
         if limit is not None:

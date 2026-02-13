@@ -5,36 +5,36 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (adapter session freshness semantics + mixed-state refresh/invalidate/timeout coverage + plan doc updates)
+- Working tree at handoff creation: dirty (adapter freshness query filtering + retry-window convergence coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`165 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`168 passed`)
 
 ## Recent Delivered Work
-- Added lightweight adapter-session freshness semantics at manager/source-of-truth:
-  - new freshness classification (`unknown`, `active_recent`, `stale`) for adapter diagnostics.
-  - surfaced through per-server payloads (`adapter_session`) and fleet aggregation (`GET /api/v1/mcp/adapter-sessions`).
-  - stale-window control added to `MCPClientManager` (`adapter_session_stale_after_seconds`), with tests covering unknown/recent/stale transitions.
-- Expanded mixed-state cluster resilience coverage:
-  - new integration scenario combines `refresh(primary)` + `invalidate(backup)` + induced timeout on `primary`.
-  - verifies deterministic failover ordering, request-level correlation linkage, timeout categorization, and server-local capability snapshot retention/replacement behavior.
-  - validates resulting adapter freshness and active-state diagnostics after mixed transitions.
+- Expanded adapter diagnostics query controls with freshness filtering:
+  - `MCPClientManager.list_adapter_sessions()` now supports `freshness` filtering (`unknown`, `active_recent`, `stale`) in addition to `server`, `active_only`, and `limit`.
+  - `GET /api/v1/mcp/adapter-sessions` now accepts `freshness` query input and delegates filtering to manager source-of-truth.
+  - added unit/integration coverage for freshness filtering plus consistency assertions between `/servers` per-server diagnostics and aggregated diagnostics.
+- Added retry-window convergence coverage across consecutive cycles:
+  - new integration scenario validates timeout -> retry-window skip -> retry-window expiry -> unreachable transition -> recovery initialize path.
+  - verifies deterministic per-request invocation-event sequences and correlation-linkage behavior across consecutive failover/recovery cycles.
+  - asserts adapter freshness visibility remains correct after recovered primary invocation.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Add freshness-aware diagnostics query controls:
-   - extend `GET /api/v1/mcp/adapter-sessions` with optional `freshness` filtering while preserving deterministic ordering and existing filters.
-   - add server-list level assertions to ensure per-server and aggregated freshness views remain consistent under filtering.
-2. Push transport realism deeper with retry-window convergence:
-   - add mixed-state scenario combining timeout -> retry-window expiry -> recovery initialize to validate degraded/unreachable transitions with adapter freshness evolution.
-   - assert correlation/event streams remain deterministic across consecutive recovery cycles.
+1. Reduce test-only state mutation in convergence coverage:
+   - introduce a lightweight clock seam in `MCPClientManager` so retry-window expiry can be tested without mutating server internals (`next_retry_at`) directly.
+   - migrate mixed-state retry-window tests to clock-driven progression for clearer invariants.
+2. Expand convergence matrix for initialization-vs-invoke timeout classes:
+   - add explicit scenario coverage showing retry/backoff/status effects differ when timeout occurs during initialize versus invoke.
+   - preserve deterministic correlation/event assertions and server-local capability snapshot behavior.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
-- Reuse existing fake NAT session factories and extend with freshness + retry-window assertions to avoid new transport scaffolding.
+- Reuse existing fake NAT session factories and extend with timeout-stage toggles + clock control to avoid new transport scaffolding.
 - Preserve current event/filter semantics and correlation determinism.
 
 ## Resume Checklist

@@ -1015,6 +1015,32 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
 
 
 @pytest.mark.asyncio
+async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None:
+    factory = _FakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        adapter_session_stale_after_seconds=60,
+    )
+    manager.register("a", "http://a.local")
+    manager.register("b", "http://b.local")
+
+    await manager.invoke_tool("att.project.list", preferred=["a"])
+
+    adapter = manager._adapter_with_session_controls()
+    assert adapter is not None
+    adapter._sessions["a"].last_activity_at = datetime.now(UTC) - timedelta(seconds=61)
+
+    stale = manager.list_adapter_sessions(freshness="stale")
+    assert [item.server for item in stale] == ["a"]
+
+    unknown = manager.list_adapter_sessions(freshness="unknown")
+    assert [item.server for item in unknown] == ["b"]
+
+    recent = manager.list_adapter_sessions(freshness="active_recent")
+    assert recent == []
+
+
+@pytest.mark.asyncio
 async def test_refresh_adapter_session_recreates_underlying_session_identity() -> None:
     factory = _FakeNatSessionFactory()
     manager = MCPClientManager(

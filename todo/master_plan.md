@@ -36,6 +36,8 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Added mixed-state integration coverage validating invalidate-one-server isolation, including unaffected server session identity and capability-snapshot stability.
 - [x] Added manager-sourced adapter session freshness semantics (`unknown`/`active_recent`/`stale`) surfaced in per-server and aggregated MCP diagnostics payloads.
 - [x] Added mixed-state cluster coverage combining refresh + invalidate + timeout failover with deterministic correlation and server-local capability-snapshot retention/replacement assertions.
+- [x] Expanded aggregated adapter diagnostics controls with `freshness` query filtering, preserving manager-sourced deterministic ordering and cross-surface freshness consistency.
+- [x] Added retry-window convergence integration coverage across consecutive failover/recovery cycles, including timeout-stage-specific degraded/unreachable transitions with deterministic correlation streams.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
@@ -83,7 +85,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (165 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (168 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).
