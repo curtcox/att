@@ -1688,6 +1688,75 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("backup_failures", "reopen_seconds", "expected_backup_status"),
+    [
+        (1, 1, ServerStatus.DEGRADED),
+        (2, 2, ServerStatus.UNREACHABLE),
+    ],
+)
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_candidate_then_reentry(
+    backup_failures: int,
+    reopen_seconds: int,
+    expected_backup_status: ServerStatus,
+    method: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=2,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+    factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+
+    async def invoke_once(preferred: list[str]) -> object:
+        if method == "resources/read":
+            return await manager.read_resource("att://projects", preferred=preferred)
+        return await manager.invoke_tool("att.project.list", preferred=preferred)
+
+    first = await invoke_once(["primary", "backup"])
+    assert first.server == "backup"
+
+    clock.advance(seconds=1)
+    for _ in range(backup_failures):
+        manager.record_check_result("backup", healthy=False, error="hold backup")
+    backup = manager.get("backup")
+    assert backup is not None
+    assert backup.status is expected_backup_status
+
+    with pytest.raises(MCPInvocationError):
+        await invoke_once(["primary"])
+    primary = manager.get("primary")
+    assert primary is not None
+    assert primary.status is ServerStatus.UNREACHABLE
+
+    calls_before_no_candidate = len(factory.calls)
+    with pytest.raises(MCPInvocationError):
+        await invoke_once(["primary", "backup"])
+    assert len(factory.calls) == calls_before_no_candidate
+
+    clock.advance(seconds=reopen_seconds)
+    calls_before_reentry = len(factory.calls)
+    reentry = await invoke_once(["backup", "primary"])
+    assert reentry.server == "backup"
+    assert reentry.method == method
+
+    reentry_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[calls_before_reentry:]
+        if call_method in {"initialize", method}
+    ]
+    assert reentry_slice == [
+        ("backup", "initialize"),
+        ("backup", method),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

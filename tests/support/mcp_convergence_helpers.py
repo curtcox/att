@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -77,3 +78,48 @@ def extract_request_id_from_invocation_event_delta(
     request_ids = {str(item["request_id"]) for item in events}
     assert len(request_ids) == 1
     return request_ids.pop()
+
+
+def collect_invocation_events_for_requests(
+    client: TestClient,
+    *,
+    request_ids: Iterable[str],
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for request_id in request_ids:
+        response = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={"request_id": request_id},
+        )
+        assert response.status_code == 200
+        events.extend(response.json()["items"])
+    return events
+
+
+def expected_call_order_from_phase_starts(
+    events: Iterable[dict[str, Any]],
+) -> list[tuple[str, str]]:
+    phase_to_method = {
+        "initialize_start": "initialize",
+        "invoke_start": None,
+    }
+    return [
+        (str(item["server"]), phase_to_method[str(item["phase"])] or str(item["method"]))
+        for item in events
+        if str(item["phase"]) in {"initialize_start", "invoke_start"}
+    ]
+
+
+def assert_call_order_subsequence(
+    *,
+    observed_call_order: list[tuple[str, str]],
+    expected_call_order: list[tuple[str, str]],
+) -> None:
+    cursor = 0
+    for call in observed_call_order:
+        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
+            cursor += 1
+        assert cursor < len(expected_call_order), (
+            f"missing call-order tuple in phase stream: {call}"
+        )
+        cursor += 1

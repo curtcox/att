@@ -90,6 +90,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - extracted shared integration helper scaffolding for unreachable-transition request progression so `tools/call` and `resources/read` API regressions reuse the same first-failover/closed-window/forced-unreachable/skip/re-entry flow while keeping per-request diagnostics assertions explicit in each test.
   - added helper-level unit coverage asserting degraded backup reinitialize call-order parity (`initialize` before invoke) when primary is forced unreachable under mixed preferred ordering, with paired checks for both `tools/call` and `resources/read`.
   - preserved clock-driven semantics and transport-order assertions without direct retry-window state mutation.
+- [x] Consolidated retry-window call-order subsequence helpers and extended non-retryable backup matrix:
+  - added shared convergence helpers for collecting invocation events by request id, deriving phase-start call-order tuples, and asserting transport-call subsequence parity.
+  - migrated retry-window gating and unreachable-transition API call-order tests (`tools/call` + `resources/read`) to the shared subsequence helpers to reduce repeated cursor-loop scaffolding.
+  - added helper-level unit matrix coverage pairing primary unreachable with backup degraded/unreachable retry-window-closed states, asserting deterministic no-candidate failure and deterministic backup re-entry ordering (`initialize` before invoke) after retry-window reopen.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
@@ -137,7 +141,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (213 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (217 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).

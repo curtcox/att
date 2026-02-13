@@ -19,8 +19,11 @@ from att.mcp.client import (
     ServerStatus,
 )
 from tests.support.mcp_convergence_helpers import (
+    assert_call_order_subsequence,
     assert_connection_event_filters,
     assert_invocation_event_filters,
+    collect_invocation_events_for_requests,
+    expected_call_order_from_phase_starts,
     expected_phases_for_server,
     extract_request_id_from_invocation_event_delta,
 )
@@ -2065,24 +2068,11 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         ("primary", "tools/call"),
     ]
 
-    events: list[dict[str, object]] = []
-    for request_id in (request_id_1, request_id_2, request_id_3):
-        response = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"request_id": request_id},
-        )
-        assert response.status_code == 200
-        events.extend(response.json()["items"])
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    events = collect_invocation_events_for_requests(
+        client,
+        request_ids=(request_id_1, request_id_2, request_id_3),
+    )
+    expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
         for server, _, method in factory.calls
@@ -2098,14 +2088,10 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         ("primary", "tools/call"),
     ]
 
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None:
@@ -2226,30 +2212,17 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         ("primary", "tools/call"),
     ]
 
-    events: list[dict[str, object]] = []
-    for request_id in (
-        sequence.request_id_1,
-        sequence.request_id_2,
-        sequence.request_id_3,
-        sequence.request_id_4,
-        sequence.request_id_5,
-    ):
-        response = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"request_id": request_id},
-        )
-        assert response.status_code == 200
-        events.extend(response.json()["items"])
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    events = collect_invocation_events_for_requests(
+        client,
+        request_ids=(
+            sequence.request_id_1,
+            sequence.request_id_2,
+            sequence.request_id_3,
+            sequence.request_id_4,
+            sequence.request_id_5,
+        ),
+    )
+    expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
         for server, _, method in factory.calls
@@ -2265,14 +2238,10 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         ("primary", "tools/call"),
     ]
 
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
@@ -2388,24 +2357,11 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         ("primary", "resources/read"),
     ]
 
-    events: list[dict[str, object]] = []
-    for request_id in (request_id_1, request_id_2, request_id_3):
-        response = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"request_id": request_id},
-        )
-        assert response.status_code == 200
-        events.extend(response.json()["items"])
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    events = collect_invocation_events_for_requests(
+        client,
+        request_ids=(request_id_1, request_id_2, request_id_3),
+    )
+    expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
         for server, _, method in factory.calls
@@ -2421,14 +2377,10 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         ("primary", "resources/read"),
     ]
 
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> None:
@@ -2548,30 +2500,17 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         ("primary", "resources/read"),
     ]
 
-    events: list[dict[str, object]] = []
-    for request_id in (
-        sequence.request_id_1,
-        sequence.request_id_2,
-        sequence.request_id_3,
-        sequence.request_id_4,
-        sequence.request_id_5,
-    ):
-        response = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"request_id": request_id},
-        )
-        assert response.status_code == 200
-        events.extend(response.json()["items"])
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    events = collect_invocation_events_for_requests(
+        client,
+        request_ids=(
+            sequence.request_id_1,
+            sequence.request_id_2,
+            sequence.request_id_3,
+            sequence.request_id_4,
+            sequence.request_id_5,
+        ),
+    )
+    expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
         for server, _, method in factory.calls
@@ -2587,14 +2526,10 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         ("primary", "resources/read"),
     ]
 
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() -> None:

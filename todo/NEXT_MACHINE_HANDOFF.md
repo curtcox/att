@@ -3,17 +3,21 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `0c916defad2dafbf9f7afbbf5d33be6f6ab46513`
-- Last commit: `0c916de 2026-02-13 09:40:06 -0600 Add MCP tool unreachable-transition parity coverage`
-- Working tree at handoff creation: dirty (`unreachable-transition sequence helper extraction + backup reinitialize parity unit coverage`)
+- HEAD: `5704279e91ade27b1d7ff2dd9b662788ebd18c33`
+- Last commit: `5704279 2026-02-13 08:39:10 -0600 Refactor MCP unreachable-transition test scaffolding`
+- Working tree at handoff creation: dirty (`retry-window call-order helper consolidation + backup non-retryable matrix coverage`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`213 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`217 passed`)
 
 ## Recent Delivered Work
+- Consolidated retry-window call-order subsequence helper usage and expanded non-retryable backup matrix coverage:
+  - added shared convergence helpers to collect invocation events by request id, derive phase-start call-order tuples, and assert observed transport-call subsequence parity.
+  - migrated retry-window gating and unreachable-transition API call-order assertions for both `tools/call` and `resources/read` to the shared subsequence helpers, removing repeated test-local cursor-loop scaffolding.
+  - added helper-level unit matrix coverage for primary unreachable + backup degraded/unreachable retry-window-closed combinations, asserting deterministic no-candidate failure and deterministic backup re-entry ordering (`initialize` before invoke) after retry-window reopen.
 - Reduced unreachable-transition sequence duplication and expanded backup reinitialize parity:
   - extracted shared integration helper scaffolding for unreachable-transition request progression so `tools/call` and `resources/read` API regressions reuse the same first-failover/closed-window/forced-unreachable/skip/re-entry flow while keeping per-request diagnostics-filter assertions explicit.
   - added helper-level unit coverage asserting degraded backup reinitialize call-order parity (`initialize` before invoke) when primary is forced unreachable, with paired checks for both `tools/call` and `resources/read`.
@@ -125,13 +129,13 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening by consolidating remaining retry-window test scaffolding:
-1. Factor shared call-order subsequence assertion scaffolding:
-   - extract helper(s) for building expected phase-derived call tuples and validating observed transport-call subsequence parity.
-   - apply to both unreachable-transition tests and retry-window gating tests (`tools/call` + `resources/read`) to reduce duplicated cursor loops.
-2. Extend helper-level matrix for backup non-retryable combinations:
-   - add focused unit matrix coverage that pairs primary unreachable with backup unreachable/degraded retry-window-closed states to confirm deterministic no-candidate failure vs re-entry behavior.
-   - keep clock-driven progression and avoid direct internal retry-window mutation.
+Continue `P12/P13` call-order hardening by extending helper adoption and ordering matrices:
+1. Migrate remaining call-order parity tests to shared subsequence helpers:
+   - apply `collect_invocation_events_for_requests`, `expected_call_order_from_phase_starts`, and `assert_call_order_subsequence` to the remaining integration scenarios that still build phase maps/cursor loops manually (e.g., mixed scripted failover and force-reinitialize trigger parity paths).
+   - preserve existing observed call-order literal assertions while removing duplicate request-event aggregation/cursor boilerplate.
+2. Extend helper-level ordering matrix when both servers are retry-eligible unreachable:
+   - add focused unit coverage where both primary and backup reopen as `UNREACHABLE` simultaneously and assert preferred-order deterministic candidate selection and transport call ordering.
+   - keep tests clock-driven and avoid direct mutation of retry-window internals.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
