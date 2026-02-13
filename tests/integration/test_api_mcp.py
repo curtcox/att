@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import httpx
 from fastapi.testclient import TestClient
 
 from att.api.app import create_app
@@ -227,6 +228,9 @@ class _ClusterNatSession:
     ) -> _ModelPayload:
         del read_timeout_seconds, progress_callback, meta
         self.factory.calls.append((self.server_name, self.session_id, "tools/call"))
+        if self.server_name in self.factory.fail_on_timeout_tool_calls:
+            msg = f"{self.server_name} timed out"
+            raise httpx.ReadTimeout(msg)
         if self.server_name in self.factory.fail_on_tool_calls:
             msg = f"{self.server_name} unavailable"
             raise RuntimeError(msg)
@@ -256,6 +260,7 @@ class _ClusterNatSessionFactory:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str]] = []
         self.fail_on_tool_calls: set[str] = set()
+        self.fail_on_timeout_tool_calls: set[str] = set()
         self.created_by_server: dict[str, int] = {}
         self.closed_by_server: dict[str, int] = {}
 
@@ -846,6 +851,7 @@ def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
     assert before.json()["adapter_session"]["active"] is False
     assert before.json()["adapter_session"]["initialized"] is False
     assert before.json()["adapter_session"]["last_activity_at"] is None
+    assert before.json()["adapter_session"]["freshness"] == "unknown"
 
     invoke_before_refresh = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -865,18 +871,21 @@ def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
     assert after_invoke.json()["adapter_session"]["active"] is True
     assert after_invoke.json()["adapter_session"]["initialized"] is True
     assert after_invoke.json()["adapter_session"]["last_activity_at"] is not None
+    assert after_invoke.json()["adapter_session"]["freshness"] == "active_recent"
 
     invalidated = client.post("/api/v1/mcp/servers/nat/adapter/invalidate")
     assert invalidated.status_code == 200
     assert invalidated.json()["initialized"] is False
     assert invalidated.json()["adapter_session"]["active"] is False
     assert invalidated.json()["adapter_session"]["initialized"] is False
+    assert invalidated.json()["adapter_session"]["freshness"] == "unknown"
 
     refreshed = client.post("/api/v1/mcp/servers/nat/adapter/refresh")
     assert refreshed.status_code == 200
     assert refreshed.json()["initialized"] is True
     assert refreshed.json()["adapter_session"]["active"] is True
     assert refreshed.json()["adapter_session"]["initialized"] is True
+    assert refreshed.json()["adapter_session"]["freshness"] == "active_recent"
 
     invoke_after_refresh = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -934,6 +943,7 @@ def test_mcp_adapter_sessions_endpoint_aggregates_status() -> None:
     assert before.json()["adapter_controls_available"] is True
     assert [item["server"] for item in before.json()["items"]] == ["a", "b"]
     assert all(item["active"] is False for item in before.json()["items"])
+    assert all(item["freshness"] == "unknown" for item in before.json()["items"])
 
     invoke = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -947,7 +957,9 @@ def test_mcp_adapter_sessions_endpoint_aggregates_status() -> None:
     assert by_name["a"]["active"] is True
     assert by_name["a"]["initialized"] is True
     assert by_name["a"]["last_activity_at"] is not None
+    assert by_name["a"]["freshness"] == "active_recent"
     assert by_name["b"]["active"] is False
+    assert by_name["b"]["freshness"] == "unknown"
 
     active_only = client.get("/api/v1/mcp/adapter-sessions", params={"active_only": True})
     assert active_only.status_code == 200
@@ -957,6 +969,7 @@ def test_mcp_adapter_sessions_endpoint_aggregates_status() -> None:
     assert server_b.status_code == 200
     assert [item["server"] for item in server_b.json()["items"]] == ["b"]
     assert server_b.json()["items"][0]["active"] is False
+    assert server_b.json()["items"][0]["freshness"] == "unknown"
 
     limited = client.get("/api/v1/mcp/adapter-sessions", params={"limit": 1})
     assert limited.status_code == 200
@@ -972,6 +985,34 @@ def test_mcp_adapter_sessions_endpoint_without_nat_controls() -> None:
     assert response.status_code == 200
     assert response.json()["adapter_controls_available"] is False
     assert response.json()["items"] == []
+
+
+def test_mcp_adapter_session_freshness_reports_stale_state() -> None:
+    factory = _APIFakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        adapter_session_stale_after_seconds=60,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "a", "url": "http://a.local"})
+    invoked = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={"tool_name": "att.project.list", "arguments": {}, "preferred_servers": ["a"]},
+    )
+    assert invoked.status_code == 200
+
+    adapter = manager._adapter_with_session_controls()
+    assert adapter is not None
+    adapter._sessions["a"].last_activity_at = datetime.now(UTC) - timedelta(seconds=61)
+
+    listing = client.get("/api/v1/mcp/adapter-sessions", params={"server": "a"})
+    assert listing.status_code == 200
+    assert listing.json()["items"][0]["freshness"] == "stale"
+
+    server = client.get("/api/v1/mcp/servers/a")
+    assert server.status_code == 200
+    assert server.json()["adapter_session"]["freshness"] == "stale"
 
 
 def test_mcp_partial_cluster_refresh_failover_order_and_correlation() -> None:
@@ -1128,3 +1169,135 @@ def test_mcp_invalidate_one_server_preserves_other_server_identity_and_capabilit
     by_name = {item["server"]: item for item in adapter_sessions.json()["items"]}
     assert by_name["backup"]["active"] is True
     assert by_name["primary"]["active"] is False
+
+
+def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() -> None:
+    factory = _ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "primary", "url": "http://primary.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "backup", "url": "http://backup.local"},
+    )
+
+    first_primary = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first_primary.status_code == 200
+    assert first_primary.json()["server"] == "primary"
+
+    first_backup = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert first_backup.status_code == 200
+    assert first_backup.json()["server"] == "backup"
+    backup_session_before = first_backup.json()["result"]["structuredContent"]["session_id"]
+
+    backup_before = client.get("/api/v1/mcp/servers/backup")
+    assert backup_before.status_code == 200
+    backup_snapshot_before = backup_before.json()["capability_snapshot"]
+    assert backup_snapshot_before is not None
+
+    primary_before = client.get("/api/v1/mcp/servers/primary")
+    assert primary_before.status_code == 200
+    primary_snapshot_before = primary_before.json()["capability_snapshot"]
+    assert primary_snapshot_before is not None
+
+    refresh_primary = client.post("/api/v1/mcp/servers/primary/adapter/refresh")
+    assert refresh_primary.status_code == 200
+    primary_snapshot_after_refresh = refresh_primary.json()["capability_snapshot"]
+    assert primary_snapshot_after_refresh is not None
+    assert primary_snapshot_after_refresh["captured_at"] != primary_snapshot_before["captured_at"]
+
+    invalidate_backup = client.post("/api/v1/mcp/servers/backup/adapter/invalidate")
+    assert invalidate_backup.status_code == 200
+    assert invalidate_backup.json()["adapter_session"]["active"] is False
+    assert invalidate_backup.json()["adapter_session"]["freshness"] == "unknown"
+
+    factory.fail_on_timeout_tool_calls.add("primary")
+    failover = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert failover.status_code == 200
+    assert failover.json()["server"] == "backup"
+    request_id = failover.json()["request_id"]
+    backup_session_after = failover.json()["result"]["structuredContent"]["session_id"]
+    assert backup_session_after != backup_session_before
+
+    invocation_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id},
+    )
+    assert invocation_events.status_code == 200
+    invocation_items = invocation_events.json()["items"]
+    assert [item["phase"] for item in invocation_items] == [
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in invocation_items] == [
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    ]
+    assert invocation_items[3]["error_category"] == "network_timeout"
+
+    correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})
+    assert correlated.status_code == 200
+    correlated_items = correlated.json()["items"]
+    assert len(correlated_items) == 1
+    assert correlated_items[0]["server"] == "primary"
+    assert correlated_items[0]["to_status"] == ServerStatus.DEGRADED.value
+
+    primary_after = client.get("/api/v1/mcp/servers/primary")
+    assert primary_after.status_code == 200
+    primary_snapshot_after = primary_after.json()["capability_snapshot"]
+    assert primary_snapshot_after == primary_snapshot_after_refresh
+
+    backup_after = client.get("/api/v1/mcp/servers/backup")
+    assert backup_after.status_code == 200
+    backup_snapshot_after = backup_after.json()["capability_snapshot"]
+    assert backup_snapshot_after is not None
+    assert backup_snapshot_after["captured_at"] != backup_snapshot_before["captured_at"]
+    assert backup_snapshot_after["server_info"]["name"] == "backup"
+    assert primary_snapshot_after["server_info"]["name"] == "primary"
+
+    adapter_sessions = client.get("/api/v1/mcp/adapter-sessions")
+    assert adapter_sessions.status_code == 200
+    by_name = {item["server"]: item for item in adapter_sessions.json()["items"]}
+    assert by_name["primary"]["active"] is False
+    assert by_name["primary"]["freshness"] == "unknown"
+    assert by_name["backup"]["active"] is True
+    assert by_name["backup"]["freshness"] == "active_recent"

@@ -71,6 +71,7 @@ def _as_response(server: ExternalServer, manager: MCPClientManager) -> MCPServer
                 active=adapter_session.active,
                 initialized=adapter_session.initialized,
                 last_activity_at=adapter_session.last_activity_at,
+                freshness=adapter_session.freshness,
             )
             if adapter_session is not None
             else None
@@ -228,6 +229,7 @@ async def mcp_adapter_sessions(
                 active=item.active,
                 initialized=item.initialized,
                 last_activity_at=item.last_activity_at,
+                freshness=item.freshness,
             )
             for item in manager.list_adapter_sessions(
                 server_name=server,

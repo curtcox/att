@@ -102,3 +102,11 @@ P11
 - Added mixed-state invalidate isolation coverage:
   - integration test invalidates one server adapter session (`primary`) while confirming unaffected peer (`backup`) remains active and preferred.
   - verifies unaffected server session identity remains stable and capability snapshot metadata is unchanged through subsequent invokes.
+- Added lightweight adapter-session freshness semantics:
+  - manager now classifies adapter diagnostics freshness as `unknown`, `active_recent`, or `stale` using a configurable stale window (`adapter_session_stale_after_seconds`).
+  - per-server API payloads (`adapter_session`) and aggregated API payloads (`GET /api/v1/mcp/adapter-sessions`) now surface freshness consistently from manager source-of-truth.
+  - unit/integration tests cover unknown->active_recent->stale transitions and stale-state visibility via both endpoints.
+- Added mixed-state refresh/invalidate/timeout convergence coverage:
+  - integration scenario combines `refresh(primary)`, `invalidate(backup)`, then induced `network_timeout` on primary invoke.
+  - validates deterministic failover ordering/correlation linkage and timeout category mapping.
+  - asserts capability snapshot replacement/retention remains server-local across mixed transitions while adapter session diagnostics reflect expected active/freshness state.

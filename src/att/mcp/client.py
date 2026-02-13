@@ -33,6 +33,7 @@ type InvocationPhase = Literal[
     "invoke_success",
     "invoke_failure",
 ]
+type AdapterSessionFreshness = Literal["unknown", "active_recent", "stale"]
 
 
 class ServerStatus(StrEnum):
@@ -131,6 +132,7 @@ class AdapterSessionDiagnostics:
     active: bool
     initialized: bool
     last_activity_at: datetime | None
+    freshness: AdapterSessionFreshness = "unknown"
 
 
 @dataclass(slots=True)
@@ -141,6 +143,7 @@ class AdapterSessionStatus:
     active: bool
     initialized: bool
     last_activity_at: datetime | None
+    freshness: AdapterSessionFreshness
 
 
 class MCPInvocationError(RuntimeError):
@@ -497,6 +500,7 @@ class MCPClientManager:
         max_backoff_seconds: int = 8,
         unreachable_after: int = 3,
         max_initialization_age_seconds: int | None = 300,
+        adapter_session_stale_after_seconds: int | None = 300,
         max_invocation_events: int = 500,
     ) -> None:
         self._servers: dict[str, ExternalServer] = {}
@@ -510,6 +514,7 @@ class MCPClientManager:
         self._max_backoff_seconds = max_backoff_seconds
         self._unreachable_after = unreachable_after
         self._max_initialization_age_seconds = max_initialization_age_seconds
+        self._adapter_session_stale_after_seconds = adapter_session_stale_after_seconds
 
     def register(self, name: str, url: str) -> ExternalServer:
         """Register or replace a server definition."""
@@ -836,7 +841,8 @@ class MCPClientManager:
         adapter = self._adapter_with_session_controls()
         if adapter is None:
             return None
-        return adapter.session_diagnostics(name)
+        diagnostics = adapter.session_diagnostics(name)
+        return self._with_adapter_session_freshness(diagnostics)
 
     def list_adapter_sessions(
         self,
@@ -849,15 +855,20 @@ class MCPClientManager:
         adapter = self._adapter_with_session_controls()
         if adapter is None:
             return []
+        now = datetime.now(UTC)
         statuses: list[AdapterSessionStatus] = []
         for candidate in self.list_servers():
-            diagnostics = adapter.session_diagnostics(candidate.name)
+            diagnostics = self._with_adapter_session_freshness(
+                adapter.session_diagnostics(candidate.name),
+                now=now,
+            )
             statuses.append(
                 AdapterSessionStatus(
                     server=candidate.name,
                     active=diagnostics.active,
                     initialized=diagnostics.initialized,
                     last_activity_at=diagnostics.last_activity_at,
+                    freshness=diagnostics.freshness,
                 )
             )
         if server_name is not None:
@@ -1187,6 +1198,39 @@ class MCPClientManager:
 
     def _resolve_transport(self) -> MCPTransport:
         return self._transport_adapter or self._transport or self._default_transport
+
+    def _with_adapter_session_freshness(
+        self,
+        diagnostics: AdapterSessionDiagnostics,
+        *,
+        now: datetime | None = None,
+    ) -> AdapterSessionDiagnostics:
+        when = now or datetime.now(UTC)
+        freshness = self._classify_adapter_session_freshness(diagnostics, now=when)
+        return AdapterSessionDiagnostics(
+            active=diagnostics.active,
+            initialized=diagnostics.initialized,
+            last_activity_at=diagnostics.last_activity_at,
+            freshness=freshness,
+        )
+
+    def _classify_adapter_session_freshness(
+        self,
+        diagnostics: AdapterSessionDiagnostics,
+        *,
+        now: datetime,
+    ) -> AdapterSessionFreshness:
+        if not diagnostics.active:
+            return "unknown"
+        if diagnostics.last_activity_at is None:
+            return "unknown"
+        stale_after = self._adapter_session_stale_after_seconds
+        if stale_after is None:
+            return "active_recent"
+        threshold = now - timedelta(seconds=max(0, stale_after))
+        if diagnostics.last_activity_at >= threshold:
+            return "active_recent"
+        return "stale"
 
     def _adapter_with_session_controls(self) -> NATMCPTransportAdapter | None:
         adapter = self._transport_adapter

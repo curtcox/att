@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
-from att.mcp.client import ErrorCategory, ServerStatus
+from att.mcp.client import AdapterSessionFreshness, ErrorCategory, ServerStatus
 
 
 class RegisterMCPServerRequest(BaseModel):
@@ -32,6 +32,7 @@ class MCPAdapterSessionResponse(BaseModel):
     active: bool
     initialized: bool
     last_activity_at: datetime | None
+    freshness: AdapterSessionFreshness
 
 
 class MCPAdapterSessionStatusResponse(BaseModel):
@@ -41,6 +42,7 @@ class MCPAdapterSessionStatusResponse(BaseModel):
     active: bool
     initialized: bool
     last_activity_at: datetime | None
+    freshness: AdapterSessionFreshness
 
 
 class MCPAdapterSessionsResponse(BaseModel):

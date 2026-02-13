@@ -5,36 +5,36 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (adapter diagnostics query controls + mixed-state invalidate-one-server coverage + plan doc updates)
+- Working tree at handoff creation: dirty (adapter session freshness semantics + mixed-state refresh/invalidate/timeout coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`162 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`165 passed`)
 
 ## Recent Delivered Work
-- Expanded aggregated adapter diagnostics controls:
-  - `GET /api/v1/mcp/adapter-sessions` now supports query controls: `server`, `active_only`, and `limit`.
-  - `MCPClientManager.list_adapter_sessions()` now supports matching manager-level filtering/limit semantics as source-of-truth.
-  - added unit and integration coverage for filter/limit behavior while preserving deterministic ordering.
-- Added deeper mixed-state invalidate coverage:
-  - new integration scenario invalidates `primary` while `backup` remains active.
-  - verifies unaffected `backup` session identity remains stable and `capability_snapshot` is unchanged across subsequent invokes.
-  - validates aggregated adapter diagnostics reflect `primary` inactive and `backup` active after targeted invalidation.
+- Added lightweight adapter-session freshness semantics at manager/source-of-truth:
+  - new freshness classification (`unknown`, `active_recent`, `stale`) for adapter diagnostics.
+  - surfaced through per-server payloads (`adapter_session`) and fleet aggregation (`GET /api/v1/mcp/adapter-sessions`).
+  - stale-window control added to `MCPClientManager` (`adapter_session_stale_after_seconds`), with tests covering unknown/recent/stale transitions.
+- Expanded mixed-state cluster resilience coverage:
+  - new integration scenario combines `refresh(primary)` + `invalidate(backup)` + induced timeout on `primary`.
+  - verifies deterministic failover ordering, request-level correlation linkage, timeout categorization, and server-local capability snapshot retention/replacement behavior.
+  - validates resulting adapter freshness and active-state diagnostics after mixed transitions.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Add lightweight adapter-session health semantics to diagnostics:
-   - classify/surface session freshness (e.g., unknown/stale/active-recent) without exposing sensitive transport state.
-   - keep manager as source-of-truth and expose semantics through `GET /api/v1/mcp/adapter-sessions` and per-server adapter payloads.
-2. Expand mixed-state cluster coverage beyond single invalidation:
-   - combine refresh + invalidate + induced timeout across different servers and verify deterministic fallback order and correlation IDs remain stable.
-   - assert capability snapshot retention/replacement rules stay server-local under mixed transitions.
+1. Add freshness-aware diagnostics query controls:
+   - extend `GET /api/v1/mcp/adapter-sessions` with optional `freshness` filtering while preserving deterministic ordering and existing filters.
+   - add server-list level assertions to ensure per-server and aggregated freshness views remain consistent under filtering.
+2. Push transport realism deeper with retry-window convergence:
+   - add mixed-state scenario combining timeout -> retry-window expiry -> recovery initialize to validate degraded/unreachable transitions with adapter freshness evolution.
+   - assert correlation/event streams remain deterministic across consecutive recovery cycles.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
-- Reuse existing fake NAT session factories and extend with server-specific freshness/identity assertions to avoid new transport scaffolding.
+- Reuse existing fake NAT session factories and extend with freshness + retry-window assertions to avoid new transport scaffolding.
 - Preserve current event/filter semantics and correlation determinism.
 
 ## Resume Checklist
