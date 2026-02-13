@@ -129,6 +129,18 @@ def _unit_test_collect_reentry_call_order_slice(
     ]
 
 
+def _unit_test_collect_full_call_order_slice(
+    calls: list[tuple[str, str, str]],
+    start_index: int,
+    method: str,
+) -> list[tuple[str, str, str]]:
+    return [
+        (server, session_id, call_method)
+        for server, session_id, call_method in calls[start_index:]
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
+    ]
+
+
 def _assert_unit_test_collected_primary_reentry_slice(
     calls: list[tuple[str, str, str]],
     start_index: int,
@@ -149,6 +161,17 @@ def _assert_unit_test_collected_backup_reentry_slice(
         _unit_test_collect_reentry_call_order_slice(calls, start_index, method),
         method,
     )
+
+
+def _assert_unit_test_reopen_slice(
+    observed_slice: list[tuple[str, str]],
+    expected_server: str,
+    method: str,
+) -> None:
+    assert observed_slice == [
+        (expected_server, UNIT_TEST_INITIALIZE_METHOD),
+        (expected_server, method),
+    ]
 
 
 @pytest.mark.asyncio
@@ -1557,11 +1580,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     assert first.method == method
     assert second.method == method
 
-    before_invalidate = [
-        (server, session_id, call_method)
-        for server, session_id, call_method in factory.calls
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    before_invalidate = _unit_test_collect_full_call_order_slice(factory.calls, 0, method)
     assert [call_method for _, _, call_method in before_invalidate] == [
         UNIT_TEST_INITIALIZE_METHOD,
         method,
@@ -1577,11 +1596,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     assert third.server == UNIT_TEST_PRIMARY_SERVER
     assert third.method == method
 
-    call_order = [
-        (server, session_id, call_method)
-        for server, session_id, call_method in factory.calls
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    call_order = _unit_test_collect_full_call_order_slice(factory.calls, 0, method)
     assert [call_method for _, _, call_method in call_order] == [
         UNIT_TEST_INITIALIZE_METHOD,
         method,
@@ -1629,11 +1644,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     assert second.server == UNIT_TEST_PRIMARY_SERVER
     assert second.method == method
 
-    call_order = [
-        (server, call_method)
-        for server, _, call_method in factory.calls
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    call_order = _unit_test_collect_reentry_call_order_slice(factory.calls, 0, method)
     assert call_order == [
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
         _unit_test_primary_method_call_order_entry(method),
@@ -2021,10 +2032,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
         calls_before_reopen,
         method,
     )
-    assert reopen_slice == [
-        (expected_second, UNIT_TEST_INITIALIZE_METHOD),
-        (expected_second, method),
-    ]
+    _assert_unit_test_reopen_slice(reopen_slice, expected_second, method)
 
 
 @pytest.mark.asyncio
