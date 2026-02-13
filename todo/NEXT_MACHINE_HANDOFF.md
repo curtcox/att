@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `fc86b781a9751d3318565d9bff334603274a2ddf`
-- Last commit: `fc86b78 2026-02-13 09:37:20 -0600 Normalize call-order expectation vector typing`
-- Working tree at handoff creation: dirty (`primary phase/status expectation vector typing normalization`)
+- HEAD: `7db96c2172072a7d473052c75b3a86d845b58fdb`
+- Last commit: `7db96c2 2026-02-13 09:38:46 -0600 Normalize primary phase/status expectation typing`
+- Working tree at handoff creation: dirty (`call-order subsequence assertion helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated call-order subsequence assertion wiring with shared helper:
+  - added shared helper that derives expected call-order from request ids and performs subsequence assertion against observed transport order.
+  - migrated retry-window/unreachable-transition and adjacent call-order tests to the helper while preserving explicit observed-call-order literals.
+  - preserved diagnostics filter semantics and phase-start/transport subsequence behavior unchanged.
 - Normalized primary phase/status expectation vector typing for consistency:
   - converted primary unreachable-transition and retry-window gating phase/status expectation constants to immutable tuple-based inner vectors.
   - updated shared primary diagnostics helper typing to accept `Sequence[Sequence[str]]` and normalized assertion-boundary inputs to concrete lists.
@@ -197,17 +201,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated call-order subsequence assertion wiring:
-1. Extract shared helper for expected-order derivation + subsequence assertion:
-   - factor repeated `expected_call_order = ...` + `assert_call_order_subsequence(...)` blocks into one helper that takes `client`, `request_ids`, and `observed_call_order`.
-   - keep explicit `observed_call_order` literal assertions unchanged at each test call site.
+Continue `P12/P13` test-structure hardening with a focused duplication sweep:
+1. Identify and extract the next smallest repeated assertion scaffold in `tests/integration/test_api_mcp.py`:
+   - target one high-signal repeated block (diagnostics filter, call-order literal, or progression wiring) with low behavioral risk.
+   - keep expected vectors and explicit observed-call-order literals audit-friendly at call sites.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current diagnostics and call-order literal helper signatures unchanged.
-   - retain phase-start/transport subsequence assertion behavior exactly.
+   - keep current helper signatures and assertion behavior unchanged.
+   - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing helper style from nearby expected-call-order derivation and call-order helper slices.
+- Reuse existing helper style and prioritize the smallest safe extraction first.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

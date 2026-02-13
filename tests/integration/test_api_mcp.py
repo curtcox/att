@@ -476,6 +476,22 @@ def _expected_call_order_for_requests(
     return expected_call_order_from_phase_starts(events)
 
 
+def _assert_call_order_subsequence_for_requests(
+    *,
+    client: TestClient,
+    request_ids: Sequence[str],
+    observed_call_order: list[tuple[str, str]],
+) -> None:
+    expected_call_order = _expected_call_order_for_requests(
+        client=client,
+        request_ids=request_ids,
+    )
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
+
+
 def _assert_unreachable_transition_call_order_literals(
     *,
     factory: ClusterNatSessionFactory,
@@ -2023,15 +2039,11 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
 
-    expected_call_order = _expected_call_order_for_requests(
+    observed_call_order = _collect_mixed_method_call_order(factory=factory)
+    _assert_call_order_subsequence_for_requests(
         client=client,
         request_ids=(tool_request_id, resource_request_id),
-    )
-
-    observed_call_order = _collect_mixed_method_call_order(factory=factory)
-    assert_call_order_subsequence(
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 
@@ -2105,11 +2117,6 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
             expected_statuses=[],
         )
 
-    expected_call_order = _expected_call_order_for_requests(
-        client=client,
-        request_ids=request_ids,
-    )
-
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
     assert observed_call_order == [
         ("primary", "initialize"),
@@ -2119,9 +2126,10 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         ("primary", "resources/read"),
     ]
 
-    assert_call_order_subsequence(
+    _assert_call_order_subsequence_for_requests(
+        client=client,
+        request_ids=request_ids,
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 
@@ -2212,11 +2220,6 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
             expected_statuses=expected_statuses,
         )
 
-    expected_call_order = _expected_call_order_for_requests(
-        client=client,
-        request_ids=request_ids,
-    )
-
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
     assert observed_call_order == [
         ("primary", "initialize"),
@@ -2228,9 +2231,10 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
         ("primary", "resources/read"),
     ]
 
-    assert_call_order_subsequence(
+    _assert_call_order_subsequence_for_requests(
+        client=client,
+        request_ids=request_ids,
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 
@@ -2267,14 +2271,10 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         expected_observed_call_order=RETRY_WINDOW_GATING_TOOL_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
-    expected_call_order = _expected_call_order_for_requests(
+    _assert_call_order_subsequence_for_requests(
         client=harness.client,
         request_ids=request_ids,
-    )
-
-    assert_call_order_subsequence(
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 
@@ -2311,14 +2311,10 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         expected_observed_call_order=UNREACHABLE_TRANSITION_TOOL_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
-    expected_call_order = _expected_call_order_for_requests(
+    _assert_call_order_subsequence_for_requests(
         client=harness.client,
         request_ids=request_ids,
-    )
-
-    assert_call_order_subsequence(
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 
@@ -2355,14 +2351,10 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         expected_observed_call_order=RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
-    expected_call_order = _expected_call_order_for_requests(
+    _assert_call_order_subsequence_for_requests(
         client=harness.client,
         request_ids=request_ids,
-    )
-
-    assert_call_order_subsequence(
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 
@@ -2399,14 +2391,10 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         expected_observed_call_order=UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
-    expected_call_order = _expected_call_order_for_requests(
+    _assert_call_order_subsequence_for_requests(
         client=harness.client,
         request_ids=request_ids,
-    )
-
-    assert_call_order_subsequence(
         observed_call_order=observed_call_order,
-        expected_call_order=expected_call_order,
     )
 
 

@@ -150,6 +150,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - converted primary unreachable-transition and retry-window gating phase/status expectation constants to immutable tuple-based inner vectors.
   - updated shared primary diagnostics helper typing to accept `Sequence[Sequence[str]]` and normalized assertion-boundary inputs to concrete lists.
   - preserved diagnostics-filter semantics, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated call-order subsequence assertion wiring:
+  - added shared helper that derives expected call-order from request ids and performs subsequence assertion against observed transport order.
+  - migrated retry-window/unreachable-transition and adjacent call-order tests to the shared helper while preserving explicit observed-call-order literals.
+  - preserved diagnostics-filter semantics and phase-start/transport subsequence behavior unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
