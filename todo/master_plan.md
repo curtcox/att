@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended remaining order-test failure-action timeout/error assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_ACTION_TIMEOUT` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining order-test and adjacent scripted isolation `consume_failure_action(... ) == "timeout"` assertions to `UNIT_TEST_FAILURE_ACTION_TIMEOUT` and migrated the remaining order-test `== "error"` assertion to existing `UNIT_TEST_FAILURE_ACTION_ERROR`, while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended remaining order-test failure-action `"ok"` assertion constant reuse in unit MCP client coverage:
   - reused existing local unit-test constant `UNIT_TEST_FAILURE_ACTION_OK` in `tests/unit/test_mcp_client.py`.
   - migrated the remaining `consume_failure_action(... ) == "ok"` checks in `test_cluster_nat_failure_script_order_and_validation` to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
