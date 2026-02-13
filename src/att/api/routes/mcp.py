@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from att.api.deps import get_mcp_client_manager
 from att.api.schemas.mcp import (
@@ -194,6 +194,9 @@ async def connect_mcp_servers(
 
 @router.get("/events", response_model=MCPConnectionEventsResponse)
 async def mcp_connection_events(
+    server: str | None = None,
+    correlation_id: str | None = None,
+    limit: int | None = Query(default=None, ge=1),
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPConnectionEventsResponse:
     events = [
@@ -203,14 +206,23 @@ async def mcp_connection_events(
             to_status=event.to_status,
             reason=event.reason,
             timestamp=event.timestamp,
+            correlation_id=event.correlation_id,
         )
-        for event in manager.list_events()
+        for event in manager.list_events(
+            server=server,
+            correlation_id=correlation_id,
+            limit=limit,
+        )
     ]
     return MCPConnectionEventsResponse(items=events)
 
 
 @router.get("/invocation-events", response_model=MCPInvocationEventsResponse)
 async def mcp_invocation_events(
+    server: str | None = None,
+    method: str | None = None,
+    request_id: str | None = None,
+    limit: int | None = Query(default=None, ge=1),
     manager: MCPClientManager = Depends(get_mcp_client_manager),
 ) -> MCPInvocationEventsResponse:
     events = [
@@ -223,7 +235,12 @@ async def mcp_invocation_events(
             error=event.error,
             error_category=event.error_category,
         )
-        for event in manager.list_invocation_events()
+        for event in manager.list_invocation_events(
+            server=server,
+            method=method,
+            request_id=request_id,
+            limit=limit,
+        )
     ]
     return MCPInvocationEventsResponse(items=events)
 

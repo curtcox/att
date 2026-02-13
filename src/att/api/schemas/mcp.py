@@ -58,6 +58,7 @@ class MCPConnectionEventResponse(BaseModel):
     to_status: ServerStatus
     reason: str
     timestamp: datetime
+    correlation_id: str | None = None
 
 
 class MCPConnectionEventsResponse(BaseModel):

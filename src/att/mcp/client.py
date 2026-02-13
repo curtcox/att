@@ -84,6 +84,7 @@ class ConnectionEvent:
     to_status: ServerStatus
     reason: str
     timestamp: datetime
+    correlation_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -200,13 +201,47 @@ class MCPClientManager:
         """List known servers by name."""
         return sorted(self._servers.values(), key=lambda item: item.name)
 
-    def list_events(self) -> list[ConnectionEvent]:
-        """List connection status transition events."""
-        return list(self._events)
+    def list_events(
+        self,
+        *,
+        server: str | None = None,
+        correlation_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[ConnectionEvent]:
+        """List connection status transition events with optional filtering."""
+        events = [
+            event
+            for event in self._events
+            if (server is None or event.server == server)
+            and (correlation_id is None or event.correlation_id == correlation_id)
+        ]
+        if limit is not None:
+            if limit <= 0:
+                return []
+            events = events[-limit:]
+        return events
 
-    def list_invocation_events(self) -> list[MCPInvocationEvent]:
-        """List invocation lifecycle events (bounded retention)."""
-        return list(self._invocation_events)
+    def list_invocation_events(
+        self,
+        *,
+        server: str | None = None,
+        method: str | None = None,
+        request_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[MCPInvocationEvent]:
+        """List invocation lifecycle events (bounded retention) with optional filtering."""
+        events = [
+            event
+            for event in self._invocation_events
+            if (server is None or event.server == server)
+            and (method is None or event.method == method)
+            and (request_id is None or event.request_id == request_id)
+        ]
+        if limit is not None:
+            if limit <= 0:
+                return []
+            events = events[-limit:]
+        return events
 
     def choose_server(self, preferred: list[str] | None = None) -> ExternalServer | None:
         """Choose best available server with healthy-first policy."""
@@ -255,7 +290,13 @@ class MCPClientManager:
                 results.append(checked)
         return results
 
-    async def initialize_server(self, name: str, *, force: bool = False) -> ExternalServer | None:
+    async def initialize_server(
+        self,
+        name: str,
+        *,
+        force: bool = False,
+        correlation_id: str | None = None,
+    ) -> ExternalServer | None:
         """Perform MCP initialize handshake for one server."""
         server = self._servers.get(name)
         if server is None:
@@ -287,6 +328,7 @@ class MCPClientManager:
                 healthy=False,
                 error=str(exc),
                 error_category=self._error_category_from_exception(exc),
+                correlation_id=correlation_id,
             )
             return self._servers.get(name)
 
@@ -299,6 +341,7 @@ class MCPClientManager:
                 healthy=False,
                 error=f"rpc error: {rpc_error}",
                 error_category="rpc_error",
+                correlation_id=correlation_id,
             )
             return self._servers.get(name)
 
@@ -311,6 +354,7 @@ class MCPClientManager:
                 healthy=False,
                 error="rpc error: invalid initialize result",
                 error_category="invalid_payload",
+                correlation_id=correlation_id,
             )
             return self._servers.get(name)
 
@@ -326,7 +370,7 @@ class MCPClientManager:
             capabilities=self._as_json_object(result.get("capabilities")),
             captured_at=initialized_at,
         )
-        self.record_check_result(name, healthy=True)
+        self.record_check_result(name, healthy=True, correlation_id=correlation_id)
 
         initialized_notification = self._build_request(
             "notifications/initialized",
@@ -342,6 +386,7 @@ class MCPClientManager:
                 healthy=False,
                 error=str(exc),
                 error_category=self._error_category_from_exception(exc),
+                correlation_id=correlation_id,
             )
         return self._servers.get(name)
 
@@ -404,6 +449,7 @@ class MCPClientManager:
         error: str | None = None,
         error_category: ErrorCategory | None = None,
         checked_at: datetime | None = None,
+        correlation_id: str | None = None,
     ) -> None:
         """Apply one health check result and update retry metadata."""
         server = self._servers.get(name)
@@ -441,6 +487,7 @@ class MCPClientManager:
                     to_status=server.status,
                     reason=server.last_error or "healthy",
                     timestamp=when,
+                    correlation_id=correlation_id,
                 )
             )
 
@@ -483,6 +530,7 @@ class MCPClientManager:
             initialized = await self.initialize_server(
                 server.name,
                 force=self._should_force_reinitialize(server),
+                correlation_id=request_id,
             )
             if initialized is None:
                 self._record_invocation_event(
@@ -562,6 +610,7 @@ class MCPClientManager:
                     healthy=False,
                     error=message,
                     error_category=error_category,
+                    correlation_id=request_id,
                 )
                 attempts.append(
                     MCPInvocationAttempt(
@@ -591,6 +640,7 @@ class MCPClientManager:
                     healthy=False,
                     error=invocation_error,
                     error_category="rpc_error",
+                    correlation_id=request_id,
                 )
                 attempts.append(
                     MCPInvocationAttempt(
@@ -619,6 +669,7 @@ class MCPClientManager:
                     healthy=False,
                     error=missing_result,
                     error_category="invalid_payload",
+                    correlation_id=request_id,
                 )
                 attempts.append(
                     MCPInvocationAttempt(
@@ -645,7 +696,11 @@ class MCPClientManager:
                     success=True,
                 )
             )
-            self.record_check_result(initialized.name, healthy=True)
+            self.record_check_result(
+                initialized.name,
+                healthy=True,
+                correlation_id=request_id,
+            )
             return MCPInvocationResult(
                 server=initialized.name,
                 method=method,

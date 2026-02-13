@@ -548,3 +548,71 @@ def test_mcp_invoke_error_payload_malformed_category() -> None:
     server = client.get("/api/v1/mcp/servers/malformed")
     assert server.status_code == 200
     assert server.json()["last_error_category"] == "invalid_payload"
+
+
+def test_mcp_event_endpoints_support_filters_limits_and_correlation() -> None:
+    transport = FallbackTransport()
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "codex", "url": "http://codex.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "github", "url": "http://github.local"},
+    )
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["codex", "github"],
+        },
+    )
+    assert invoke.status_code == 200
+    request_id = invoke.json()["request_id"]
+
+    manager.record_check_result("github", healthy=False, error="manual degrade")
+
+    invocation_filtered = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"server": "codex", "method": "tools/call", "request_id": request_id},
+    )
+    assert invocation_filtered.status_code == 200
+    filtered_items = invocation_filtered.json()["items"]
+    assert [item["phase"] for item in filtered_items] == [
+        "initialize_start",
+        "initialize_failure",
+    ]
+    assert all(item["request_id"] == request_id for item in filtered_items)
+
+    invocation_limited = client.get("/api/v1/mcp/invocation-events", params={"limit": 2})
+    assert invocation_limited.status_code == 200
+    limited_invocation_items = invocation_limited.json()["items"]
+    assert [item["phase"] for item in limited_invocation_items] == [
+        "invoke_start",
+        "invoke_success",
+    ]
+
+    correlated_connection = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})
+    assert correlated_connection.status_code == 200
+    correlated_items = correlated_connection.json()["items"]
+    assert len(correlated_items) == 1
+    assert correlated_items[0]["server"] == "codex"
+    assert correlated_items[0]["correlation_id"] == request_id
+
+    github_connection = client.get("/api/v1/mcp/events", params={"server": "github"})
+    assert github_connection.status_code == 200
+    github_items = github_connection.json()["items"]
+    assert len(github_items) == 1
+    assert github_items[0]["server"] == "github"
+    assert github_items[0]["correlation_id"] is None
+
+    limited_connection = client.get("/api/v1/mcp/events", params={"limit": 1})
+    assert limited_connection.status_code == 200
+    limited_connection_items = limited_connection.json()["items"]
+    assert len(limited_connection_items) == 1
+    assert limited_connection_items[0]["server"] == "github"

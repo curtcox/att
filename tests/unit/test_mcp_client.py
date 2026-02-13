@@ -690,3 +690,88 @@ async def test_connect_server_skips_initialize_when_unreachable() -> None:
     assert connected.status is ServerStatus.UNREACHABLE
     assert connected.initialized is False
     assert transport_calls == []
+
+
+@pytest.mark.asyncio
+async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if method == "initialize":
+            raise RuntimeError("init down")
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("codex", "http://codex.local")
+
+    with pytest.raises(MCPInvocationError):
+        await manager.invoke_tool("att.project.list")
+
+    invocation_events = manager.list_invocation_events()
+    assert invocation_events
+    request_id = invocation_events[0].request_id
+
+    correlated_events = manager.list_events(correlation_id=request_id)
+    assert len(correlated_events) == 1
+    assert correlated_events[0].server == "codex"
+    assert correlated_events[0].correlation_id == request_id
+
+
+@pytest.mark.asyncio
+async def test_event_list_filters_and_limits() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if server.name == "primary":
+            raise RuntimeError("primary unavailable")
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    result = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+    request_id = result.request_id
+    manager.record_check_result("backup", healthy=False, error="manual degrade")
+
+    primary_invocation = manager.list_invocation_events(server="primary", request_id=request_id)
+    assert [event.phase for event in primary_invocation] == [
+        "initialize_start",
+        "initialize_failure",
+    ]
+
+    latest_invocation = manager.list_invocation_events(limit=2)
+    assert [event.phase for event in latest_invocation] == [
+        "invoke_start",
+        "invoke_success",
+    ]
+
+    correlated_connection = manager.list_events(correlation_id=request_id)
+    assert len(correlated_connection) == 1
+    assert correlated_connection[0].server == "primary"
+
+    backup_connection = manager.list_events(server="backup")
+    assert len(backup_connection) == 1
+    assert backup_connection[0].correlation_id is None
+
+    latest_connection = manager.list_events(limit=1)
+    assert len(latest_connection) == 1
+    assert latest_connection[0].server == "backup"

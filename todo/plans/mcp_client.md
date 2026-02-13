@@ -70,3 +70,8 @@ P11
 - Added invocation lifecycle API exposure:
   - new endpoint `GET /api/v1/mcp/invocation-events` returns ordered invocation lifecycle records.
   - integration tests assert event ordering/payload stability under fallback and failover scenarios.
+- Added cross-event correlation and diagnostics filtering controls:
+  - connection transition events now include optional `correlation_id` for linking transitions to invocation lifecycle `request_id`.
+  - manager readers now support deterministic filter/limit queries for both streams (`server`, `method`, `request_id`, `correlation_id`, `limit`).
+  - API diagnostics endpoints now expose query controls for focused retrieval without route-level post-filtering.
+  - unit/integration coverage verifies correlation consistency and filter/limit semantics.
