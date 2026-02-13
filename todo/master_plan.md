@@ -194,6 +194,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper for mixed-method phase-start/transport subsequence parity assertions using request-id vectors and observed call-order tuples.
   - migrated repeated-same-server and force-reinitialize mixed-method call-order tests to helper-driven final parity assertions.
   - preserved explicit request-id sequencing, expected observed call-order literals, and diagnostics-filter semantics unchanged.
+- [x] Expanded mixed-method parity-helper adoption scope in call-order tests:
+  - migrated remaining scripted mixed-method call-order parity assertion call site to the shared mixed-method parity helper.
+  - removed the last mixed-method direct invocation of `_assert_call_order_subsequence_for_requests(...)` at test call sites.
+  - preserved request-id sequencing semantics, observed call-order collection behavior, and diagnostics-filter expectations unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.

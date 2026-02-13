@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `c58167b873d965067d6ad08ab5a98c7a7d2d97bb`
-- Last commit: `c58167b 2026-02-13 10:02:56 -0600 Extract mixed-method primary setup helper`
-- Working tree at handoff creation: dirty (`mixed-method final parity helper extraction`)
+- HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
+- Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
+- Working tree at handoff creation: dirty (`mixed-method parity helper adoption expansion`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Expanded mixed-method parity-helper adoption scope in call-order tests:
+  - migrated remaining scripted mixed-method call-order parity assertion call site to `_assert_mixed_method_call_order_parity(...)`.
+  - removed the last mixed-method direct invocation of `_assert_call_order_subsequence_for_requests(...)` at test call sites.
+  - preserved request-id sequencing semantics, observed call-order collection behavior, and diagnostics-filter expectations unchanged.
 - Reduced duplicated mixed-method final parity assertion wiring in call-order tests:
   - added shared helper for mixed-method phase-start/transport subsequence parity assertions based on request-id vectors and observed call-order tuples.
   - migrated repeated-same-server and force-reinitialize mixed-method call-order tests to helper-driven final parity assertions.
@@ -241,10 +245,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method parity-helper invocation scope:
-1. Expand mixed-method parity-helper adoption:
-   - migrate remaining mixed-method parity assertion call sites that still invoke `_assert_call_order_subsequence_for_requests(...)` directly to the shared mixed-method parity helper.
-   - keep request-id vectors and expected observed call-order literals explicit at test call sites for auditability.
+Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method scripted request-id wiring:
+1. Extract shared mixed-method scripted request-id tuple helper:
+   - factor repeated local `tool_request_id`/`resource_request_id` tuple assembly used for mixed-method parity checks into a small helper.
+   - keep observed call-order collection and filter assertions explicit at test call sites for auditability.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current diagnostics and call-order assertion behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.

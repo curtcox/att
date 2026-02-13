@@ -2255,7 +2255,7 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
     )
 
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
-    _assert_call_order_subsequence_for_requests(
+    _assert_mixed_method_call_order_parity(
         client=client,
         request_ids=(tool_request_id, resource_request_id),
         observed_call_order=observed_call_order,
