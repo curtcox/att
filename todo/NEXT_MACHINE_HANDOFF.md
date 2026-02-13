@@ -5,36 +5,36 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (adapter freshness query filtering + retry-window convergence coverage + plan doc updates)
+- Working tree at handoff creation: dirty (manager clock seam + clock-driven retry-window convergence coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`168 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`169 passed`)
 
 ## Recent Delivered Work
-- Expanded adapter diagnostics query controls with freshness filtering:
-  - `MCPClientManager.list_adapter_sessions()` now supports `freshness` filtering (`unknown`, `active_recent`, `stale`) in addition to `server`, `active_only`, and `limit`.
-  - `GET /api/v1/mcp/adapter-sessions` now accepts `freshness` query input and delegates filtering to manager source-of-truth.
-  - added unit/integration coverage for freshness filtering plus consistency assertions between `/servers` per-server diagnostics and aggregated diagnostics.
-- Added retry-window convergence coverage across consecutive cycles:
-  - new integration scenario validates timeout -> retry-window skip -> retry-window expiry -> unreachable transition -> recovery initialize path.
-  - verifies deterministic per-request invocation-event sequences and correlation-linkage behavior across consecutive failover/recovery cycles.
-  - asserts adapter freshness visibility remains correct after recovered primary invocation.
+- Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
+  - `MCPClientManager` now accepts optional `now_provider` and uses it for retry-window checks, initialization freshness gating, invocation event timestamps, and adapter freshness classification.
+  - default behavior remains unchanged (`datetime.now(UTC)` when `now_provider` is not supplied).
+  - added unit coverage confirming `should_retry()` consumes injected clock when `now` is omitted.
+- Migrated retry-window convergence coverage to clock-driven progression:
+  - removed direct `next_retry_at` mutation in the convergence integration scenario; progression now uses `clock.advance(...)` + manager APIs (`record_check_result`).
+  - retained deterministic failover/recovery assertions across timeout, retry-window skip, unreachable transition, and recovery initialize.
+  - preserved correlation/event determinism checks and freshness assertions after recovery.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Reduce test-only state mutation in convergence coverage:
-   - introduce a lightweight clock seam in `MCPClientManager` so retry-window expiry can be tested without mutating server internals (`next_retry_at`) directly.
-   - migrate mixed-state retry-window tests to clock-driven progression for clearer invariants.
-2. Expand convergence matrix for initialization-vs-invoke timeout classes:
-   - add explicit scenario coverage showing retry/backoff/status effects differ when timeout occurs during initialize versus invoke.
-   - preserve deterministic correlation/event assertions and server-local capability snapshot behavior.
+1. Expand clock-seam adoption to remaining mixed-state tests:
+   - migrate older mixed-state tests that still mutate `next_retry_at` directly to clock-driven progression for consistency.
+   - centralize small test clock helper usage across unit/integration MCP suites to reduce duplicated timing setup.
+2. Extend convergence matrix with capability-snapshot timing assertions under clock control:
+   - add assertions that snapshot `captured_at` replacement/retention follows server-local rules across timeout stage permutations with deterministic clock advancement.
+   - keep correlation/event sequence assertions deterministic per request.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
-- Reuse existing fake NAT session factories and extend with timeout-stage toggles + clock control to avoid new transport scaffolding.
+- Reuse existing fake NAT session factories and extend existing clock helper usage rather than adding new transport scaffolding.
 - Preserve current event/filter semantics and correlation determinism.
 
 ## Resume Checklist

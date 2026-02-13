@@ -18,6 +18,17 @@ from att.mcp.client import (
 )
 
 
+class _TestClock:
+    def __init__(self, start: datetime | None = None) -> None:
+        self.current = start or datetime(2026, 1, 1, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        return self.current
+
+    def advance(self, *, seconds: int) -> None:
+        self.current += timedelta(seconds=seconds)
+
+
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
@@ -85,6 +96,18 @@ async def test_should_retry_observes_next_retry_window() -> None:
 
     assert manager.should_retry("terminal", now=now) is False
     assert manager.should_retry("terminal", now=now + timedelta(seconds=1)) is True
+
+
+@pytest.mark.asyncio
+async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
+    clock = _TestClock()
+    manager = MCPClientManager(now_provider=clock)
+    manager.register("terminal", "http://terminal.local")
+    manager.record_check_result("terminal", healthy=False, error="down")
+
+    assert manager.should_retry("terminal") is False
+    clock.advance(seconds=1)
+    assert manager.should_retry("terminal") is True
 
 
 def test_choose_server_prefers_healthy_then_degraded() -> None:

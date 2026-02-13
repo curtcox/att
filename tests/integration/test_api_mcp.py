@@ -28,6 +28,17 @@ class StaticProbe:
         return self._healthy, self._error
 
 
+class _TestClock:
+    def __init__(self, start: datetime | None = None) -> None:
+        self.current = start or datetime(2026, 1, 1, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        return self.current
+
+    def advance(self, *, seconds: int) -> None:
+        self.current += timedelta(seconds=seconds)
+
+
 class FallbackTransport:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
@@ -1354,9 +1365,11 @@ def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() 
 
 def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> None:
     factory = _ClusterNatSessionFactory()
+    clock = _TestClock()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         unreachable_after=2,
+        now_provider=clock,
     )
     client = _client_with_manager(manager)
 
@@ -1467,13 +1480,9 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     assert no_transition.status_code == 200
     assert no_transition.json()["items"] == []
 
-    primary_state = manager.get("primary")
-    assert primary_state is not None
-    primary_state.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
-    backup_state = manager.get("backup")
-    assert backup_state is not None
-    backup_state.status = ServerStatus.DEGRADED
-    backup_state.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+    clock.advance(seconds=2)
+    manager.record_check_result("backup", healthy=False, error="manual degrade")
+    clock.advance(seconds=1)
     factory.fail_on_timeout_tool_calls.remove("primary")
     factory.fail_on_timeout_initialize.add("primary")
 
@@ -1530,9 +1539,8 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     )
 
     factory.fail_on_timeout_initialize.remove("primary")
-    primary_state.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
-    backup_state.status = ServerStatus.DEGRADED
-    backup_state.next_retry_at = datetime.now(UTC) + timedelta(seconds=30)
+    clock.advance(seconds=3)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
 
     recovery = client.post(
         "/api/v1/mcp/invoke/tool",

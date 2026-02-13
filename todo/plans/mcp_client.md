@@ -118,3 +118,10 @@ P11
   - integration scenario now exercises timeout -> retry-window skip -> retry-window expiry -> unreachable transition -> recovery initialize.
   - coverage includes initialize-time timeout stage to validate degraded/unreachable progression semantics independently from invoke-time timeout semantics.
   - correlation/invocation event assertions remain deterministic per request across the full cycle sequence.
+- Added deterministic clock seam for MCP client manager timing:
+  - `MCPClientManager` now accepts optional `now_provider` used by retry-window checks, invocation event timestamps, initialization freshness gating, and adapter freshness classification.
+  - preserves runtime defaults while enabling deterministic test-time progression.
+  - added unit test coverage for `should_retry()` under injected clock.
+- Migrated convergence scenario timing control from internal-state mutation to clock progression:
+  - retry-window advancement now uses clock increments plus manager APIs rather than direct `next_retry_at` assignment.
+  - keeps degraded/unreachable/recovered transition assertions while reducing test coupling to server internals.

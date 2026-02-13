@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -502,6 +502,7 @@ class MCPClientManager:
         max_initialization_age_seconds: int | None = 300,
         adapter_session_stale_after_seconds: int | None = 300,
         max_invocation_events: int = 500,
+        now_provider: Callable[[], datetime] | None = None,
     ) -> None:
         self._servers: dict[str, ExternalServer] = {}
         self._events: list[ConnectionEvent] = []
@@ -515,6 +516,7 @@ class MCPClientManager:
         self._unreachable_after = unreachable_after
         self._max_initialization_age_seconds = max_initialization_age_seconds
         self._adapter_session_stale_after_seconds = adapter_session_stale_after_seconds
+        self._now_provider = now_provider or (lambda: datetime.now(UTC))
 
     def register(self, name: str, url: str) -> ExternalServer:
         """Register or replace a server definition."""
@@ -594,7 +596,7 @@ class MCPClientManager:
             return False
         if server.next_retry_at is None:
             return True
-        current = now or datetime.now(UTC)
+        current = now or self._now()
         return current >= server.next_retry_at
 
     async def health_check_server(self, name: str) -> ExternalServer | None:
@@ -693,7 +695,7 @@ class MCPClientManager:
 
         protocol = result.get("protocolVersion")
         server.protocol_version = protocol if isinstance(protocol, str) else None
-        initialized_at = datetime.now(UTC)
+        initialized_at = self._now()
         server.initialized = True
         server.last_initialized_at = initialized_at
         server.initialization_expires_at = self._compute_initialization_expiry(initialized_at)
@@ -788,7 +790,7 @@ class MCPClientManager:
         server = self._servers.get(name)
         if server is None:
             return
-        when = checked_at or datetime.now(UTC)
+        when = checked_at or self._now()
         old_status = server.status
         if healthy:
             server.status = ServerStatus.HEALTHY
@@ -856,7 +858,7 @@ class MCPClientManager:
         adapter = self._adapter_with_session_controls()
         if adapter is None:
             return []
-        now = datetime.now(UTC)
+        now = self._now()
         statuses: list[AdapterSessionStatus] = []
         for candidate in self.list_servers():
             diagnostics = self._with_adapter_session_freshness(
@@ -1167,7 +1169,7 @@ class MCPClientManager:
         if server.status is not ServerStatus.HEALTHY:
             return True
         expiry = server.initialization_expires_at
-        if expiry is not None and datetime.now(UTC) >= expiry:
+        if expiry is not None and self._now() >= expiry:
             return True
         return False
 
@@ -1193,11 +1195,14 @@ class MCPClientManager:
                 method=method,
                 request_id=request_id,
                 phase=phase,
-                timestamp=datetime.now(UTC),
+                timestamp=self._now(),
                 error=error,
                 error_category=error_category,
             )
         )
+
+    def _now(self) -> datetime:
+        return self._now_provider()
 
     def _resolve_transport(self) -> MCPTransport:
         return self._transport_adapter or self._transport or self._default_transport
@@ -1208,7 +1213,7 @@ class MCPClientManager:
         *,
         now: datetime | None = None,
     ) -> AdapterSessionDiagnostics:
-        when = now or datetime.now(UTC)
+        when = now or self._now()
         freshness = self._classify_adapter_session_freshness(diagnostics, now=when)
         return AdapterSessionDiagnostics(
             active=diagnostics.active,
