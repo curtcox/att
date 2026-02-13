@@ -42,6 +42,7 @@ UNIT_TEST_SERVER_B = "b"
 UNIT_TEST_SERVER_C = "c"
 UNIT_TEST_CODEX_SERVER = "codex"
 UNIT_TEST_GITHUB_SERVER = "github"
+UNIT_TEST_TERMINAL_SERVER = "terminal"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -255,7 +256,7 @@ async def test_should_retry_observes_next_retry_window() -> None:
 
     now = datetime.now(UTC)
     manager.record_check_result(
-        "terminal",
+        UNIT_TEST_TERMINAL_SERVER,
         healthy=False,
         error="down",
         checked_at=now,
@@ -270,7 +271,7 @@ async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
     clock = MCPTestClock()
     manager = MCPClientManager(now_provider=clock)
     manager.register("terminal", "http://terminal.local")
-    manager.record_check_result("terminal", healthy=False, error="down")
+    manager.record_check_result(UNIT_TEST_TERMINAL_SERVER, healthy=False, error="down")
 
     assert manager.should_retry("terminal") is False
     clock.advance(seconds=1)
