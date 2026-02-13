@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit adapter session initialize tuple constant reuse`)
+- Working tree at handoff creation: dirty (`unit server-name assertion constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended stable server-name assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_PRIMARY_SERVER`, `UNIT_TEST_BACKUP_SERVER`, `UNIT_TEST_SECONDARY_SERVER`, `UNIT_TEST_RECOVERED_SERVER`, and `UNIT_TEST_DEGRADED_SERVER` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side server literals across failover/call-order/failure-script assertion vectors to shared constants while keeping server-registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended adapter/session call-order assertion tuple constant reuse in unit MCP client coverage:
   - reused `UNIT_TEST_INITIALIZE_METHOD` in the remaining adapter/session expected-call assertions that still used inline `"initialize"` tuple entries in `tests/unit/test_mcp_client.py`.
   - completed initialization-notify/method assertion tuple constantization across adapter/session call-order expectations while keeping transport request payload literals and method-branch conditionals explicit and unchanged.
@@ -353,10 +357,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable assertion-literal reuse to repeated server-name literals in unit MCP client call-order assertions:
-1. Reuse local constants for repeated assertion-side server-name literals in `tests/unit/test_mcp_client.py`:
-   - target repeated expected server literals in call-order and failover assertion vectors (for example `"primary"`, `"backup"`, and adjacent mixed-state server labels) where reuse is meaningful.
-   - keep server-registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+Continue `P12/P13` test-structure hardening by extending remaining stable assertion-literal constant reuse in unit MCP client error-attempt checks:
+1. Reuse local constants for repeated assertion-side stage/message literals in `tests/unit/test_mcp_client.py`:
+   - target repeated error-attempt stage literal `"invoke"` (and any adjacent repeated attempt-assertion literals that remain stable and non-setup) where reuse is meaningful.
+   - keep error setup payloads, scripted setup inputs, and transport method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.

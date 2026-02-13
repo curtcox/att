@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended stable server-name assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_PRIMARY_SERVER`, `UNIT_TEST_BACKUP_SERVER`, `UNIT_TEST_SECONDARY_SERVER`, `UNIT_TEST_RECOVERED_SERVER`, and `UNIT_TEST_DEGRADED_SERVER` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side server literals across failover/call-order/failure-script assertion vectors to shared constants while keeping server-registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended adapter/session call-order assertion tuple constant reuse in unit MCP client coverage:
   - reused `UNIT_TEST_INITIALIZE_METHOD` in the remaining adapter/session expected-call assertions that still used inline `"initialize"` tuple entries in `tests/unit/test_mcp_client.py`.
   - completed initialization-notify/method assertion tuple constantization across adapter/session call-order expectations while keeping transport request payload literals and method-branch conditionals explicit and unchanged.

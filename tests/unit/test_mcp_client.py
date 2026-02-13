@@ -31,6 +31,11 @@ UNIT_TEST_INITIALIZE_METHOD = "initialize"
 UNIT_TEST_TOOLS_CALL_METHOD = "tools/call"
 UNIT_TEST_RESOURCES_READ_METHOD = "resources/read"
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
+UNIT_TEST_PRIMARY_SERVER = "primary"
+UNIT_TEST_BACKUP_SERVER = "backup"
+UNIT_TEST_SECONDARY_SERVER = "secondary"
+UNIT_TEST_RECOVERED_SERVER = "recovered"
+UNIT_TEST_DEGRADED_SERVER = "degraded"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -167,12 +172,12 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
         {"limit": 10},
         preferred=["primary", "backup"],
     )
-    assert result.server == "backup"
+    assert result.server == UNIT_TEST_BACKUP_SERVER
     assert result.method == UNIT_TEST_TOOLS_CALL_METHOD
     assert isinstance(result.result, dict)
     assert result.result["ok"] is True
-    assert calls[0] == ("primary", UNIT_TEST_INITIALIZE_METHOD)
-    assert calls[-1] == ("backup", UNIT_TEST_TOOLS_CALL_METHOD)
+    assert calls[0] == (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+    assert calls[-1] == (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
 
     primary = manager.get("primary")
     backup = manager.get("backup")
@@ -212,12 +217,12 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
         "att://projects",
         preferred=["primary", "secondary"],
     )
-    assert result.server == "secondary"
+    assert result.server == UNIT_TEST_SECONDARY_SERVER
     assert result.method == UNIT_TEST_RESOURCES_READ_METHOD
     assert isinstance(result.result, dict)
     assert result.result["uri"] == "att://projects"
-    assert calls[0] == ("primary", UNIT_TEST_INITIALIZE_METHOD)
-    assert calls[-1] == ("secondary", UNIT_TEST_RESOURCES_READ_METHOD)
+    assert calls[0] == (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+    assert calls[-1] == (UNIT_TEST_SECONDARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
 
 
 @pytest.mark.asyncio
@@ -263,16 +268,16 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     error = exc_info.value
     assert error.method == UNIT_TEST_TOOLS_CALL_METHOD
     assert len(error.attempts) == 3
-    assert error.attempts[0].server == "primary"
+    assert error.attempts[0].server == UNIT_TEST_PRIMARY_SERVER
     assert error.attempts[0].stage == UNIT_TEST_INITIALIZE_METHOD
     assert error.attempts[0].success is False
     assert error.attempts[0].error == "primary down"
     assert error.attempts[0].error_category == UNIT_TEST_TRANSPORT_ERROR_CATEGORY
-    assert error.attempts[1].server == "backup"
+    assert error.attempts[1].server == UNIT_TEST_BACKUP_SERVER
     assert error.attempts[1].stage == UNIT_TEST_INITIALIZE_METHOD
     assert error.attempts[1].success is True
     assert error.attempts[1].error_category is None
-    assert error.attempts[2].server == "backup"
+    assert error.attempts[2].server == UNIT_TEST_BACKUP_SERVER
     assert error.attempts[2].stage == "invoke"
     assert error.attempts[2].success is False
     assert error.attempts[2].error == "rpc error: rpc failure"
@@ -417,12 +422,15 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
         preferred=["primary", "recovered", "degraded"],
     )
 
-    assert result.server == "recovered"
-    assert calls[0] == ("primary", UNIT_TEST_TOOLS_CALL_METHOD)
-    assert calls[1] == ("recovered", UNIT_TEST_INITIALIZE_METHOD)
-    assert calls[2] == ("recovered", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD)
-    assert calls[3] == ("recovered", UNIT_TEST_TOOLS_CALL_METHOD)
-    assert ("degraded", UNIT_TEST_INITIALIZE_METHOD) not in calls
+    assert result.server == UNIT_TEST_RECOVERED_SERVER
+    assert calls[0] == (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
+    assert calls[1] == (UNIT_TEST_RECOVERED_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+    assert calls[2] == (
+        UNIT_TEST_RECOVERED_SERVER,
+        UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
+    )
+    assert calls[3] == (UNIT_TEST_RECOVERED_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
+    assert (UNIT_TEST_DEGRADED_SERVER, UNIT_TEST_INITIALIZE_METHOD) not in calls
     updated_primary = manager.get("primary")
     updated_recovered = manager.get("recovered")
     assert updated_primary is not None
@@ -461,7 +469,7 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
     manager.register("backup", "http://backup.local")
 
     result = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
-    assert result.server == "backup"
+    assert result.server == UNIT_TEST_BACKUP_SERVER
 
     events = manager.list_invocation_events()
     phases = [event.phase for event in events]
@@ -474,7 +482,14 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
         UNIT_TEST_INVOKE_SUCCESS_PHASE,
     ]
     servers = [event.server for event in events]
-    assert servers == ["primary", "primary", "backup", "backup", "backup", "backup"]
+    assert servers == [
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_BACKUP_SERVER,
+    ]
     request_ids = {event.request_id for event in events}
     assert len(request_ids) == 1
 
@@ -1155,39 +1170,63 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
         preferred=["primary", "recovered", "degraded"],
     )
 
-    assert result.server == "recovered"
-    assert sessions["primary"].calls == [
+    assert result.server == UNIT_TEST_RECOVERED_SERVER
+    assert sessions[UNIT_TEST_PRIMARY_SERVER].calls == [
         ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("tool", "att.project.list"),
     ]
-    assert sessions["recovered"].calls == [
+    assert sessions[UNIT_TEST_RECOVERED_SERVER].calls == [
         ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
         ("tool", "att.project.list"),
     ]
-    assert "degraded" not in sessions
+    assert UNIT_TEST_DEGRADED_SERVER not in sessions
 
 
 def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory = ClusterNatSessionFactory()
 
     factory.set_failure_script("primary", "initialize", ["ok", "timeout", "error"])
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "ok"
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "timeout"
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "error"
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) is None
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        == "ok"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        == "timeout"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        == "error"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        is None
+    )
 
     factory.set_failure_script("primary", "tools/call", ["ok"])
-    assert factory.consume_failure_action("primary", UNIT_TEST_TOOLS_CALL_METHOD) == "ok"
-    assert factory.consume_failure_action("primary", UNIT_TEST_TOOLS_CALL_METHOD) is None
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
+        == "ok"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
+        is None
+    )
 
     factory.set_failure_script("primary", "resources/read", ["ok"])
-    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) == "ok"
-    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) is None
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
+        == "ok"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
+        is None
+    )
 
     factory.set_failure_script("primary", "initialize", ["invalid"])
     with pytest.raises(ValueError, match="unsupported scripted action"):
-        factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD)
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
 
 
 def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> None:
@@ -1198,27 +1237,64 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
     factory.set_failure_script("backup", "initialize", ["ok"])
     factory.set_failure_script("backup", "tools/call", ["error", "ok"])
 
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "timeout"
-    assert factory.failure_scripts[("primary", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[("primary", UNIT_TEST_RESOURCES_READ_METHOD)] == ["error"]
-    assert factory.failure_scripts[("backup", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[("backup", UNIT_TEST_TOOLS_CALL_METHOD)] == ["error", "ok"]
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        == "timeout"
+    )
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == [
+        "ok"
+    ]
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)] == [
+        "error"
+    ]
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == [
+        "error",
+        "ok",
+    ]
 
-    assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) == "error"
-    assert factory.failure_scripts[("primary", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[("primary", UNIT_TEST_RESOURCES_READ_METHOD)] == ["error"]
-    assert factory.failure_scripts[("backup", UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[("backup", UNIT_TEST_TOOLS_CALL_METHOD)] == ["ok"]
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
+        == "error"
+    )
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == [
+        "ok"
+    ]
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)] == [
+        "error"
+    ]
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == ["ok"]
 
-    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) == "error"
-    assert factory.consume_failure_action("backup", UNIT_TEST_INITIALIZE_METHOD) == "ok"
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) == "ok"
-    assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) == "ok"
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
+        == "error"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD) == "ok"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        == "ok"
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD) == "ok"
+    )
 
-    assert factory.consume_failure_action("primary", UNIT_TEST_INITIALIZE_METHOD) is None
-    assert factory.consume_failure_action("primary", UNIT_TEST_RESOURCES_READ_METHOD) is None
-    assert factory.consume_failure_action("backup", UNIT_TEST_INITIALIZE_METHOD) is None
-    assert factory.consume_failure_action("backup", UNIT_TEST_TOOLS_CALL_METHOD) is None
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        is None
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
+        is None
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD) is None
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD) is None
+    )
 
 
 @pytest.mark.asyncio
@@ -1257,7 +1333,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         first = await manager.read_resource("att://projects", preferred=["primary", "backup"])
     else:
         first = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
-    assert first.server == "primary"
+    assert first.server == UNIT_TEST_PRIMARY_SERVER
 
     if method_key == "initialize":
         invalidated = await manager.invalidate_adapter_session("primary")
@@ -1267,7 +1343,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         second = await manager.read_resource("att://projects", preferred=["primary", "backup"])
     else:
         second = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
-    assert second.server == "backup"
+    assert second.server == UNIT_TEST_BACKUP_SERVER
     assert second.method == expected_method
 
     primary_events = manager.list_invocation_events(
@@ -1314,14 +1390,14 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
         "att.project.list",
         preferred=["primary", "backup"],
     )
-    assert first.server == "backup"
+    assert first.server == UNIT_TEST_BACKUP_SERVER
     clock.advance(seconds=1)
 
     second = await manager.read_resource(
         "att://projects",
         preferred=["backup", "primary"],
     )
-    assert second.server == "primary"
+    assert second.server == UNIT_TEST_PRIMARY_SERVER
 
     call_order = [
         (server, method)
@@ -1334,13 +1410,13 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
         }
     ]
     assert call_order == [
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", UNIT_TEST_TOOLS_CALL_METHOD),
-        ("backup", UNIT_TEST_INITIALIZE_METHOD),
-        ("backup", UNIT_TEST_TOOLS_CALL_METHOD),
-        ("backup", UNIT_TEST_RESOURCES_READ_METHOD),
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", UNIT_TEST_RESOURCES_READ_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD),
+        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD),
+        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
     ]
 
 
@@ -1362,8 +1438,8 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
 
     first = await invoke_once()
     second = await invoke_once()
-    assert first.server == "primary"
-    assert second.server == "primary"
+    assert first.server == UNIT_TEST_PRIMARY_SERVER
+    assert second.server == UNIT_TEST_PRIMARY_SERVER
     assert first.method == method
     assert second.method == method
 
@@ -1377,14 +1453,14 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
         method,
         method,
     ]
-    assert before_invalidate[0][0] == "primary"
+    assert before_invalidate[0][0] == UNIT_TEST_PRIMARY_SERVER
     assert before_invalidate[1][1] == before_invalidate[2][1]
 
     invalidated = await manager.invalidate_adapter_session("primary")
     assert invalidated is True
 
     third = await invoke_once()
-    assert third.server == "primary"
+    assert third.server == UNIT_TEST_PRIMARY_SERVER
     assert third.method == method
 
     call_order = [
@@ -1423,7 +1499,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
         return await manager.invoke_tool("att.project.list", preferred=["primary"])
 
     first = await invoke_once()
-    assert first.server == "primary"
+    assert first.server == UNIT_TEST_PRIMARY_SERVER
     assert first.method == method
 
     primary = manager.get("primary")
@@ -1436,7 +1512,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
         primary.next_retry_at = None
 
     second = await invoke_once()
-    assert second.server == "primary"
+    assert second.server == UNIT_TEST_PRIMARY_SERVER
     assert second.method == method
 
     call_order = [
@@ -1445,10 +1521,10 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert call_order == [
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", method),
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", method),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, method),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, method),
     ]
 
 
@@ -1489,7 +1565,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
         )
 
     first = await invoke_once()
-    assert first.server == "backup"
+    assert first.server == UNIT_TEST_BACKUP_SERVER
 
     primary = manager.get("primary")
     assert primary is not None
@@ -1497,18 +1573,18 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
 
     calls_after_first = len(factory.calls)
     second = await invoke_once()
-    assert second.server == "backup"
+    assert second.server == UNIT_TEST_BACKUP_SERVER
 
     second_slice = factory.calls[calls_after_first:]
     assert second_slice
-    assert all(server == "backup" for server, _, _ in second_slice)
+    assert all(server == UNIT_TEST_BACKUP_SERVER for server, _, _ in second_slice)
 
     clock.advance(seconds=1)
     manager.record_check_result("backup", healthy=False, error="hold backup")
 
     calls_before_third = len(factory.calls)
     third = await invoke_once()
-    assert third.server == "primary"
+    assert third.server == UNIT_TEST_PRIMARY_SERVER
     assert third.method == method
 
     third_slice = [
@@ -1517,8 +1593,8 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert third_slice == [
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", method),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, method),
     ]
 
 
@@ -1549,13 +1625,13 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
         "att://projects",
         preferred=["primary", "backup"],
     )
-    assert first.server == "backup"
+    assert first.server == UNIT_TEST_BACKUP_SERVER
 
     second = await manager.read_resource(
         "att://projects",
         preferred=["backup", "primary"],
     )
-    assert second.server == "backup"
+    assert second.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
     for _ in range(backup_failures):
@@ -1569,7 +1645,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
         "att://projects",
         preferred=["backup", "primary"],
     )
-    assert third.server == "primary"
+    assert third.server == UNIT_TEST_PRIMARY_SERVER
 
     third_slice = [
         (server, method)
@@ -1577,8 +1653,8 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
         if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_RESOURCES_READ_METHOD}
     ]
     assert third_slice == [
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", UNIT_TEST_RESOURCES_READ_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
     ]
 
 
@@ -1613,14 +1689,14 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
-    assert first.server == "backup"
+    assert first.server == UNIT_TEST_BACKUP_SERVER
 
     calls_after_first = len(factory.calls)
     second = await invoke_once(["primary", "backup"])
-    assert second.server == "backup"
+    assert second.server == UNIT_TEST_BACKUP_SERVER
     second_slice = factory.calls[calls_after_first:]
     assert second_slice
-    assert all(server == "backup" for server, _, _ in second_slice)
+    assert all(server == UNIT_TEST_BACKUP_SERVER for server, _, _ in second_slice)
 
     if primary_failures == 2:
         clock.advance(seconds=1)
@@ -1634,10 +1710,10 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         clock.advance(seconds=1)
         calls_before_fourth = len(factory.calls)
         fourth = await invoke_once(["primary", "backup"])
-        assert fourth.server == "backup"
+        assert fourth.server == UNIT_TEST_BACKUP_SERVER
         fourth_slice = factory.calls[calls_before_fourth:]
         assert fourth_slice
-        assert all(server == "backup" for server, _, _ in fourth_slice)
+        assert all(server == UNIT_TEST_BACKUP_SERVER for server, _, _ in fourth_slice)
         clock.advance(seconds=2)
     else:
         clock.advance(seconds=1)
@@ -1650,7 +1726,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
     calls_before_reentry = len(factory.calls)
     reentry = await invoke_once(["backup", "primary"])
-    assert reentry.server == "primary"
+    assert reentry.server == UNIT_TEST_PRIMARY_SERVER
     assert reentry.method == method
 
     reentry_slice = [
@@ -1659,8 +1735,8 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reentry_slice == [
-        ("primary", UNIT_TEST_INITIALIZE_METHOD),
-        ("primary", method),
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_PRIMARY_SERVER, method),
     ]
 
 
@@ -1686,7 +1762,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
-    assert first.server == "backup"
+    assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
     manager.record_check_result("backup", healthy=False, error="hold backup")
@@ -1700,7 +1776,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     clock.advance(seconds=1)
     calls_before_backup_reentry = len(factory.calls)
     backup_reentry = await invoke_once(["primary", "backup"])
-    assert backup_reentry.server == "backup"
+    assert backup_reentry.server == UNIT_TEST_BACKUP_SERVER
     assert backup_reentry.method == method
 
     backup_reentry_slice = [
@@ -1709,8 +1785,8 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert backup_reentry_slice == [
-        ("backup", UNIT_TEST_INITIALIZE_METHOD),
-        ("backup", method),
+        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_BACKUP_SERVER, method),
     ]
 
 
@@ -1746,7 +1822,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
-    assert first.server == "backup"
+    assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
     for _ in range(backup_failures):
@@ -1769,7 +1845,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     clock.advance(seconds=reopen_seconds)
     calls_before_reentry = len(factory.calls)
     reentry = await invoke_once(["backup", "primary"])
-    assert reentry.server == "backup"
+    assert reentry.server == UNIT_TEST_BACKUP_SERVER
     assert reentry.method == method
 
     reentry_slice = [
@@ -1778,8 +1854,8 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reentry_slice == [
-        ("backup", UNIT_TEST_INITIALIZE_METHOD),
-        ("backup", method),
+        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        (UNIT_TEST_BACKUP_SERVER, method),
     ]
 
 
@@ -1927,7 +2003,7 @@ async def test_event_list_filters_and_limits() -> None:
 
     correlated_connection = manager.list_events(correlation_id=request_id)
     assert len(correlated_connection) == 1
-    assert correlated_connection[0].server == "primary"
+    assert correlated_connection[0].server == UNIT_TEST_PRIMARY_SERVER
 
     backup_connection = manager.list_events(server="backup")
     assert len(backup_connection) == 1
@@ -1935,4 +2011,4 @@ async def test_event_list_filters_and_limits() -> None:
 
     latest_connection = manager.list_events(limit=1)
     assert len(latest_connection) == 1
-    assert latest_connection[0].server == "backup"
+    assert latest_connection[0].server == UNIT_TEST_BACKUP_SERVER
