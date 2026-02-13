@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (shared MCP test clock helper + stage-paired timeout convergence matrix + plan doc updates)
+- Working tree at handoff creation: dirty (shared NAT test helper extraction + stage-paired diagnostics filter assertions + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -34,19 +34,26 @@
 - Expanded stage-specific timeout convergence matrix with explicit paired scenarios:
   - replaced single mixed-stage convergence path with paired `initialize` vs `invoke` timeout scenarios under the same clock progression and preferred order.
   - assertions now explicitly capture stage-specific retry/backoff/status deltas and capability snapshot timing behavior (retention vs replacement) while preserving deterministic correlation/event checks.
+- Reduced duplicated MCP integration transport scaffolding beyond clocks:
+  - extracted reusable fake NAT transport/session helpers into `tests/support/mcp_nat_helpers.py` (`APIFakeNatSessionFactory`, `ClusterNatSessionFactory`, and session/model helpers).
+  - migrated `tests/integration/test_api_mcp.py` to import shared helpers and removed duplicated test-local session factory/session model classes.
+- Extended stage-paired convergence diagnostics filtering coverage:
+  - for each timeout stage, added explicit deterministic assertions for `/api/v1/mcp/invocation-events` filtering by `server` + `request_id` + `limit`.
+  - for each timeout stage, added explicit deterministic assertions for `/api/v1/mcp/events` filtering by `server` + `correlation_id` + `limit`.
+  - kept server-local capability snapshot timing assertions and preferred-order failover/recovery determinism intact.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` with external transport realism and convergence:
-1. Reduce duplicated MCP test scaffolding beyond clocks:
-   - extract shared cluster NAT session factory/session model helpers used in integration MCP tests into `tests/support` to shrink repeated test-local transport setup.
-   - keep behavior unchanged while improving test readability and maintenance.
-2. Extend stage-paired convergence coverage with diagnostics filter assertions:
-   - for each timeout stage, assert deterministic event-filter behavior (`server`, `request_id`, `correlation_id`, `limit`) on both `/api/v1/mcp/events` and `/api/v1/mcp/invocation-events`.
-   - preserve server-local capability snapshot timing assertions and preferred-order fallback determinism.
+Continue `P12/P13` with external transport realism and diagnostics parity:
+1. Reduce remaining duplicated NAT test scaffolding in unit MCP coverage:
+   - extract `_FakeNatSession` / `_FakeNatSessionFactory` from `tests/unit/test_mcp_client.py` into `tests/support` to align with shared helper usage.
+   - keep unit behavior unchanged while shrinking test-local transport setup.
+2. Extend diagnostics filter parity to `resources/read` failover paths:
+   - add deterministic integration assertions for invocation-event filtering with `server`, `method`, `request_id`, and `limit` under `resources/read` failover/recovery.
+   - assert matching connection-event filtering with `server`, `correlation_id`, and `limit` for the same correlated requests.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
-- Reuse existing fake NAT session factories and extend existing clock helper usage rather than adding new transport scaffolding.
+- Reuse existing fake NAT session factories and shared clock/helper modules rather than introducing new ad-hoc transport scaffolding.
 - Preserve current event/filter semantics and correlation determinism.
 
 ## Resume Checklist
@@ -71,6 +78,7 @@ Suggested implementation direction:
 - `src/att/api/schemas/mcp.py`
 - `tests/unit/test_mcp_client.py`
 - `tests/integration/test_api_mcp.py`
+- `tests/support/mcp_nat_helpers.py`
 - `src/att/api/deps.py`
 
 ## Remaining Program-Level Milestones

@@ -41,6 +41,8 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Added `MCPClientManager` clock seam (`now_provider`) for deterministic retry-window and freshness-time progression in tests without direct retry-window state mutation.
 - [x] Expanded clock-driven mixed-state MCP coverage by migrating remaining retry-window mutations to injected clock progression and adding capability-snapshot timing retention/replacement assertions under deterministic convergence flows.
 - [x] Added shared MCP test-time clock support and stage-paired timeout convergence coverage (`initialize` vs `invoke`) with explicit stage-specific retry/status/snapshot timing assertions.
+- [x] Extracted reusable MCP NAT test transport scaffolding into `tests/support/mcp_nat_helpers.py` (API fake session and cluster session factory/models) and migrated integration tests to shared helpers.
+- [x] Extended stage-paired retry-window convergence coverage with deterministic diagnostics-filter assertions (`server`, `request_id`, `correlation_id`, `limit`) for both `/api/v1/mcp/events` and `/api/v1/mcp/invocation-events`.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.

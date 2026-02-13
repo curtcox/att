@@ -137,3 +137,9 @@ P11
 - Expanded convergence matrix to explicit stage-paired scenarios:
   - convergence coverage now runs paired `initialize`-timeout and `invoke`-timeout scenarios under the same clock progression and preferred ordering.
   - assertions explicitly verify stage-specific retry/backoff/status outcomes and capability snapshot timing deltas while preserving deterministic event/correlation checks.
+- Extracted shared NAT integration test transport scaffolding:
+  - added `tests/support/mcp_nat_helpers.py` with reusable `APIFakeNatSessionFactory` and `ClusterNatSessionFactory` (plus session/model helpers).
+  - migrated `tests/integration/test_api_mcp.py` to import shared NAT helpers and removed duplicated local helper classes.
+- Extended stage-paired convergence diagnostics filter assertions:
+  - for each timeout stage, convergence coverage now validates deterministic filtering on `/api/v1/mcp/invocation-events` with `server` + `request_id` + `limit`.
+  - for each timeout stage, convergence coverage now validates deterministic filtering on `/api/v1/mcp/events` with `server` + `correlation_id` + `limit`.

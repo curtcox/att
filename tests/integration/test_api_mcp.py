@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -19,6 +16,7 @@ from att.mcp.client import (
     ServerStatus,
 )
 from tests.support.mcp_helpers import MCPTestClock
+from tests.support.mcp_nat_helpers import APIFakeNatSessionFactory, ClusterNatSessionFactory
 
 
 class StaticProbe:
@@ -114,177 +112,6 @@ class ShouldNotBeCalledTransport:
         del server, request
         msg = "legacy transport path should not be used when adapter is configured"
         raise AssertionError(msg)
-
-
-class _ModelPayload:
-    def __init__(self, payload: dict[str, Any]) -> None:
-        self._payload = payload
-
-    def model_dump(self, *, mode: str = "python", exclude_none: bool = False) -> dict[str, Any]:
-        del mode, exclude_none
-        return self._payload
-
-
-class _APIFakeNatSession:
-    def __init__(self, session_id: str) -> None:
-        self.session_id = session_id
-
-    async def initialize(self) -> _ModelPayload:
-        return _ModelPayload(
-            {
-                "protocolVersion": "2025-11-25",
-                "serverInfo": {"name": "nat"},
-                "capabilities": {"tools": {}, "resources": {}},
-            }
-        )
-
-    async def send_notification(
-        self,
-        notification: object,
-        related_request_id: str | int | None = None,
-    ) -> None:
-        del notification, related_request_id
-
-    async def call_tool(
-        self,
-        name: str,
-        arguments: dict[str, Any] | None = None,
-        read_timeout_seconds: timedelta | None = None,
-        progress_callback: object | None = None,
-        *,
-        meta: dict[str, Any] | None = None,
-    ) -> _ModelPayload:
-        del read_timeout_seconds, progress_callback, meta
-        return _ModelPayload(
-            {
-                "content": [{"type": "text", "text": "ok"}],
-                "structuredContent": {
-                    "session_id": self.session_id,
-                    "tool": name,
-                    "arguments": arguments or {},
-                },
-                "isError": False,
-            }
-        )
-
-    async def read_resource(self, uri: object) -> _ModelPayload:
-        return _ModelPayload(
-            {
-                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
-            }
-        )
-
-
-class _APIFakeNatSessionFactory:
-    def __init__(self) -> None:
-        self.created = 0
-        self.closed = 0
-
-    @asynccontextmanager
-    async def __call__(self, _: str) -> Any:
-        self.created += 1
-        try:
-            yield _APIFakeNatSession(session_id=f"session-{self.created}")
-        finally:
-            self.closed += 1
-
-
-class _ClusterNatSession:
-    def __init__(
-        self,
-        *,
-        server_name: str,
-        session_id: str,
-        factory: _ClusterNatSessionFactory,
-    ) -> None:
-        self.server_name = server_name
-        self.session_id = session_id
-        self.factory = factory
-
-    async def initialize(self) -> _ModelPayload:
-        if self.server_name in self.factory.fail_on_timeout_initialize:
-            msg = f"{self.server_name} initialize timed out"
-            raise httpx.ReadTimeout(msg)
-        self.factory.calls.append((self.server_name, self.session_id, "initialize"))
-        return _ModelPayload(
-            {
-                "protocolVersion": "2025-11-25",
-                "serverInfo": {"name": self.server_name},
-                "capabilities": {"tools": {}, "resources": {}},
-            }
-        )
-
-    async def send_notification(
-        self,
-        notification: object,
-        related_request_id: str | int | None = None,
-    ) -> None:
-        del notification, related_request_id
-        self.factory.calls.append((self.server_name, self.session_id, "notifications/initialized"))
-
-    async def call_tool(
-        self,
-        name: str,
-        arguments: dict[str, Any] | None = None,
-        read_timeout_seconds: timedelta | None = None,
-        progress_callback: object | None = None,
-        *,
-        meta: dict[str, Any] | None = None,
-    ) -> _ModelPayload:
-        del read_timeout_seconds, progress_callback, meta
-        self.factory.calls.append((self.server_name, self.session_id, "tools/call"))
-        if self.server_name in self.factory.fail_on_timeout_tool_calls:
-            msg = f"{self.server_name} timed out"
-            raise httpx.ReadTimeout(msg)
-        if self.server_name in self.factory.fail_on_tool_calls:
-            msg = f"{self.server_name} unavailable"
-            raise RuntimeError(msg)
-        return _ModelPayload(
-            {
-                "content": [{"type": "text", "text": "ok"}],
-                "structuredContent": {
-                    "session_id": self.session_id,
-                    "server": self.server_name,
-                    "tool": name,
-                    "arguments": arguments or {},
-                },
-                "isError": False,
-            }
-        )
-
-    async def read_resource(self, uri: object) -> _ModelPayload:
-        self.factory.calls.append((self.server_name, self.session_id, "resources/read"))
-        return _ModelPayload(
-            {
-                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
-            }
-        )
-
-
-class _ClusterNatSessionFactory:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str]] = []
-        self.fail_on_timeout_initialize: set[str] = set()
-        self.fail_on_tool_calls: set[str] = set()
-        self.fail_on_timeout_tool_calls: set[str] = set()
-        self.created_by_server: dict[str, int] = {}
-        self.closed_by_server: dict[str, int] = {}
-
-    @asynccontextmanager
-    async def __call__(self, endpoint: str) -> Any:
-        host = endpoint.split("//", maxsplit=1)[1].split("/", maxsplit=1)[0]
-        server_name = host.split(".", maxsplit=1)[0]
-        next_index = self.created_by_server.get(server_name, 0) + 1
-        self.created_by_server[server_name] = next_index
-        session_id = f"{server_name}-session-{next_index}"
-        try:
-            yield _ClusterNatSession(
-                server_name=server_name,
-                session_id=session_id,
-                factory=self,
-            )
-        finally:
-            self.closed_by_server[server_name] = self.closed_by_server.get(server_name, 0) + 1
 
 
 def _client_with_manager(manager: MCPClientManager) -> TestClient:
@@ -838,7 +665,7 @@ def test_mcp_invoke_uses_adapter_transport_when_configured() -> None:
 
 
 def test_mcp_adapter_session_lifecycle_and_diagnostics_endpoints() -> None:
-    factory = _APIFakeNatSessionFactory()
+    factory = APIFakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -938,7 +765,7 @@ def test_mcp_adapter_session_lifecycle_conflict_without_nat_controls() -> None:
 
 
 def test_mcp_adapter_sessions_endpoint_aggregates_status() -> None:
-    factory = _APIFakeNatSessionFactory()
+    factory = APIFakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -997,7 +824,7 @@ def test_mcp_adapter_sessions_endpoint_without_nat_controls() -> None:
 
 
 def test_mcp_adapter_session_freshness_reports_stale_state() -> None:
-    factory = _APIFakeNatSessionFactory()
+    factory = APIFakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=60,
@@ -1025,7 +852,7 @@ def test_mcp_adapter_session_freshness_reports_stale_state() -> None:
 
 
 def test_mcp_adapter_sessions_endpoint_supports_freshness_filter() -> None:
-    factory = _APIFakeNatSessionFactory()
+    factory = APIFakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=60,
@@ -1070,7 +897,7 @@ def test_mcp_adapter_sessions_endpoint_supports_freshness_filter() -> None:
 
 
 def test_mcp_partial_cluster_refresh_failover_order_and_correlation() -> None:
-    factory = _ClusterNatSessionFactory()
+    factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -1153,7 +980,7 @@ def test_mcp_partial_cluster_refresh_failover_order_and_correlation() -> None:
 
 
 def test_mcp_invalidate_one_server_preserves_other_server_identity_and_capabilities() -> None:
-    factory = _ClusterNatSessionFactory()
+    factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -1226,7 +1053,7 @@ def test_mcp_invalidate_one_server_preserves_other_server_identity_and_capabilit
 
 
 def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() -> None:
-    factory = _ClusterNatSessionFactory()
+    factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -1361,7 +1188,7 @@ def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() 
 def test_mcp_retry_window_convergence_stage_specific_timeouts(
     timeout_stage: str,
 ) -> None:
-    factory = _ClusterNatSessionFactory()
+    factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
@@ -1369,6 +1196,54 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         now_provider=clock,
     )
     client = _client_with_manager(manager)
+
+    def _expected_phases_for_server(
+        phases: list[str],
+        servers: list[str],
+        *,
+        server: str,
+    ) -> list[str]:
+        return [
+            phase
+            for phase, event_server in zip(phases, servers, strict=True)
+            if event_server == server
+        ]
+
+    def _assert_invocation_filters(request_id: str, *, expected_primary_phases: list[str]) -> None:
+        filtered = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={"server": "primary", "request_id": request_id},
+        )
+        assert filtered.status_code == 200
+        assert [item["phase"] for item in filtered.json()["items"]] == expected_primary_phases
+
+        limited = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={"server": "primary", "request_id": request_id, "limit": 1},
+        )
+        assert limited.status_code == 200
+        assert [item["phase"] for item in limited.json()["items"]] == expected_primary_phases[-1:]
+
+    def _assert_connection_filters(
+        request_id: str,
+        *,
+        expected_primary_statuses: list[str],
+    ) -> None:
+        filtered = client.get(
+            "/api/v1/mcp/events",
+            params={"server": "primary", "correlation_id": request_id},
+        )
+        assert filtered.status_code == 200
+        assert [item["to_status"] for item in filtered.json()["items"]] == expected_primary_statuses
+
+        limited = client.get(
+            "/api/v1/mcp/events",
+            params={"server": "primary", "correlation_id": request_id, "limit": 1},
+        )
+        assert limited.status_code == 200
+        assert [item["to_status"] for item in limited.json()["items"]] == expected_primary_statuses[
+            -1:
+        ]
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
@@ -1472,6 +1347,18 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     assert [item["phase"] for item in first_items] == failover_phases
     assert [item["server"] for item in first_items] == failover_servers
     assert first_items[failover_error_index]["error_category"] == "network_timeout"
+    _assert_invocation_filters(
+        request_id_1,
+        expected_primary_phases=_expected_phases_for_server(
+            failover_phases,
+            failover_servers,
+            server="primary",
+        ),
+    )
+    _assert_connection_filters(
+        request_id_1,
+        expected_primary_statuses=[ServerStatus.DEGRADED.value],
+    )
 
     primary_after_first = client.get("/api/v1/mcp/servers/primary")
     assert primary_after_first.status_code == 200
@@ -1513,9 +1400,11 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         "backup",
         "backup",
     ]
+    _assert_invocation_filters(request_id_2, expected_primary_phases=[])
     no_transition = client.get("/api/v1/mcp/events", params={"correlation_id": request_id_2})
     assert no_transition.status_code == 200
     assert no_transition.json()["items"] == []
+    _assert_connection_filters(request_id_2, expected_primary_statuses=[])
 
     clock.advance(seconds=2)
     manager.record_check_result("backup", healthy=False, error="manual degrade")
@@ -1542,6 +1431,14 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     assert [item["phase"] for item in third_items] == failover_phases
     assert [item["server"] for item in third_items] == failover_servers
     assert third_items[failover_error_index]["error_category"] == "network_timeout"
+    _assert_invocation_filters(
+        request_id_3,
+        expected_primary_phases=_expected_phases_for_server(
+            failover_phases,
+            failover_servers,
+            server="primary",
+        ),
+    )
 
     primary_after_second = client.get("/api/v1/mcp/servers/primary")
     assert primary_after_second.status_code == 200
@@ -1578,6 +1475,10 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
             item["server"] == "primary" and item["to_status"] == ServerStatus.UNREACHABLE.value
             for item in stage_items
         )
+        _assert_connection_filters(
+            request_id_3,
+            expected_primary_statuses=[ServerStatus.UNREACHABLE.value],
+        )
     else:
         assert any(
             item["server"] == "primary" and item["to_status"] == ServerStatus.HEALTHY.value
@@ -1586,6 +1487,13 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         assert any(
             item["server"] == "primary" and item["to_status"] == ServerStatus.DEGRADED.value
             for item in stage_items
+        )
+        _assert_connection_filters(
+            request_id_3,
+            expected_primary_statuses=[
+                ServerStatus.HEALTHY.value,
+                ServerStatus.DEGRADED.value,
+            ],
         )
 
     if timeout_stage == "initialize":
@@ -1625,6 +1533,15 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         "primary",
         "primary",
     ]
+    _assert_invocation_filters(
+        request_id_4,
+        expected_primary_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
 
     correlation_recovery = client.get(
         "/api/v1/mcp/events",
@@ -1635,6 +1552,10 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     assert len(recovered_items) == 1
     assert recovered_items[0]["server"] == "primary"
     assert recovered_items[0]["to_status"] == ServerStatus.HEALTHY.value
+    _assert_connection_filters(
+        request_id_4,
+        expected_primary_statuses=[ServerStatus.HEALTHY.value],
+    )
 
     primary_final = client.get("/api/v1/mcp/servers/primary")
     assert primary_final.status_code == 200
