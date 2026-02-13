@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended event-filter server-argument constant reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_PRIMARY_SERVER` and `UNIT_TEST_BACKUP_SERVER` in remaining assertion-adjacent invocation/connection event filter calls within `test_event_list_filters_and_limits` in `tests/unit/test_mcp_client.py`.
+  - replaced inline `server="primary"` and `server="backup"` filter arguments with shared constants while keeping registration/setup literals, preferred-order inputs, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended isolated `codex` server-name assertion constant reuse in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_CODEX_SERVER` in `tests/unit/test_mcp_client.py`.
   - migrated remaining assertion-side inline `"codex"` server literals in stale-reinitialize, auto-initialize, connect-server probe-call vector, and correlation-event checks to the shared constant while keeping registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.

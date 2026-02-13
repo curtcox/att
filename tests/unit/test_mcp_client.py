@@ -1997,7 +1997,10 @@ async def test_event_list_filters_and_limits() -> None:
     request_id = result.request_id
     manager.record_check_result("backup", healthy=False, error="manual degrade")
 
-    primary_invocation = manager.list_invocation_events(server="primary", request_id=request_id)
+    primary_invocation = manager.list_invocation_events(
+        server=UNIT_TEST_PRIMARY_SERVER,
+        request_id=request_id,
+    )
     assert [event.phase for event in primary_invocation] == [
         UNIT_TEST_INITIALIZE_START_PHASE,
         UNIT_TEST_INITIALIZE_FAILURE_PHASE,
@@ -2013,7 +2016,7 @@ async def test_event_list_filters_and_limits() -> None:
     assert len(correlated_connection) == 1
     assert correlated_connection[0].server == UNIT_TEST_PRIMARY_SERVER
 
-    backup_connection = manager.list_events(server="backup")
+    backup_connection = manager.list_events(server=UNIT_TEST_BACKUP_SERVER)
     assert len(backup_connection) == 1
     assert backup_connection[0].correlation_id is None
 
