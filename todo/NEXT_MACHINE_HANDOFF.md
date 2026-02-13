@@ -11,9 +11,13 @@
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`226 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated mixed-method scripted request-id tuple wiring in call-order parity tests:
+  - added shared helper `_mixed_method_scripted_request_ids(...)` for scripted mixed-method parity request-id tuple assembly.
+  - added focused helper regression `test_mixed_method_scripted_request_ids_helper_preserves_order` and migrated scripted call-order parity assertion wiring to use the helper.
+  - preserved existing diagnostics filter assertions, observed call-order literal assertions, and phase-start/transport subsequence parity semantics unchanged.
 - Expanded mixed-method parity-helper adoption scope in call-order tests:
   - migrated remaining scripted mixed-method call-order parity assertion call site to `_assert_mixed_method_call_order_parity(...)`.
   - removed the last mixed-method direct invocation of `_assert_call_order_subsequence_for_requests(...)` at test call sites.
@@ -245,17 +249,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method scripted request-id wiring:
-1. Extract shared mixed-method scripted request-id tuple helper:
-   - factor repeated local `tool_request_id`/`resource_request_id` tuple assembly used for mixed-method parity checks into a small helper.
-   - keep observed call-order collection and filter assertions explicit at test call sites for auditability.
+Continue `P12/P13` test-structure hardening by reducing duplicated scripted failover phase/server vectors:
+1. Extract shared scripted failover phase/server expectation constants:
+   - factor repeated 8-step failover phase vectors and matching server-order vectors in scripted mixed-method failover assertions into shared tuple constants.
+   - keep all diagnostics filter assertions and call-order literal assertions explicit at each test call site for auditability.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current diagnostics and call-order assertion behavior unchanged.
+   - keep current invocation-event and connection-event filter behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse helper/constant style from nearby retry-window/unreachable call-order expectation vectors.
+- Reuse tuple-constant style from nearby retry-window/unreachable call-order expectation vectors.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

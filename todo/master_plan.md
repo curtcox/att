@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Reduced duplicated mixed-method scripted request-id tuple wiring in integration call-order parity tests:
+  - added shared helper `_mixed_method_scripted_request_ids(...)` and migrated scripted mixed-method parity assertion wiring to consume it.
+  - added focused helper regression coverage to lock request-id tuple ordering semantics.
+  - preserved diagnostics filter assertions, observed call-order literal assertions, and phase-start/transport subsequence parity behavior unchanged.
 - [x] P01 `project_skeleton.md` baseline implemented: `pyproject.toml`, `src/` package layout, test directories, config/ui folders, and package entrypoint.
 - [x] P03 `data_models.md` baseline implemented: `Project` + `ATTEvent` models, SQLite migrations, async store with CRUD and event queries.
 - [x] P04-P11 baseline manager interfaces implemented in `src/att/core/` (`project_manager`, `code_manager`, `git_manager`, `runtime_manager`, `test_runner`, `debug_manager`, `deploy_manager`, `tool_orchestrator`).
@@ -257,7 +261,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (225 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (226 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).

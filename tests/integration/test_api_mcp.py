@@ -553,6 +553,14 @@ def _unreachable_transition_request_ids(
     )
 
 
+def _mixed_method_scripted_request_ids(
+    *,
+    tool_request_id: str,
+    resource_request_id: str,
+) -> tuple[str, str]:
+    return (tool_request_id, resource_request_id)
+
+
 def _assert_primary_request_diagnostics(
     *,
     client: TestClient,
@@ -2178,6 +2186,13 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
     )
 
 
+def test_mixed_method_scripted_request_ids_helper_preserves_order() -> None:
+    assert _mixed_method_scripted_request_ids(
+        tool_request_id="tool-request-id",
+        resource_request_id="resource-request-id",
+    ) == ("tool-request-id", "resource-request-id")
+
+
 def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
     factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
@@ -2257,7 +2272,10 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
     _assert_mixed_method_call_order_parity(
         client=client,
-        request_ids=(tool_request_id, resource_request_id),
+        request_ids=_mixed_method_scripted_request_ids(
+            tool_request_id=tool_request_id,
+            resource_request_id=resource_request_id,
+        ),
         observed_call_order=observed_call_order,
     )
 
