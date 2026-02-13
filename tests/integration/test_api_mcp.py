@@ -1501,6 +1501,120 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
     )
 
 
+def test_mcp_scripted_mixed_method_isolation_across_servers() -> None:
+    factory = ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    factory.set_failure_script("primary", "tools/call", ["error"])
+    factory.set_failure_script("primary", "resources/read", ["ok"])
+    factory.set_failure_script("backup", "resources/read", ["timeout"])
+
+    first_tool = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first_tool.status_code == 200
+    assert first_tool.json()["server"] == "backup"
+    request_id_1 = first_tool.json()["request_id"]
+
+    assert factory.failure_scripts[("primary", "tools/call")] == []
+    assert factory.failure_scripts[("primary", "resources/read")] == ["ok"]
+    assert factory.failure_scripts[("backup", "resources/read")] == ["timeout"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="tools/call",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    manager.record_check_result("primary", healthy=True)
+
+    second_resource = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert second_resource.status_code == 200
+    assert second_resource.json()["server"] == "primary"
+    request_id_2 = second_resource.json()["request_id"]
+
+    assert factory.failure_scripts[("primary", "resources/read")] == []
+    assert factory.failure_scripts[("backup", "resources/read")] == ["timeout"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[],
+    )
+
+    third_resource = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert third_resource.status_code == 200
+    assert third_resource.json()["server"] == "primary"
+    request_id_3 = third_resource.json()["request_id"]
+
+    assert factory.failure_scripts[("backup", "resources/read")] == []
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_3,
+        server="backup",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_3,
+        server="backup",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+
 def test_mcp_scripted_initialize_precedence_and_failover() -> None:
     factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
@@ -1591,6 +1705,91 @@ def test_mcp_scripted_initialize_precedence_and_failover() -> None:
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
+
+
+def test_mcp_resource_scripted_initialize_precedence_overrides_timeout_toggle() -> None:
+    factory = ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    factory.fail_on_timeout_initialize.add("primary")
+    factory.set_failure_script("primary", "initialize", ["ok"])
+
+    scripted_ok = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert scripted_ok.status_code == 200
+    assert scripted_ok.json()["server"] == "primary"
+    assert scripted_ok.json()["method"] == "resources/read"
+    request_id_1 = scripted_ok.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[],
+    )
+
+    invalidated = client.post("/api/v1/mcp/servers/primary/adapter/invalidate")
+    assert invalidated.status_code == 200
+
+    timeout_fallback = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert timeout_fallback.status_code == 200
+    assert timeout_fallback.json()["server"] == "backup"
+    assert timeout_fallback.json()["method"] == "resources/read"
+    request_id_2 = timeout_fallback.json()["request_id"]
+
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id_1})
+    assert correlated.status_code == 200
+    assert correlated.json()["items"] == []
+
+    primary = client.get("/api/v1/mcp/servers/primary")
+    assert primary.status_code == 200
+    assert primary.json()["status"] == ServerStatus.DEGRADED.value
+    assert primary.json()["last_error_category"] == "network_timeout"
 
 
 @pytest.mark.parametrize("error_stage", ["initialize", "invoke"])

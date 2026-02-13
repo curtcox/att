@@ -3,15 +3,15 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `2e369f8985b9ea046a8e6e39af4301dea104b7a9`
-- Last commit: `2e369f8 2026-02-13 07:18:08 -0600 Follow AGENTS and handoff steps`
-- Working tree at handoff creation: clean
+- HEAD: `f9cd481adf375870a6516884de4c74ccf96acc70`
+- Last commit: `f9cd481 2026-02-13 07:20:02 -0600 Update handoff snapshot metadata`
+- Working tree at handoff creation: dirty (resources initialize-precedence parity + API mixed-script isolation + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`184 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`186 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -76,15 +76,21 @@
 - Added helper-level scripted-failure isolation coverage:
   - added unit assertions that per-server/per-method scripts remain isolated under shared `ClusterNatSessionFactory` state.
   - added mixed-script regression checks across `primary` and `backup` so consuming one key does not mutate unrelated script queues.
+- Extended scripted initialize precedence parity to `resources/read`:
+  - added integration coverage proving scripted `initialize: ok` for `resources/read` overrides set-based initialize timeout toggles and keeps the correlated request free of degraded transitions.
+  - retained deterministic diagnostics-filter coverage (`server`, `method`, `request_id`, `correlation_id`, `limit`) and added fallback verification after adapter invalidation when set-based timeout toggles reapply.
+- Added API-level mixed-script isolation regression:
+  - added integration sequencing across `tools/call` and `resources/read` with mixed scripts on `primary` and `backup`.
+  - assertions now verify only targeted server/method script queues are consumed per request while unrelated queues remain intact until exercised.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` scripted-controls convergence hardening:
-1. Extend scripted precedence parity to `resources/read` initialize stage:
-   - add an integration scenario proving scripted `initialize: ok` for `resources/read` overrides set-based initialize timeout toggles (mirroring existing tool-path precedence coverage).
-   - assert deterministic correlation/filter behavior (`request_id`, `correlation_id`, `limit`) and no degraded transition for the overridden attempt.
-2. Add API-level mixed-script isolation regression:
-   - add an integration scenario with mixed scripts on `primary` vs `backup` across `tools/call` and `resources/read` in sequence.
-   - assert each request consumes only its targeted server/method script queue and leaves unrelated queues intact until exercised.
+Continue `P12/P13` scripted-controls hardening with initialize-script isolation parity:
+1. Add API integration coverage for mixed initialize + invoke scripts on both servers:
+   - combine `initialize` scripts with method scripts (`tools/call`/`resources/read`) in one scenario across `primary` and `backup`.
+   - assert initialize-script consumption is isolated from invoke-script queues and preserves deterministic failover/correlation semantics.
+2. Add queue-exhaustion regression assertions at API level for initialize scripts:
+   - after scripted initialize actions are consumed, prove subsequent requests fall back to set-based initialize timeout toggles without mutating unrelated method queues.
+   - keep deterministic invocation/connection filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`).
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
