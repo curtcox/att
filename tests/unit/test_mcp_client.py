@@ -40,6 +40,7 @@ UNIT_TEST_NAT_SERVER = "nat"
 UNIT_TEST_SERVER_A = "a"
 UNIT_TEST_SERVER_B = "b"
 UNIT_TEST_SERVER_C = "c"
+UNIT_TEST_CODEX_SERVER = "codex"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -322,7 +323,7 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
     await manager.initialize_server("codex")
     result = await manager.invoke_tool("att.project.list")
 
-    assert result.server == "codex"
+    assert result.server == UNIT_TEST_CODEX_SERVER
     assert calls == [
         UNIT_TEST_INITIALIZE_METHOD,
         UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
@@ -690,7 +691,7 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
 
     result = await manager.invoke_tool("att.project.list")
 
-    assert result.server == "codex"
+    assert result.server == UNIT_TEST_CODEX_SERVER
     assert calls == [
         UNIT_TEST_INITIALIZE_METHOD,
         UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
@@ -733,7 +734,7 @@ async def test_connect_server_runs_health_and_initialize() -> None:
     assert connected is not None
     assert connected.status is ServerStatus.HEALTHY
     assert connected.initialized is True
-    assert probe_calls == ["codex"]
+    assert probe_calls == [UNIT_TEST_CODEX_SERVER]
     assert transport_calls == [
         UNIT_TEST_INITIALIZE_METHOD,
         UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
@@ -1960,7 +1961,7 @@ async def test_invocation_failure_records_correlation_id_on_connection_events() 
 
     correlated_events = manager.list_events(correlation_id=request_id)
     assert len(correlated_events) == 1
-    assert correlated_events[0].server == "codex"
+    assert correlated_events[0].server == UNIT_TEST_CODEX_SERVER
     assert correlated_events[0].correlation_id == request_id
 
 
