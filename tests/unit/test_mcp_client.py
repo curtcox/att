@@ -317,7 +317,7 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
     manager.register("backup", "http://backup.local")
 
     result = await manager.invoke_tool(
-        "att.project.list",
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
         {"limit": 10},
         preferred=["primary", "backup"],
     )
@@ -567,7 +567,7 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     clock.advance(seconds=2)
 
     result = await manager.invoke_tool(
-        "att.project.list",
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
         preferred=["primary", "recovered", "degraded"],
     )
 
@@ -950,7 +950,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
             "jsonrpc": "2.0",
             "id": "tool-1",
             "method": "tools/call",
-            "params": {"name": "att.project.list", "arguments": {"limit": 1}},
+            "params": {"name": UNIT_TEST_PROJECT_LIST_TOOL_NAME, "arguments": {"limit": 1}},
         },
     )
     assert isinstance(tool_call["result"], dict)
@@ -970,7 +970,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
     assert session.calls == [
         ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
-        ("tool", "att.project.list"),
+        ("tool", UNIT_TEST_PROJECT_LIST_TOOL_NAME),
         ("resource", UNIT_TEST_PROJECTS_URI),
     ]
 
@@ -997,7 +997,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
             "jsonrpc": "2.0",
             "id": "tool-1",
             "method": "tools/call",
-            "params": {"name": "att.project.list", "arguments": {}},
+            "params": {"name": UNIT_TEST_PROJECT_LIST_TOOL_NAME, "arguments": {}},
         },
     )
 
@@ -1268,7 +1268,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
                 "jsonrpc": "2.0",
                 "id": "tool-1",
                 "method": "tools/call",
-                "params": {"name": "att.project.list", "arguments": {}},
+                "params": {"name": UNIT_TEST_PROJECT_LIST_TOOL_NAME, "arguments": {}},
             },
         )
     assert exc_info.value.category == category
@@ -1317,19 +1317,19 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     clock.advance(seconds=2)
 
     result = await manager.invoke_tool(
-        "att.project.list",
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
         preferred=["primary", "recovered", "degraded"],
     )
 
     assert result.server == UNIT_TEST_RECOVERED_SERVER
     assert sessions[UNIT_TEST_PRIMARY_SERVER].calls == [
         ("session", UNIT_TEST_INITIALIZE_METHOD),
-        ("tool", "att.project.list"),
+        ("tool", UNIT_TEST_PROJECT_LIST_TOOL_NAME),
     ]
     assert sessions[UNIT_TEST_RECOVERED_SERVER].calls == [
         ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
-        ("tool", "att.project.list"),
+        ("tool", UNIT_TEST_PROJECT_LIST_TOOL_NAME),
     ]
     assert UNIT_TEST_DEGRADED_SERVER not in sessions
 
@@ -1607,7 +1607,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     )
 
     first = await manager.invoke_tool(
-        "att.project.list",
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
         preferred=["primary", "backup"],
     )
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -1759,7 +1759,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
                 preferred=["primary", "backup"],
             )
         return await manager.invoke_tool(
-            "att.project.list",
+            UNIT_TEST_PROJECT_LIST_TOOL_NAME,
             preferred=["primary", "backup"],
         )
 
