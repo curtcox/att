@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
-- Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (resources scripted-error parity coverage + helper script-isolation coverage + plan doc updates)
+- HEAD: `2e369f8985b9ea046a8e6e39af4301dea104b7a9`
+- Last commit: `2e369f8 2026-02-13 07:18:08 -0600 Follow AGENTS and handoff steps`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
