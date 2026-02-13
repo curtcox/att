@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `099f4859800bfe0f2a913d446cfba2b62894a298`
-- Last commit: `099f485 2026-02-13 15:08:13 -0600 - Add process-trial guardrails and handoff snapshot script`
-- Working tree at handoff creation: dirty
+- HEAD: `e146472061203b2779b070361ec90d87b8b22834`
+- Last commit: `e146472 2026-02-13 15:09:20 -0600 - Fix snapshot updater awk compatibility`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
