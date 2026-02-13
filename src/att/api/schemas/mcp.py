@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -101,3 +101,20 @@ class MCPInvocationResponse(BaseModel):
     request_id: str
     result: Any
     raw_response: dict[str, Any]
+
+
+class MCPInvocationAttemptResponse(BaseModel):
+    """One server attempt in invocation failure diagnostics."""
+
+    server: str
+    stage: Literal["initialize", "invoke"]
+    success: bool
+    error: str | None = None
+
+
+class MCPInvocationErrorDetailResponse(BaseModel):
+    """Deterministic detail payload for invocation failures."""
+
+    message: str
+    method: str | None = None
+    attempts: list[MCPInvocationAttemptResponse] = Field(default_factory=list)

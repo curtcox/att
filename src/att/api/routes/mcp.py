@@ -12,6 +12,8 @@ from att.api.schemas.mcp import (
     MCPCapabilitySnapshotResponse,
     MCPConnectionEventResponse,
     MCPConnectionEventsResponse,
+    MCPInvocationAttemptResponse,
+    MCPInvocationErrorDetailResponse,
     MCPInvocationResponse,
     MCPResourceResponse,
     MCPServerResponse,
@@ -24,6 +26,7 @@ from att.mcp.client import (
     ExternalServer,
     JSONValue,
     MCPClientManager,
+    MCPInvocationAttempt,
     MCPInvocationError,
 )
 from att.mcp.server import registered_resources, registered_tools
@@ -53,6 +56,22 @@ def _as_response(server: ExternalServer) -> MCPServerResponse:
             if server.capability_snapshot is not None
             else None
         ),
+    )
+
+
+def _invocation_error_detail(exc: MCPInvocationError) -> MCPInvocationErrorDetailResponse:
+    def _attempt_response(attempt: MCPInvocationAttempt) -> MCPInvocationAttemptResponse:
+        return MCPInvocationAttemptResponse(
+            server=attempt.server,
+            stage=attempt.stage,
+            success=attempt.success,
+            error=attempt.error,
+        )
+
+    return MCPInvocationErrorDetailResponse(
+        message=str(exc),
+        method=exc.method,
+        attempts=[_attempt_response(attempt) for attempt in exc.attempts],
     )
 
 
@@ -200,7 +219,7 @@ async def invoke_mcp_tool(
     except MCPInvocationError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=_invocation_error_detail(exc).model_dump(mode="json"),
         ) from exc
     return MCPInvocationResponse(
         server=result.server,
@@ -224,7 +243,7 @@ async def invoke_mcp_resource(
     except MCPInvocationError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=_invocation_error_detail(exc).model_dump(mode="json"),
         ) from exc
     return MCPInvocationResponse(
         server=result.server,

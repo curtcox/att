@@ -180,8 +180,57 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
 @pytest.mark.asyncio
 async def test_invoke_tool_raises_when_no_servers_available() -> None:
     manager = MCPClientManager()
-    with pytest.raises(MCPInvocationError):
+    with pytest.raises(MCPInvocationError) as exc_info:
         await manager.invoke_tool("att.project.list")
+    assert exc_info.value.method == "tools/call"
+    assert exc_info.value.attempts == []
+
+
+@pytest.mark.asyncio
+async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if server.name == "primary":
+            raise RuntimeError("primary down")
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "error": {"message": "rpc failure"},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    with pytest.raises(MCPInvocationError) as exc_info:
+        await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+
+    error = exc_info.value
+    assert error.method == "tools/call"
+    assert len(error.attempts) == 3
+    assert error.attempts[0].server == "primary"
+    assert error.attempts[0].stage == "initialize"
+    assert error.attempts[0].success is False
+    assert error.attempts[0].error == "primary down"
+    assert error.attempts[1].server == "backup"
+    assert error.attempts[1].stage == "initialize"
+    assert error.attempts[1].success is True
+    assert error.attempts[2].server == "backup"
+    assert error.attempts[2].stage == "invoke"
+    assert error.attempts[2].success is False
+    assert error.attempts[2].error == "rpc error: rpc failure"
 
 
 @pytest.mark.asyncio

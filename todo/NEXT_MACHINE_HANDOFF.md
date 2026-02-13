@@ -5,37 +5,38 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (MCP capability-snapshot hardening + plan doc updates)
+- Working tree at handoff creation: dirty (MCP invocation-error diagnostics hardening + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`129 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`131 passed`)
 
 ## Recent Delivered Work
-- MCP client lifecycle hardening delivered for `P13`:
-  - added explicit per-server capability snapshots in `MCPClientManager`:
-    - new `CapabilitySnapshot` model
-    - persisted on `ExternalServer.capability_snapshot`
-    - captured on successful `initialize` handshake with `protocolVersion`, `serverInfo`, and `capabilities`
-  - snapshots are retained across later initialize failures, preserving last-known capability context during partial initialization states.
-- MCP API surface expanded:
-  - `MCPServerResponse` now includes optional `capability_snapshot` payload.
-  - route mapping in `src/att/api/routes/mcp.py` now exposes snapshot metadata.
-- Tests expanded:
-  - unit tests for snapshot capture + retention after forced initialize failure.
-  - integration tests for `initialize`/`connect` endpoints asserting snapshot presence.
+- MCP invocation failure diagnostics hardened for `P13`:
+  - added `MCPInvocationAttempt` trace model in `MCPClientManager`.
+  - `MCPInvocationError` now carries `method` and ordered attempt traces (per server, `initialize`/`invoke`, success/error).
+  - invocation failures now preserve deterministic per-candidate diagnostics across fallback sequences.
+- MCP API error payload mapping tightened:
+  - `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` now emit structured 503 details:
+    - `message`
+    - `method`
+    - `attempts[]`
+  - new error detail schemas added in `src/att/api/schemas/mcp.py`.
+- Test coverage expanded:
+  - unit tests validate `MCPInvocationError` method + attempt traces for no-server and partial-failure scenarios.
+  - integration tests validate 503 detail payload structure and attempt traces.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` transport hardening with deterministic partial-failure behavior:
-1. Add explicit invocation-attempt traces per server (initialize + call outcome) in `MCPInvocationError` details.
-2. Tighten API error payload mapping for partial multi-server failures (deterministic machine-readable structure).
+Continue `P12/P13` transport hardening with recovery-focused sequencing:
+1. Add explicit "stale initialization" handling and forced re-initialize rules for degraded/recovered servers before invocation.
+2. Expand integration tests for mixed-state clusters (healthy + degraded + recovered) to verify deterministic server selection and status transitions.
 
 Suggested implementation direction:
-- Extend `MCPInvocationResult`/`MCPInvocationError` with structured attempt diagnostics.
-- Add route-level response model fields for invocation failures (while preserving 503 status).
-- Expand integration tests to validate degraded + recovering server sequences and error payload shape.
+- Add initialization freshness metadata and reinitialize gating in `MCPClientManager`.
+- Ensure recovered servers can re-enter healthy rotation predictably after transient failures.
+- Add API tests that exercise multi-step recoveries and assert stable payload shape + transition events.
 
 ## Resume Checklist
 1. Sync and verify environment:

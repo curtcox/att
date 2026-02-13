@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Protocol, cast
+from typing import Literal, Protocol, cast
 from uuid import uuid4
 
 import httpx
@@ -76,8 +76,29 @@ class MCPInvocationResult:
     raw_response: JSONObject
 
 
+@dataclass(slots=True)
+class MCPInvocationAttempt:
+    """One initialize/invoke attempt against one server."""
+
+    server: str
+    stage: Literal["initialize", "invoke"]
+    success: bool
+    error: str | None = None
+
+
 class MCPInvocationError(RuntimeError):
     """Raised when invocation fails across all available servers."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        method: str | None = None,
+        attempts: list[MCPInvocationAttempt] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.method = method
+        self.attempts = list(attempts or [])
 
 
 class HealthProbe(Protocol):
@@ -358,8 +379,13 @@ class MCPClientManager:
         preferred: list[str] | None,
     ) -> MCPInvocationResult:
         candidates = self._invocation_candidates(preferred)
+        attempts: list[MCPInvocationAttempt] = []
         if not candidates:
-            raise MCPInvocationError("No reachable MCP servers are currently available")
+            raise MCPInvocationError(
+                "No reachable MCP servers are currently available",
+                method=method,
+                attempts=attempts,
+            )
 
         request_id = str(uuid4())
         request = self._build_request(method, request_id=request_id, params=params)
@@ -369,34 +395,91 @@ class MCPClientManager:
         for server in candidates:
             initialized = await self.initialize_server(server.name)
             if initialized is None:
+                attempts.append(
+                    MCPInvocationAttempt(
+                        server=server.name,
+                        stage="initialize",
+                        success=False,
+                        error="server not found",
+                    )
+                )
                 errors.append(f"{server.name}: server not found")
                 continue
             if not initialized.initialized:
                 init_error = initialized.last_error or "initialize failed"
+                attempts.append(
+                    MCPInvocationAttempt(
+                        server=server.name,
+                        stage="initialize",
+                        success=False,
+                        error=init_error,
+                    )
+                )
                 errors.append(f"{server.name}: initialize failed ({init_error})")
                 continue
+            attempts.append(
+                MCPInvocationAttempt(
+                    server=initialized.name,
+                    stage="initialize",
+                    success=True,
+                )
+            )
             try:
                 response = await transport(initialized, request)
             except Exception as exc:  # noqa: BLE001
                 message = str(exc)
                 self.record_check_result(initialized.name, healthy=False, error=message)
+                attempts.append(
+                    MCPInvocationAttempt(
+                        server=initialized.name,
+                        stage="invoke",
+                        success=False,
+                        error=message,
+                    )
+                )
                 errors.append(f"{initialized.name}: {message}")
                 continue
 
             rpc_error = self._extract_error(response)
             if rpc_error is not None:
+                invocation_error = f"rpc error: {rpc_error}"
                 self.record_check_result(
-                    initialized.name, healthy=False, error=f"rpc error: {rpc_error}"
+                    initialized.name,
+                    healthy=False,
+                    error=invocation_error,
                 )
-                errors.append(f"{initialized.name}: {rpc_error}")
+                attempts.append(
+                    MCPInvocationAttempt(
+                        server=initialized.name,
+                        stage="invoke",
+                        success=False,
+                        error=invocation_error,
+                    )
+                )
+                errors.append(f"{initialized.name}: {invocation_error}")
                 continue
 
             if "result" not in response:
                 missing_result = "rpc error: missing result"
                 self.record_check_result(initialized.name, healthy=False, error=missing_result)
+                attempts.append(
+                    MCPInvocationAttempt(
+                        server=initialized.name,
+                        stage="invoke",
+                        success=False,
+                        error=missing_result,
+                    )
+                )
                 errors.append(f"{initialized.name}: {missing_result}")
                 continue
 
+            attempts.append(
+                MCPInvocationAttempt(
+                    server=initialized.name,
+                    stage="invoke",
+                    success=True,
+                )
+            )
             self.record_check_result(initialized.name, healthy=True)
             return MCPInvocationResult(
                 server=initialized.name,
@@ -408,7 +491,7 @@ class MCPClientManager:
 
         joined = "; ".join(errors) if errors else "unknown invocation failure"
         msg = f"Invocation failed across servers: {joined}"
-        raise MCPInvocationError(msg)
+        raise MCPInvocationError(msg, method=method, attempts=attempts)
 
     @staticmethod
     def _build_request(method: str, *, request_id: str, params: JSONObject) -> JSONObject:

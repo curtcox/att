@@ -281,3 +281,34 @@ def test_mcp_invoke_resource_and_error_when_unavailable() -> None:
         json={"tool_name": "att.project.list", "arguments": {}},
     )
     assert unavailable.status_code == 503
+    unavailable_detail = unavailable.json()["detail"]
+    assert unavailable_detail["method"] == "tools/call"
+    assert unavailable_detail["attempts"] == []
+    assert "No reachable MCP servers" in unavailable_detail["message"]
+
+
+def test_mcp_invoke_error_payload_includes_attempt_trace() -> None:
+    transport = FallbackTransport()
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "failing", "url": "http://failing.local"},
+    )
+
+    failed = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["failing"],
+        },
+    )
+    assert failed.status_code == 503
+    detail = failed.json()["detail"]
+    assert detail["method"] == "resources/read"
+    assert len(detail["attempts"]) == 1
+    assert detail["attempts"][0]["server"] == "failing"
+    assert detail["attempts"][0]["stage"] == "initialize"
+    assert detail["attempts"][0]["success"] is False
+    assert detail["attempts"][0]["error"] == "rpc error: rpc failure"

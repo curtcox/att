@@ -44,3 +44,9 @@ P11
 - Added test coverage for capability-snapshot lifecycle:
   - snapshot population on initialize success.
   - snapshot retention across later initialize failures (partial initialization state recovery).
+- Added structured invocation-attempt diagnostics for failure analysis:
+  - `MCPInvocationError` now carries `method` and per-server attempt trace entries (`initialize`/`invoke`, success, error).
+  - invocation failures include deterministic attempt ordering across fallback candidates.
+- Added deterministic API error payload mapping for invocation failures:
+  - `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` now return structured 503 `detail` payloads with `message`, `method`, and `attempts`.
+  - integration coverage validates both no-server and partial-failure trace payload shapes.
