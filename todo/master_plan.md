@@ -9,6 +9,11 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Extended adapter invalidation server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `invalidate_adapter_session("nat")` and `invalidate_adapter_session("primary")` call arguments to existing constants (`UNIT_TEST_NAT_SERVER`, `UNIT_TEST_PRIMARY_SERVER`) in `tests/unit/test_mcp_client.py`.
+  - preserved registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Standardized snapshot-refresh process trigger and shortcut:
   - updated `/Users/curt/me/att/AGENTS.md` to require handoff snapshot refresh after validation using `./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or shortcut form).
   - added `/Users/curt/me/att/Makefile` with `make snapshot PASSED=<pytest_pass_count>` shortcut that invokes the updater script.

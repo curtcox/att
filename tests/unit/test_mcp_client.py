@@ -1034,7 +1034,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     assert after_initialize.initialized is True
     assert after_initialize.last_activity_at is not None
 
-    invalidated = await manager.invalidate_adapter_session("nat")
+    invalidated = await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
     assert factory.closed == 1
     server = manager.get("nat")
@@ -1534,7 +1534,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     assert first.server == UNIT_TEST_PRIMARY_SERVER
 
     if method_key == "initialize":
-        invalidated = await manager.invalidate_adapter_session("primary")
+        invalidated = await manager.invalidate_adapter_session(UNIT_TEST_PRIMARY_SERVER)
         assert invalidated is True
 
     if method_key == "resources/read":
@@ -1648,7 +1648,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     assert before_invalidate[0][0] == UNIT_TEST_PRIMARY_SERVER
     assert before_invalidate[1][1] == before_invalidate[2][1]
 
-    invalidated = await manager.invalidate_adapter_session("primary")
+    invalidated = await manager.invalidate_adapter_session(UNIT_TEST_PRIMARY_SERVER)
     assert invalidated is True
 
     third = await invoke_once()

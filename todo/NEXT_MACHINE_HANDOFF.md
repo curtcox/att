@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `33ca11fa7c571d6b41b20eaa951ccfea511eb157`
-- Last commit: `33ca11f 2026-02-13 15:23:02 -0600 - Require and shortcut handoff snapshot refresh`
+- HEAD: `b7cfad2420041885d6c716ed5cb70b9bb0b1eaa5`
+- Last commit: `b7cfad2 2026-02-13 15:24:21 -0600 - Refresh handoff snapshot after workflow update`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended adapter invalidation server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `invalidate_adapter_session("nat")` and `invalidate_adapter_session("primary")` call arguments to existing constants (`UNIT_TEST_NAT_SERVER`, `UNIT_TEST_PRIMARY_SERVER`) in `tests/unit/test_mcp_client.py`.
+  - preserved registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Standardized snapshot-refresh process trigger and shortcut:
   - updated `/Users/curt/me/att/AGENTS.md` to require handoff snapshot refresh after validation using `./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or shortcut form).
@@ -78,7 +83,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
 1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in adapter control calls:
-   - target remaining `invalidate_adapter_session("primary")` and `invalidate_adapter_session("nat")` call arguments where reuse is meaningful.
+   - target remaining inline `adapter_session_diagnostics("nat")`, `initialize_server("nat")`, `refresh_adapter_session("nat")`, and adjacent `get("nat")` call arguments where reuse is meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
