@@ -802,7 +802,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
     assert isinstance(resource_read["result"], dict)
     assert resource_read["result"]["contents"][0]["uri"] == "att://projects"
     assert session.calls == [
-        ("session", "initialize"),
+        ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
         ("tool", "att.project.list"),
         ("resource", "att://projects"),
@@ -1157,11 +1157,11 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
 
     assert result.server == "recovered"
     assert sessions["primary"].calls == [
-        ("session", "initialize"),
+        ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("tool", "att.project.list"),
     ]
     assert sessions["recovered"].calls == [
-        ("session", "initialize"),
+        ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
         ("tool", "att.project.list"),
     ]
