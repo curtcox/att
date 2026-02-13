@@ -134,6 +134,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper utilities to derive ordered request-id tuples from retry-window and unreachable-transition sequence dataclasses.
   - migrated tool/resource retry-window gating and unreachable-transition tests to consume the shared request-id helpers for diagnostics/event filtering inputs.
   - preserved diagnostics-filter assertions, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated expected-call-order derivation scaffolding across call-order parity integrations:
+  - added shared helper utility that derives expected call-order tuples from request-id scoped invocation events.
+  - migrated retry-window/unreachable-transition and adjacent mixed-method call-order tests to consume this helper instead of repeated event-collection + phase-start derivation scaffolding.
+  - preserved request-id ordering semantics, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
