@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended timeout-toggle server-name constant reuse in unit MCP client coverage:
+  - migrated remaining timeout-toggle setup literals `factory.fail_on_timeout_initialize.add("primary")`, `factory.fail_on_timeout_tool_calls.add("primary")`, and `factory.fail_on_timeout_resource_reads.add("primary")` to `UNIT_TEST_PRIMARY_SERVER` in `tests/unit/test_mcp_client.py`.
+  - preserved timeout-toggle setup flow, failure-script vectors, preferred-order inputs, and method-branch conditionals unchanged while reducing setup-side server literal duplication.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended `set_failure_script` server-name constant reuse in unit MCP client coverage:
   - migrated the remaining inline `set_failure_script("primary", method, ...)` setup wiring in retry-window resource re-entry coverage to `UNIT_TEST_PRIMARY_SERVER`.
   - preserved failure-script action vectors, preferred-order inputs, setup sequencing, and method-branch conditionals unchanged while reducing setup-side server literal duplication.

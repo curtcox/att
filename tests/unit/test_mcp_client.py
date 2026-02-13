@@ -1506,21 +1506,21 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     manager.register("backup", "http://backup.local")
 
     if method_key == "initialize":
-        factory.fail_on_timeout_initialize.add("primary")
+        factory.fail_on_timeout_initialize.add(UNIT_TEST_PRIMARY_SERVER)
         factory.set_failure_script(
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_INITIALIZE_METHOD,
             ["ok"],
         )
     elif method_key == "tools/call":
-        factory.fail_on_timeout_tool_calls.add("primary")
+        factory.fail_on_timeout_tool_calls.add(UNIT_TEST_PRIMARY_SERVER)
         factory.set_failure_script(
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_TOOLS_CALL_METHOD,
             ["ok"],
         )
     else:
-        factory.fail_on_timeout_resource_reads.add("primary")
+        factory.fail_on_timeout_resource_reads.add(UNIT_TEST_PRIMARY_SERVER)
         factory.set_failure_script(
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_RESOURCES_READ_METHOD,
