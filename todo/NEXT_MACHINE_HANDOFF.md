@@ -5,15 +5,27 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`stage-paired initialize-stage error-index constant extraction`)
+- Working tree at handoff creation: dirty (`stage-paired timeout-stage failover expectation helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`232 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated stage-paired timeout-stage failover expectation wiring:
+  - added shared helper `_stage_paired_failover_expectations_for_timeout_stage(...)` that maps `timeout_stage` to failover phase/server vectors and failover error-index constants.
+  - migrated both stage-paired retry-window convergence tests (tool/resource) to consume the helper for expectation mapping while keeping method-specific timeout-toggle wiring explicit at each test call site.
+  - added focused regression coverage locking helper mapping semantics for both `initialize` and `invoke` timeout stages and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
+- Reduced duplicated stage-paired failover invoke-timeout phase/server vectors:
+  - extracted shared constants `STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES` and `STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS` for repeated invoke-timeout failover vector literals in tool/resource retry-window convergence assertions.
+  - migrated both stage-paired convergence invoke-timeout branches to consume the constants while keeping diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
+  - added focused regression coverage locking invoke-timeout failover vector values and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
+- Reduced duplicated stage-paired failover initialize-timeout phase/server vectors:
+  - extracted shared constants `STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES` and `STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS` for repeated initialize-timeout failover vector literals in tool/resource retry-window convergence assertions.
+  - migrated both stage-paired convergence initialize-timeout branches to consume the constants while keeping diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
+  - added focused regression coverage locking initialize-timeout failover vector values and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
 - Reduced duplicated stage-paired failover initialize-stage error-index literals:
   - extracted shared constant `STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX` for repeated `failover_error_index = 1` assignments in tool/resource retry-window convergence failover assertions.
   - migrated both stage-paired convergence initialize-timeout branches to consume the constant while keeping diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
@@ -277,10 +289,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated stage-paired failover initialize-timeout phase/server vectors:
-1. Extract shared initialize-timeout failover vectors:
-   - factor repeated stage-paired initialize-timeout `failover_phases` and `failover_servers` list literals in tool/resource retry-window convergence failover assertions into shared constants.
-   - keep diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
+Continue `P12/P13` test-structure hardening by reducing duplicated degraded-status vectors in stage-paired convergence diagnostics assertions:
+1. Reuse shared degraded-status vector constant in stage-paired convergence tests:
+   - replace repeated `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in stage-paired tool/resource timeout convergence diagnostics assertions with `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`.
+   - keep diagnostics filter and call-order assertions explicit at each test call site.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current invocation-event and connection-event filter behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.

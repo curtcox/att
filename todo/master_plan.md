@@ -6,6 +6,18 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Reduced duplicated stage-paired timeout-stage failover expectation wiring in integration convergence assertions:
+  - added shared helper `_stage_paired_failover_expectations_for_timeout_stage(...)` that maps `timeout_stage` to failover phase/server vectors and failover error-index constants.
+  - migrated both stage-paired retry-window convergence tests (tool/resource) to consume the helper while keeping method-specific timeout-toggle wiring explicit at each test call site.
+  - added focused regression coverage locking helper mapping semantics for both timeout stages and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover invoke-timeout phase/server vectors in integration convergence assertions:
+  - extracted shared constants `STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES` and `STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS` for repeated invoke-timeout failover vector literals in tool/resource retry-window convergence checks.
+  - migrated both stage-paired convergence invoke-timeout branches to consume the constants while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking invoke-timeout failover vector values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover initialize-timeout phase/server vectors in integration convergence assertions:
+  - extracted shared constants `STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES` and `STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS` for repeated initialize-timeout failover vector literals in tool/resource retry-window convergence checks.
+  - migrated both stage-paired convergence initialize-timeout branches to consume the constants while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking initialize-timeout failover vector values and preserved call-order literal/subsequence behavior unchanged.
 - [x] Reduced duplicated stage-paired failover initialize-stage error-index literals in integration convergence assertions:
   - extracted shared constant `STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX` for repeated `failover_error_index = 1` wiring in tool/resource retry-window convergence failover checks.
   - migrated both stage-paired convergence initialize-timeout branches to consume the constant while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
@@ -289,7 +301,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (232 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (235 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).

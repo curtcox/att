@@ -302,6 +302,42 @@ SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES: tuple[str, ...] = (ServerStatus.DE
 SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY = "network_timeout"
 STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX = 1
 STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX = 3
+STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES: tuple[str, ...] = (
+    "initialize_start",
+    "initialize_failure",
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_success",
+)
+STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS: tuple[str, ...] = (
+    "primary",
+    "primary",
+    "backup",
+    "backup",
+    "backup",
+    "backup",
+)
+STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES: tuple[str, ...] = (
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_failure",
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_success",
+)
+STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS: tuple[str, ...] = (
+    "primary",
+    "primary",
+    "primary",
+    "primary",
+    "backup",
+    "backup",
+    "backup",
+    "backup",
+)
 RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
@@ -599,6 +635,25 @@ def _mixed_method_scripted_request_ids(
     resource_request_id: str,
 ) -> tuple[str, str]:
     return (tool_request_id, resource_request_id)
+
+
+def _stage_paired_failover_expectations_for_timeout_stage(
+    timeout_stage: str,
+) -> tuple[tuple[str, ...], tuple[str, ...], int]:
+    if timeout_stage == "initialize":
+        return (
+            STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES,
+            STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS,
+            STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX,
+        )
+    if timeout_stage == "invoke":
+        return (
+            STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES,
+            STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS,
+            STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX,
+        )
+    msg = f"Unsupported timeout stage: {timeout_stage}"
+    raise ValueError(msg)
 
 
 def _assert_primary_request_diagnostics(
@@ -2253,6 +2308,61 @@ def test_stage_paired_failover_initialize_error_index_constant_matches_value() -
     assert STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX == 1
 
 
+def test_stage_paired_initialize_timeout_failover_constants_match_vectors() -> None:
+    assert STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES == (
+        "initialize_start",
+        "initialize_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    )
+    assert STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS == (
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    )
+
+
+def test_stage_paired_invoke_timeout_failover_constants_match_vectors() -> None:
+    assert STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES == (
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    )
+    assert STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS == (
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    )
+
+
+def test_stage_paired_failover_expectations_for_timeout_stage_helper_maps_vectors() -> None:
+    assert _stage_paired_failover_expectations_for_timeout_stage("initialize") == (
+        STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES,
+        STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS,
+        STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX,
+    )
+    assert _stage_paired_failover_expectations_for_timeout_stage("invoke") == (
+        STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES,
+        STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS,
+        STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX,
+    )
+
+
 def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
     factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
@@ -3298,46 +3408,13 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         assert invalidated.status_code == 200
         assert invalidated.json()["initialized"] is False
         factory.fail_on_timeout_initialize.add("primary")
-        failover_phases = [
-            "initialize_start",
-            "initialize_failure",
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_success",
-        ]
-        failover_servers = [
-            "primary",
-            "primary",
-            "backup",
-            "backup",
-            "backup",
-            "backup",
-        ]
-        failover_error_index = STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX
     else:
         factory.fail_on_timeout_tool_calls.add("primary")
-        failover_phases = [
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_success",
-        ]
-        failover_servers = [
-            "primary",
-            "primary",
-            "primary",
-            "primary",
-            "backup",
-            "backup",
-            "backup",
-            "backup",
-        ]
-        failover_error_index = STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX
+    failover_phase_vector, failover_server_vector, failover_error_index = (
+        _stage_paired_failover_expectations_for_timeout_stage(timeout_stage)
+    )
+    failover_phases = list(failover_phase_vector)
+    failover_servers = list(failover_server_vector)
 
     first_failover = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -3671,46 +3748,13 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
         assert invalidated.status_code == 200
         assert invalidated.json()["initialized"] is False
         factory.fail_on_timeout_initialize.add("primary")
-        failover_phases = [
-            "initialize_start",
-            "initialize_failure",
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_success",
-        ]
-        failover_servers = [
-            "primary",
-            "primary",
-            "backup",
-            "backup",
-            "backup",
-            "backup",
-        ]
-        failover_error_index = STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX
     else:
         factory.fail_on_timeout_resource_reads.add("primary")
-        failover_phases = [
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_success",
-        ]
-        failover_servers = [
-            "primary",
-            "primary",
-            "primary",
-            "primary",
-            "backup",
-            "backup",
-            "backup",
-            "backup",
-        ]
-        failover_error_index = STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX
+    failover_phase_vector, failover_server_vector, failover_error_index = (
+        _stage_paired_failover_expectations_for_timeout_stage(timeout_stage)
+    )
+    failover_phases = list(failover_phase_vector)
+    failover_servers = list(failover_server_vector)
 
     first_failover = client.post(
         "/api/v1/mcp/invoke/resource",
