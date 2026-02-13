@@ -1505,6 +1505,119 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
     )
 
 
+def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=3,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    factory.set_failure_script("primary", "tools/call", ["timeout"])
+    factory.set_failure_script("backup", "resources/read", ["timeout"])
+
+    tool_response = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert tool_response.status_code == 200
+    assert tool_response.json()["server"] == "backup"
+    tool_request_id = tool_response.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=tool_request_id,
+        server="primary",
+        method="tools/call",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=tool_request_id,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    clock.advance(seconds=1)
+    resource_response = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert resource_response.status_code == 200
+    assert resource_response.json()["server"] == "primary"
+    resource_request_id = resource_response.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=resource_request_id,
+        server="backup",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=resource_request_id,
+        server="backup",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    first_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": tool_request_id},
+    )
+    assert first_events.status_code == 200
+    second_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": resource_request_id},
+    )
+    assert second_events.status_code == 200
+    events = first_events.json()["items"] + second_events.json()["items"]
+
+    phase_to_method = {
+        "initialize_start": "initialize",
+        "invoke_start": None,
+    }
+    expected_call_order = [
+        (item["server"], phase_to_method[item["phase"]] or item["method"])
+        for item in events
+        if item["phase"] in {"initialize_start", "invoke_start"}
+    ]
+
+    observed_call_order = [
+        (server, method)
+        for server, _, method in factory.calls
+        if method in {"initialize", "tools/call", "resources/read"}
+    ]
+    cursor = 0
+    for call in observed_call_order:
+        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
+            cursor += 1
+        assert cursor < len(expected_call_order), (
+            f"missing call-order tuple in phase stream: {call}"
+        )
+        cursor += 1
+
+
 def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() -> None:
     factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
@@ -1623,9 +1736,7 @@ def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() ->
     )
 
 
-def test_mcp_initialize_script_exhaustion_falls_back_to_set_timeout_without_mutating_method_queues() -> (
-    None
-):
+def test_mcp_init_script_exhaustion_falls_back_without_mutating_method_queue() -> None:
     factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),

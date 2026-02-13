@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `c688f53565e67eb8e38d7d704605e6f27503833a`
 - Last commit: `c688f53 2026-02-13 07:29:53 -0600 Add MCP scripted initialize parity and API isolation coverage`
-- Working tree at handoff creation: dirty (mixed initialize+invoke script isolation + initialize-script exhaustion regression + plan doc updates)
+- Working tree at handoff creation: dirty (helper/API call-order parity coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`187 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`189 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -88,20 +88,24 @@
 - Added initialize-script exhaustion regression at API level:
   - added integration coverage proving scripted initialize override depletion falls back to set-based initialize timeout toggles after adapter invalidation.
   - assertions verify fallback degradation/correlation behavior and confirm unrelated invoke method script queues remain untouched until explicitly invoked.
+- Added helper/API call-order parity coverage for mixed scripted failover:
+  - added unit coverage asserting deterministic `ClusterNatSessionFactory.calls` ordering across mixed `initialize` + `tools/call` + `resources/read` scripted actions for paired `primary`/`backup` failover.
+  - added API integration coverage that cross-checks `factory.calls` against invocation-event `initialize_start`/`invoke_start` ordering for one mixed scripted `tools/call` + `resources/read` sequence.
+  - call-order comparison now intentionally uses subsequence semantics so event streams that include stage markers without matching transport calls remain deterministic and non-flaky.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` scripted-controls hardening with helper/API call-order parity:
-1. Add helper-level call-order unit coverage for mixed scripted flows:
-   - add unit assertions over `ClusterNatSessionFactory.calls` proving deterministic `initialize`/`invoke` call ordering under mixed `initialize` + `tools/call` + `resources/read` scripted actions.
-   - include paired server scenarios (`primary` then `backup`) to ensure ordering remains stable under failover.
-2. Add API-level call-order regression for mixed scripted failover:
-   - add integration assertions that cross-check `factory.calls` ordering against invocation-event phases for one mixed `tools/call` + `resources/read` scripted sequence.
-   - keep existing deterministic diagnostics-filter checks (`server`, `method`, `request_id`, `correlation_id`, `limit`) unchanged.
+Continue `P12/P13` scripted-controls hardening with initialize-cache call-order parity:
+1. Add helper-level no-reinitialize call-order unit coverage:
+   - add unit assertions proving repeated invokes on an already-initialized server do not emit extra transport `initialize` calls unless adapter/session state is explicitly invalidated.
+   - include paired checks for both `tools/call` and `resources/read` to ensure method parity.
+2. Add API-level repeated-request call-order regression:
+   - add integration coverage that performs repeated same-server invocations without invalidation and cross-checks transport call order against invocation-event phase starts using the same subsequence contract.
+   - preserve existing deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) for each request.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
 - Reuse existing fake NAT session factories and shared clock/helper modules rather than introducing new ad-hoc transport scaffolding.
-- Preserve current event/filter semantics and correlation determinism.
+- Preserve current event/filter semantics and correlation determinism, and avoid introducing expectations that require transport-level initialize calls for every `initialize_start` event.
 
 ## Resume Checklist
 1. Sync and verify environment:

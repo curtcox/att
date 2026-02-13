@@ -1275,6 +1275,49 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
 
 
 @pytest.mark.asyncio
+async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    factory.set_failure_script("primary", "tools/call", ["timeout"])
+    factory.set_failure_script("backup", "resources/read", ["timeout"])
+
+    first = await manager.invoke_tool(
+        "att.project.list",
+        preferred=["primary", "backup"],
+    )
+    assert first.server == "backup"
+    clock.advance(seconds=1)
+
+    second = await manager.read_resource(
+        "att://projects",
+        preferred=["backup", "primary"],
+    )
+    assert second.server == "primary"
+
+    call_order = [
+        (server, method)
+        for server, _, method in factory.calls
+        if method in {"initialize", "tools/call", "resources/read"}
+    ]
+    assert call_order == [
+        ("primary", "initialize"),
+        ("primary", "tools/call"),
+        ("backup", "initialize"),
+        ("backup", "tools/call"),
+        ("backup", "resources/read"),
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
