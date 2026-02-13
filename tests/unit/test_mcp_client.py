@@ -355,7 +355,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
         return {
             "jsonrpc": "2.0",
             "id": str(request.get("id", "")),
-            "result": {"uri": "att://projects"},
+            "result": {"uri": UNIT_TEST_PROJECTS_URI},
         }
 
     manager = MCPClientManager(transport=transport)
@@ -363,7 +363,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
     manager.register("secondary", "http://secondary.local")
 
     result = await manager.read_resource(
-        "att://projects",
+        UNIT_TEST_PROJECTS_URI,
         preferred=["primary", "secondary"],
     )
     assert result.server == UNIT_TEST_SECONDARY_SERVER
@@ -962,7 +962,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
             "jsonrpc": "2.0",
             "id": "resource-1",
             "method": "resources/read",
-            "params": {"uri": "att://projects"},
+            "params": {"uri": UNIT_TEST_PROJECTS_URI},
         },
     )
     assert isinstance(resource_read["result"], dict)
@@ -1614,7 +1614,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     clock.advance(seconds=1)
 
     second = await manager.read_resource(
-        "att://projects",
+        UNIT_TEST_PROJECTS_URI,
         preferred=["backup", "primary"],
     )
     assert second.server == UNIT_TEST_PRIMARY_SERVER
@@ -1755,7 +1755,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     async def invoke_once() -> object:
         if method == "resources/read":
             return await manager.read_resource(
-                "att://projects",
+                UNIT_TEST_PROJECTS_URI,
                 preferred=["primary", "backup"],
             )
         return await manager.invoke_tool(
@@ -1821,13 +1821,13 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     )
 
     first = await manager.read_resource(
-        "att://projects",
+        UNIT_TEST_PROJECTS_URI,
         preferred=["primary", "backup"],
     )
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     second = await manager.read_resource(
-        "att://projects",
+        UNIT_TEST_PROJECTS_URI,
         preferred=["backup", "primary"],
     )
     assert second.server == UNIT_TEST_BACKUP_SERVER
@@ -1841,7 +1841,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
 
     calls_before_third = len(factory.calls)
     third = await manager.read_resource(
-        "att://projects",
+        UNIT_TEST_PROJECTS_URI,
         preferred=["backup", "primary"],
     )
     assert third.server == UNIT_TEST_PRIMARY_SERVER

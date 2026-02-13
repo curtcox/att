@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `9fb3ecd8af01bae06784fb184d1be31e5c7a003f`
-- Last commit: `9fb3ecd 2026-02-13 16:07:17 -0600 - Use project list constant`
+- HEAD: `40e37352c75a868fe6d90c6a7a656b5cc5b002e7`
+- Last commit: `40e3735 2026-02-13 16:13:31 -0600 - Update tests to use UNIT_TEST_TOOL`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended full projects-URI constant reuse across resource paths in unit MCP client coverage:
+  - migrated remaining inline `"att://projects"` literals in transport payload setup/assertions and resource-helper paths to `UNIT_TEST_PROJECTS_URI` in `tests/unit/test_mcp_client.py` (the literal now appears only in constant definition).
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended full project-list tool-name constant reuse in unit MCP client coverage:
   - migrated remaining inline `"att.project.list"` literals in transport payload setup/assertions and invoke-call arguments to `UNIT_TEST_PROJECT_LIST_TOOL_NAME` in `tests/unit/test_mcp_client.py` (the literal now appears only in constant definition).
@@ -142,8 +147,8 @@
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
-1. Reuse shared URI constants in `tests/unit/test_mcp_client.py` where inline URI literals remain outside direct `read_resource(...)` call arguments:
-   - target remaining inline `"att://projects"` literals in transport payload setup/assertions and read-resource helper call paths by reusing `UNIT_TEST_PROJECTS_URI` where meaningful.
+1. Reuse shared URI constants in `tests/unit/test_mcp_client.py` where inline URI literals remain in adjacent response/payload scaffolding:
+   - target remaining inline `"att://projects"` literals in transport `result`/`params` fixtures and assertion vectors by reusing `UNIT_TEST_PROJECTS_URI`.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
