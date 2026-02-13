@@ -1206,7 +1206,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory.set_failure_script("primary", "initialize", ["ok", "timeout", "error"])
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == "ok"
+        == UNIT_TEST_FAILURE_ACTION_OK
     )
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
@@ -1224,7 +1224,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory.set_failure_script("primary", "tools/call", ["ok"])
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
-        == "ok"
+        == UNIT_TEST_FAILURE_ACTION_OK
     )
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
@@ -1234,7 +1234,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory.set_failure_script("primary", "resources/read", ["ok"])
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-        == "ok"
+        == UNIT_TEST_FAILURE_ACTION_OK
     )
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
