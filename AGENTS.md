@@ -12,6 +12,8 @@
 Use TDD for new features and bug fixes.
 Red, green, refactor.
 Commit often.
+After validation passes, refresh `todo/NEXT_MACHINE_HANDOFF.md` snapshot metadata via
+`./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or `make snapshot PASSED=<N>`).
 
 When I report a bug, don't start by trying to fix it.
 Instead, start by writing a test that reproduces the bug.

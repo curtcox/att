@@ -9,6 +9,11 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Standardized snapshot-refresh process trigger and shortcut:
+  - updated `/Users/curt/me/att/AGENTS.md` to require handoff snapshot refresh after validation using `./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or shortcut form).
+  - added `/Users/curt/me/att/Makefile` with `make snapshot PASSED=<pytest_pass_count>` shortcut that invokes the updater script.
+  - preserves product/runtime behavior unchanged while making process-trial adoption repeatable and explicit.
+
 - [x] Added process-change proposal doc and started two concrete trials:
   - added `/Users/curt/me/att/todo/proposed_process_changes.md` capturing the six proposed process changes and marking trial picks.
   - trial 1: added `/Users/curt/me/att/scripts/update_handoff_snapshot.sh` to auto-update handoff snapshot fields (`Date`, `Branch`, `HEAD`, `Last commit`, working-tree state) plus optional pytest pass count (`--pytest-passed`).

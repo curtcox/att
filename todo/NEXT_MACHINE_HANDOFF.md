@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `e146472061203b2779b070361ec90d87b8b22834`
-- Last commit: `e146472 2026-02-13 15:09:20 -0600 - Fix snapshot updater awk compatibility`
-- Working tree at handoff creation: clean
+- HEAD: `12f076963276282ba77b3ba877c6084b30c4e08a`
+- Last commit: `12f0769 2026-02-13 15:09:33 -0600 - Refresh handoff snapshot after process-trial updates`
+- Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Standardized snapshot-refresh process trigger and shortcut:
+  - updated `/Users/curt/me/att/AGENTS.md` to require handoff snapshot refresh after validation using `./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or shortcut form).
+  - added `/Users/curt/me/att/Makefile` with `make snapshot PASSED=<pytest_pass_count>` shortcut that invokes the updater script.
+  - preserves product/runtime behavior unchanged while making process-trial adoption repeatable and explicit.
 
 - Added process-change proposal doc and started two concrete trials:
   - added `/Users/curt/me/att/todo/proposed_process_changes.md` capturing the six proposed process changes and marking trial picks.
