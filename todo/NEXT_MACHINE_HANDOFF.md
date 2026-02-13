@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `bc055352dbc0a65d6f69ce47478eeb730169d22f`
-- Last commit: `bc05535 2026-02-13 09:22:59 -0600 Add API parity for simultaneous unreachable retry-window reopen`
-- Working tree at handoff creation: dirty (`retry-window API scenario helper refactor`)
+- HEAD: `2b872c898e8fe7dc264a5fa5282d192d19001b52`
+- Last commit: `2b872c8 2026-02-13 09:01:42 -0600 Refactor retry-window API integration test scaffolding`
+- Working tree at handoff creation: dirty (`unreachable-transition diagnostics helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated unreachable-transition primary diagnostics assertions with shared helper wiring:
+  - added shared integration helper to assert per-request primary invocation/connection diagnostics for unreachable-transition sequences based on explicit request-id order, method, expected phases, and expected status transitions.
+  - migrated both tool and resource unreachable-transition parity tests to this shared helper while keeping explicit expected phase/status vectors at each call site.
+  - preserved explicit per-test transport call-order literals (`fifth_slice`, `observed_call_order`) and existing subsequence parity assertions unchanged.
 - Reduced duplicated retry-window API scenario scaffolding across gating/unreachable/simultaneous flows:
   - added shared retry-window test harness setup helper for cluster manager/clock/factory/client creation + server registration.
   - added shared invoke-construction helper and shared progression helpers for retry-window gating and simultaneous unreachable-reopen paths.
@@ -141,18 +145,18 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening by extracting shared diagnostics assertion helpers for unreachable-transition parity:
-1. Reduce duplicated primary diagnostics assertions between tool/resource unreachable-transition tests:
-   - factor repeated `assert_invocation_event_filters` + `assert_connection_event_filters` request-sequence checks into shared helper(s) that accept `method` and request ids.
-   - keep explicit expected phase/status vectors visible at call sites (or as close constants) so request-correlation intent remains readable.
-2. Preserve transport/call-order behavior checks:
-   - keep per-test explicit `fifth_slice` and `observed_call_order` literal assertions local to each test.
-   - retain shared subsequence parity checks and avoid assumptions that every `initialize_start` has a matching transport `initialize`.
+Continue `P12/P13` test-structure hardening by reducing remaining duplicated unreachable-transition call-order literals:
+1. Extract shared call-order literal helpers for tool/resource unreachable-transition tests:
+   - factor repeated `fifth_slice` and full `observed_call_order` literal blocks into shared helper(s) parameterized by `method`.
+   - keep explicit expected tuples visible at or near call sites so ordering intent remains auditable.
+2. Preserve parity semantics and diagnostics determinism:
+   - keep existing request-correlated invocation/connection diagnostics assertions in place.
+   - retain `assert_call_order_subsequence(...)` usage and do not assume one-to-one mapping between `initialize_start` events and transport `initialize` entries.
 
 Suggested implementation direction:
-- Extend helper usage in `tests/integration/test_api_mcp.py` only; avoid product code changes for this slice.
-- Keep endpoint payload differences and preferred-order inputs localized to each test.
-- Run full validation and update both plan docs after refactor.
+- Scope edits to `tests/integration/test_api_mcp.py` and avoid production code changes.
+- Reuse existing helper/harness structures introduced in recent slices instead of adding new ad-hoc setup paths.
+- Run full validation and update both plan docs after changes.
 
 ## Resume Checklist
 1. Sync and verify environment:

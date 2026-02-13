@@ -106,6 +106,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared retry-window test harness setup helpers for cluster manager/session factory/clock/client creation and server registration.
   - added shared invoke-construction and progression helpers for retry-window gating and simultaneous unreachable-reopen sequences.
   - migrated tool/resource gating, tool/resource unreachable-transition, and simultaneous unreachable-reopen tests to shared progression scaffolding while preserving explicit per-request diagnostics assertions and explicit per-test transport call-order literals.
+- [x] Reduced duplicated unreachable-transition primary diagnostics assertions:
+  - added shared integration helper that asserts per-request primary invocation/connection diagnostics across unreachable-transition sequences based on method + request-id order.
+  - migrated both tool and resource unreachable-transition parity tests to helper-driven diagnostics assertions while keeping explicit expected phase/status vectors visible at each call site.
+  - preserved explicit per-test transport call-order literal assertions and existing phase-start/transport subsequence parity checks.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
