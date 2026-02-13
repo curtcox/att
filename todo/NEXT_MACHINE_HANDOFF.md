@@ -3,15 +3,15 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `75a855e9e6acf5be9c34d37d9265709cae33fe88`
-- Last commit: `75a855e 2026-02-13 14:53:12 -0600 Tidy master plan done-reference spacing`
+- HEAD: `917b6564d424612751a149ea1a0259398d875996`
+- Last commit: `917b656 2026-02-13 14:58:55 -0600 Add guardrail test for handoff file size`
 - Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`236 passed`)
 
 ## Recent Delivered Work
 - See done for older completed slices:
