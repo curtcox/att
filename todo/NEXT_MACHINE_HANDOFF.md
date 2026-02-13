@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `7cf876edc94f190389682f71c3a71666b80a8adb`
 - Last commit: `7cf876e 2026-02-13 14:39:40 -0600 Reuse server constant in timeout-toggle unit setup`
-- Working tree at handoff creation: clean
+- Working tree at handoff creation: dirty (`unit invocation-filter server constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended invocation-filter server-name constant reuse in unit MCP client coverage:
+  - migrated the remaining diagnostics filter argument literal `list_invocation_events(server="primary", ...)` to `UNIT_TEST_PRIMARY_SERVER` in `tests/unit/test_mcp_client.py`.
+  - preserved diagnostics filter scope (`server`, `method`, `request_id`), request sequencing, timeout-toggle setup flow, and method-branch conditionals unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended timeout-toggle server-name constant reuse in unit MCP client coverage:
   - migrated remaining timeout-toggle setup literals `factory.fail_on_timeout_initialize.add("primary")`, `factory.fail_on_timeout_tool_calls.add("primary")`, and `factory.fail_on_timeout_resource_reads.add("primary")` to `UNIT_TEST_PRIMARY_SERVER` in `tests/unit/test_mcp_client.py`.
   - preserved timeout-toggle setup flow, failure-script vectors, preferred-order inputs, and method-branch conditionals unchanged while reducing setup-side server literal duplication.
@@ -486,9 +490,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining invocation-filter arguments in unit MCP client coverage:
-1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in diagnostics filter calls:
-   - target remaining `list_invocation_events(server="primary", ...)` argument wiring where reuse is meaningful.
+Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
+1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in adapter control calls:
+   - target remaining `invalidate_adapter_session("primary")` and `invalidate_adapter_session("nat")` call arguments where reuse is meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

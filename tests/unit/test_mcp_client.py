@@ -1545,7 +1545,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     assert second.method == expected_method
 
     primary_events = manager.list_invocation_events(
-        server="primary",
+        server=UNIT_TEST_PRIMARY_SERVER,
         method=expected_method,
         request_id=second.request_id,
     )
