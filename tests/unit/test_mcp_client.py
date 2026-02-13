@@ -48,6 +48,14 @@ UNIT_TEST_INVOKE_STAGE = "invoke"
 UNIT_TEST_INVOKE_START_PHASE = "invoke_start"
 UNIT_TEST_INVOKE_FAILURE_PHASE = "invoke_failure"
 UNIT_TEST_INVOKE_SUCCESS_PHASE = "invoke_success"
+UNIT_TEST_INITIALIZE_START_FAILURE_PHASES = (
+    UNIT_TEST_INITIALIZE_START_PHASE,
+    UNIT_TEST_INITIALIZE_FAILURE_PHASE,
+)
+UNIT_TEST_INVOKE_START_SUCCESS_PHASES = (
+    UNIT_TEST_INVOKE_START_PHASE,
+    UNIT_TEST_INVOKE_SUCCESS_PHASE,
+)
 UNIT_TEST_SESSION_ID_FIRST = "session-1"
 UNIT_TEST_SESSION_ID_SECOND = "session-2"
 UNIT_TEST_PROTOCOL_VERSION = "2025-11-25"
@@ -1379,10 +1387,9 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         request_id=second.request_id,
     )
     if method_key == "initialize":
-        assert [event.phase for event in primary_events] == [
-            UNIT_TEST_INITIALIZE_START_PHASE,
-            UNIT_TEST_INITIALIZE_FAILURE_PHASE,
-        ]
+        assert [event.phase for event in primary_events] == list(
+            UNIT_TEST_INITIALIZE_START_FAILURE_PHASES
+        )
         assert primary_events[1].error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
     else:
         assert [event.phase for event in primary_events] == [
@@ -2020,16 +2027,14 @@ async def test_event_list_filters_and_limits() -> None:
         server=UNIT_TEST_PRIMARY_SERVER,
         request_id=request_id,
     )
-    assert [event.phase for event in primary_invocation] == [
-        UNIT_TEST_INITIALIZE_START_PHASE,
-        UNIT_TEST_INITIALIZE_FAILURE_PHASE,
-    ]
+    assert [event.phase for event in primary_invocation] == list(
+        UNIT_TEST_INITIALIZE_START_FAILURE_PHASES
+    )
 
     latest_invocation = manager.list_invocation_events(limit=2)
-    assert [event.phase for event in latest_invocation] == [
-        UNIT_TEST_INVOKE_START_PHASE,
-        UNIT_TEST_INVOKE_SUCCESS_PHASE,
-    ]
+    assert [event.phase for event in latest_invocation] == list(
+        UNIT_TEST_INVOKE_START_SUCCESS_PHASES
+    )
 
     correlated_connection = manager.list_events(correlation_id=request_id)
     assert len(correlated_connection) == 1
