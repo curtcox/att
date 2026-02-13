@@ -262,8 +262,8 @@ async def test_should_retry_observes_next_retry_window() -> None:
         checked_at=now,
     )
 
-    assert manager.should_retry("terminal", now=now) is False
-    assert manager.should_retry("terminal", now=now + timedelta(seconds=1)) is True
+    assert manager.should_retry(UNIT_TEST_TERMINAL_SERVER, now=now) is False
+    assert manager.should_retry(UNIT_TEST_TERMINAL_SERVER, now=now + timedelta(seconds=1)) is True
 
 
 @pytest.mark.asyncio

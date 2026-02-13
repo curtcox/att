@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `7803a4c9dd7d19fe375a9e6105d76d0ffcec4b47`
-- Last commit: `7803a4c 2026-02-13 15:44:24 -0600 - Update terminal server tests`
+- HEAD: `0679d037d89e286b15f07c24405a007d43d4d6df`
+- Last commit: `0679d03 2026-02-13 15:47:07 -0600 - Document NEXT_MACHINE_HANDOFF update`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended full `should_retry(...)` terminal server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `should_retry("terminal", now=...)` call arguments to `should_retry(UNIT_TEST_TERMINAL_SERVER, now=...)` in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended `should_retry(...)` server-name constant reuse in unit MCP client coverage:
   - migrated inline `should_retry("terminal")` call arguments to `should_retry(UNIT_TEST_TERMINAL_SERVER)` in `tests/unit/test_mcp_client.py`.
@@ -122,8 +127,8 @@
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
-1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in adapter control calls:
-   - target remaining inline `should_retry("terminal", now=...)` call arguments by reusing `UNIT_TEST_TERMINAL_SERVER`.
+1. Reuse existing URI constants in `tests/unit/test_mcp_client.py` where inline resource URI literals remain in adapter/control calls:
+   - target remaining inline `read_resource("att://projects", ...)` call arguments by reusing `UNIT_TEST_PROJECTS_URI`.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

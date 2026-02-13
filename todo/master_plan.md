@@ -9,6 +9,11 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Extended full `should_retry(...)` terminal server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `should_retry("terminal", now=...)` call arguments to `should_retry(UNIT_TEST_TERMINAL_SERVER, now=...)` in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Extended `should_retry(...)` server-name constant reuse in unit MCP client coverage:
   - migrated inline `should_retry("terminal")` call arguments to `should_retry(UNIT_TEST_TERMINAL_SERVER)` in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
