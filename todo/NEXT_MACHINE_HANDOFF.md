@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`timeout-category neutral alias adoption`)
+- Working tree at handoff creation: dirty (`unit timeout-category constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,14 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended timeout-category constant reuse into adjacent unit MCP client assertions:
+  - added local unit-test constant `UNIT_TEST_TIMEOUT_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
+  - replaced remaining inline `"network_timeout"` literals in timeout-category assertions with the shared unit-test constant while keeping the timeout exception-to-category param matrix explicit and unchanged.
+  - preserved transport adapter category-mapping semantics and failure-script exhaustion fallback behavior unchanged.
+- Completed timeout-category compatibility alias retirement after neutral adoption:
+  - migrated the remaining failover timeout-category assertions to canonical `FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - replaced the remaining inline `"network_timeout"` last-error-category assertion with the canonical timeout constant and removed `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - updated focused constant regression coverage to canonical-only timeout-category semantics and preserved invocation/connection filter behavior plus call-order/subsequence parity unchanged.
 - Consolidated timeout-category constant naming across scripted and non-scripted failover diagnostics assertions:
   - introduced neutral `FAILOVER_TIMEOUT_ERROR_CATEGORY` and rewired timeout-category assertions to use the neutral constant instead of scripted-only naming.
   - updated focused constant regression coverage to assert neutral timeout-category value plus compatibility-alias equivalence.
@@ -321,10 +329,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by retiring timeout-category compatibility alias debt after neutral adoption:
-1. Remove scripted timeout compatibility alias if unused at call sites:
-   - replace remaining compatibility-only references of `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` with canonical `FAILOVER_TIMEOUT_ERROR_CATEGORY`.
-   - remove `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` constant if it becomes unused after migration.
+Continue `P12/P13` test-structure hardening by reducing remaining error-category assertion literal duplication in unit MCP client coverage:
+1. Reuse shared constants for additional stable error-category assertions in `tests/unit/test_mcp_client.py`:
+   - identify repeated non-timeout category assertion literals (for example `"http_status"`, `"transport_error"`, `"rpc_error"`) and migrate assertion sites to local shared constants where reuse is meaningful.
+   - keep category-mapping param matrices explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused constant regression coverage explicit for the canonical timeout-category constant.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
@@ -333,7 +341,7 @@ Continue `P12/P13` test-structure hardening by retiring timeout-category compati
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
-- Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
+- Scope edits to `tests/unit/test_mcp_client.py` (and related assertion constants) only; avoid product code changes.
 - Keep diagnostics filter and call-order assertions explicit at each test call site.
 - Run full validation and update both plan docs after completion.
 

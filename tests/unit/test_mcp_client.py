@@ -23,6 +23,8 @@ from tests.support.mcp_nat_helpers import (
     FakeNatSessionFactory,
 )
 
+UNIT_TEST_TIMEOUT_ERROR_CATEGORY = "network_timeout"
+
 
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
@@ -1258,7 +1260,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
             "initialize_start",
             "initialize_failure",
         ]
-        assert primary_events[1].error_category == "network_timeout"
+        assert primary_events[1].error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
     else:
         assert [event.phase for event in primary_events] == [
             "initialize_start",
@@ -1266,12 +1268,12 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
             "invoke_start",
             "invoke_failure",
         ]
-        assert primary_events[3].error_category == "network_timeout"
+        assert primary_events[3].error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
 
     primary = manager.get("primary")
     assert primary is not None
     assert primary.status is ServerStatus.DEGRADED
-    assert primary.last_error_category == "network_timeout"
+    assert primary.last_error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
 
 
 @pytest.mark.asyncio

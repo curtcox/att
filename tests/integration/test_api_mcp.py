@@ -300,7 +300,6 @@ SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES: tuple[str, ...] = (
 )
 FAILOVER_DEGRADED_EXPECTED_STATUSES: tuple[str, ...] = (ServerStatus.DEGRADED.value,)
 FAILOVER_TIMEOUT_ERROR_CATEGORY = "network_timeout"
-SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY = FAILOVER_TIMEOUT_ERROR_CATEGORY
 STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX = 1
 STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX = 3
 STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES: tuple[str, ...] = (
@@ -2297,9 +2296,8 @@ def test_failover_degraded_expected_statuses_constant_matches_vector() -> None:
     assert FAILOVER_DEGRADED_EXPECTED_STATUSES == (ServerStatus.DEGRADED.value,)
 
 
-def test_failover_timeout_error_category_constants_match_value_and_alias() -> None:
+def test_failover_timeout_error_category_constant_matches_value() -> None:
     assert FAILOVER_TIMEOUT_ERROR_CATEGORY == "network_timeout"
-    assert SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY == FAILOVER_TIMEOUT_ERROR_CATEGORY
 
 
 def test_stage_paired_failover_invoke_error_index_constant_matches_value() -> None:

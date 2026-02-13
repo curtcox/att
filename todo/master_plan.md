@@ -6,6 +6,14 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended timeout-category constant reuse into adjacent unit MCP client assertions:
+  - added local unit-test constant `UNIT_TEST_TIMEOUT_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
+  - replaced remaining inline `"network_timeout"` literals in timeout-category assertions with the shared unit-test constant while keeping the timeout exception-to-category param matrix explicit and unchanged.
+  - preserved transport adapter category-mapping semantics and failure-script exhaustion fallback behavior unchanged.
+- [x] Completed timeout-category compatibility alias retirement after neutral adoption:
+  - migrated remaining failover timeout-category assertions to canonical `FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - replaced the remaining inline `"network_timeout"` last-error-category assertion with the canonical timeout constant and removed `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - updated focused constant regression coverage to canonical-only timeout-category semantics and preserved diagnostics-filter/call-order literal/subsequence behavior unchanged.
 - [x] Consolidated timeout-category constant naming across scripted and non-scripted failover diagnostics assertions:
   - introduced neutral `FAILOVER_TIMEOUT_ERROR_CATEGORY` and migrated timeout-category assertion call sites away from scripted-only naming.
   - updated focused constant regression coverage to assert neutral timeout-category value plus compatibility-alias equivalence.
