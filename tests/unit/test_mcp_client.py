@@ -141,6 +141,22 @@ def _unit_test_collect_full_call_order_slice(
     ]
 
 
+def _unit_test_collect_mixed_method_call_order_slice(
+    calls: list[tuple[str, str, str]],
+    start_index: int,
+) -> list[tuple[str, str]]:
+    return [
+        (server, method)
+        for server, _, method in calls[start_index:]
+        if method
+        in {
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+        }
+    ]
+
+
 def _assert_unit_test_collected_primary_reentry_slice(
     calls: list[tuple[str, str, str]],
     start_index: int,
@@ -1536,16 +1552,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     )
     assert second.server == UNIT_TEST_PRIMARY_SERVER
 
-    call_order = [
-        (server, method)
-        for server, _, method in factory.calls
-        if method
-        in {
-            UNIT_TEST_INITIALIZE_METHOD,
-            UNIT_TEST_TOOLS_CALL_METHOD,
-            UNIT_TEST_RESOURCES_READ_METHOD,
-        }
-    ]
+    call_order = _unit_test_collect_mixed_method_call_order_slice(factory.calls, 0)
     assert call_order == [
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD),

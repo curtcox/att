@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended mixed-method call-order collection helper reuse in unit MCP client coverage:
+  - added local unit-test helper `_unit_test_collect_mixed_method_call_order_slice(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated the remaining inline mixed-method call-order collection comprehension (`initialize` + `tools/call` + `resources/read`) in scripted failover call-order assertions to helper-driven form while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended method-scoped re-entry pair collection helper reuse in unit MCP client coverage:
   - migrated remaining inline resource retry re-entry call-order pair collection in `tests/unit/test_mcp_client.py` to `_unit_test_collect_reentry_call_order_slice(...)`.
   - replaced repeated list-comprehension scaffolding `[(server, method) for ... if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_RESOURCES_READ_METHOD}]` with helper-driven collection while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
