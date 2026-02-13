@@ -27,6 +27,10 @@ UNIT_TEST_TIMEOUT_ERROR_CATEGORY = "network_timeout"
 UNIT_TEST_TRANSPORT_ERROR_CATEGORY = "transport_error"
 UNIT_TEST_RPC_ERROR_CATEGORY = "rpc_error"
 UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY = "http_status"
+UNIT_TEST_INITIALIZE_METHOD = "initialize"
+UNIT_TEST_TOOLS_CALL_METHOD = "tools/call"
+UNIT_TEST_INVOKE_START_PHASE = "invoke_start"
+UNIT_TEST_INVOKE_FAILURE_PHASE = "invoke_failure"
 
 
 @pytest.mark.asyncio
@@ -158,11 +162,11 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
         preferred=["primary", "backup"],
     )
     assert result.server == "backup"
-    assert result.method == "tools/call"
+    assert result.method == UNIT_TEST_TOOLS_CALL_METHOD
     assert isinstance(result.result, dict)
     assert result.result["ok"] is True
-    assert calls[0] == ("primary", "initialize")
-    assert calls[-1] == ("backup", "tools/call")
+    assert calls[0] == ("primary", UNIT_TEST_INITIALIZE_METHOD)
+    assert calls[-1] == ("backup", UNIT_TEST_TOOLS_CALL_METHOD)
 
     primary = manager.get("primary")
     backup = manager.get("backup")
@@ -206,7 +210,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
     assert result.method == "resources/read"
     assert isinstance(result.result, dict)
     assert result.result["uri"] == "att://projects"
-    assert calls[0] == ("primary", "initialize")
+    assert calls[0] == ("primary", UNIT_TEST_INITIALIZE_METHOD)
     assert calls[-1] == ("secondary", "resources/read")
 
 
@@ -215,7 +219,7 @@ async def test_invoke_tool_raises_when_no_servers_available() -> None:
     manager = MCPClientManager()
     with pytest.raises(MCPInvocationError) as exc_info:
         await manager.invoke_tool("att.project.list")
-    assert exc_info.value.method == "tools/call"
+    assert exc_info.value.method == UNIT_TEST_TOOLS_CALL_METHOD
     assert exc_info.value.attempts == []
 
 
@@ -251,15 +255,15 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
         await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
 
     error = exc_info.value
-    assert error.method == "tools/call"
+    assert error.method == UNIT_TEST_TOOLS_CALL_METHOD
     assert len(error.attempts) == 3
     assert error.attempts[0].server == "primary"
-    assert error.attempts[0].stage == "initialize"
+    assert error.attempts[0].stage == UNIT_TEST_INITIALIZE_METHOD
     assert error.attempts[0].success is False
     assert error.attempts[0].error == "primary down"
     assert error.attempts[0].error_category == UNIT_TEST_TRANSPORT_ERROR_CATEGORY
     assert error.attempts[1].server == "backup"
-    assert error.attempts[1].stage == "initialize"
+    assert error.attempts[1].stage == UNIT_TEST_INITIALIZE_METHOD
     assert error.attempts[1].success is True
     assert error.attempts[1].error_category is None
     assert error.attempts[2].server == "backup"
@@ -302,11 +306,11 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
 
     assert result.server == "codex"
     assert calls == [
-        "initialize",
+        UNIT_TEST_INITIALIZE_METHOD,
         "notifications/initialized",
-        "initialize",
+        UNIT_TEST_INITIALIZE_METHOD,
         "notifications/initialized",
-        "tools/call",
+        UNIT_TEST_TOOLS_CALL_METHOD,
     ]
     server = manager.get("codex")
     assert server is not None
@@ -408,11 +412,11 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     )
 
     assert result.server == "recovered"
-    assert calls[0] == ("primary", "tools/call")
-    assert calls[1] == ("recovered", "initialize")
+    assert calls[0] == ("primary", UNIT_TEST_TOOLS_CALL_METHOD)
+    assert calls[1] == ("recovered", UNIT_TEST_INITIALIZE_METHOD)
     assert calls[2] == ("recovered", "notifications/initialized")
-    assert calls[3] == ("recovered", "tools/call")
-    assert ("degraded", "initialize") not in calls
+    assert calls[3] == ("recovered", UNIT_TEST_TOOLS_CALL_METHOD)
+    assert ("degraded", UNIT_TEST_INITIALIZE_METHOD) not in calls
     updated_primary = manager.get("primary")
     updated_recovered = manager.get("recovered")
     assert updated_primary is not None
@@ -460,7 +464,7 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
         "initialize_failure",
         "initialize_start",
         "initialize_success",
-        "invoke_start",
+        UNIT_TEST_INVOKE_START_PHASE,
         "invoke_success",
     ]
     servers = [event.server for event in events]
@@ -500,7 +504,7 @@ async def test_invocation_events_retention_is_bounded() -> None:
     assert len(events) == 3
     assert [event.phase for event in events] == [
         "initialize_success",
-        "invoke_start",
+        UNIT_TEST_INVOKE_START_PHASE,
         "invoke_success",
     ]
 
@@ -659,7 +663,11 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
     result = await manager.invoke_tool("att.project.list")
 
     assert result.server == "codex"
-    assert calls == ["initialize", "notifications/initialized", "tools/call"]
+    assert calls == [
+        UNIT_TEST_INITIALIZE_METHOD,
+        "notifications/initialized",
+        UNIT_TEST_TOOLS_CALL_METHOD,
+    ]
     server = manager.get("codex")
     assert server is not None
     assert server.initialized is True
@@ -698,7 +706,7 @@ async def test_connect_server_runs_health_and_initialize() -> None:
     assert connected.status is ServerStatus.HEALTHY
     assert connected.initialized is True
     assert probe_calls == ["codex"]
-    assert transport_calls == ["initialize", "notifications/initialized"]
+    assert transport_calls == [UNIT_TEST_INITIALIZE_METHOD, "notifications/initialized"]
 
 
 @pytest.mark.asyncio
@@ -1268,8 +1276,8 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         assert [event.phase for event in primary_events] == [
             "initialize_start",
             "initialize_success",
-            "invoke_start",
-            "invoke_failure",
+            UNIT_TEST_INVOKE_START_PHASE,
+            UNIT_TEST_INVOKE_FAILURE_PHASE,
         ]
         assert primary_events[3].error_category == UNIT_TEST_TIMEOUT_ERROR_CATEGORY
 
@@ -1899,7 +1907,7 @@ async def test_event_list_filters_and_limits() -> None:
 
     latest_invocation = manager.list_invocation_events(limit=2)
     assert [event.phase for event in latest_invocation] == [
-        "invoke_start",
+        UNIT_TEST_INVOKE_START_PHASE,
         "invoke_success",
     ]
 

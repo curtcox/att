@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit non-timeout category constant reuse`)
+- Working tree at handoff creation: dirty (`unit method/phase assertion constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended unit MCP client assertion literal reuse to stable method/phase constants:
+  - added local unit-test constants `UNIT_TEST_INITIALIZE_METHOD`, `UNIT_TEST_TOOLS_CALL_METHOD`, `UNIT_TEST_INVOKE_START_PHASE`, and `UNIT_TEST_INVOKE_FAILURE_PHASE` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side method/phase literals in invocation result/call-order/phase-stream checks to the shared constants while keeping setup transport payload literals and timeout/category param matrices explicit and unchanged.
+  - preserved invocation-event/connection-event filter semantics and call-order/subsequence behavior unchanged.
 - Reduced non-timeout error-category assertion literal duplication in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_TRANSPORT_ERROR_CATEGORY`, `UNIT_TEST_RPC_ERROR_CATEGORY`, and `UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
   - migrated repeated non-timeout category assertion literals to the shared constants while keeping timeout/category mapping param matrices and transport exception setup literals explicit and unchanged.
@@ -333,21 +337,16 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending unit test constant reuse to stable non-category assertion literals in MCP client coverage:
-1. Reuse shared constants where repeated stable transport-method literals exist in `tests/unit/test_mcp_client.py`:
-   - identify repeated method-name literals in assertion expectations (for example `"initialize"`, `"invoke_start"`, `"invoke_failure"`, `"tools/call"`) and migrate only repeated assertion-site vectors to local constants where reuse is meaningful.
-   - keep setup payload literals and param matrices explicit and unchanged.
+Continue `P12/P13` test-structure hardening by extending method-literal constant reuse in the remaining unit MCP client assertion sites:
+1. Reuse existing unit method constants across remaining repeated assertion vectors in `tests/unit/test_mcp_client.py`:
+   - migrate repeated assertion-side `"initialize"`/`"tools/call"` literals in cluster failure-script and call-order expectation assertions where reuse is meaningful.
+   - keep scripted setup inputs (`set_failure_script(...)`), method-branch conditionals, and param matrices explicit and unchanged.
 2. Preserve regression and semantics:
-   - keep focused constant regression coverage explicit for the canonical timeout-category constant.
+   - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-3. Preserve existing helper/filter/subsequence semantics:
-   - keep current invocation-event and connection-event filter behavior unchanged.
-   - retain full validation + plan-doc update workflow per slice.
-
-Suggested implementation direction:
-- Scope edits to `tests/unit/test_mcp_client.py` (and related assertion constants) only; avoid product code changes.
-- Keep diagnostics filter and call-order assertions explicit at each test call site.
-- Run full validation and update both plan docs after completion.
+3. Keep scope and workflow tight:
+   - scope edits to `tests/unit/test_mcp_client.py` only (no product code changes).
+   - run full validation and update both plan docs after completion.
 
 ## Resume Checklist
 1. Sync and verify environment:
