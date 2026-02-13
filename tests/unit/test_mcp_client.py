@@ -71,6 +71,14 @@ UNIT_TEST_FAILURE_ACTION_TIMEOUT = "timeout"
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
+UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY = (
+    UNIT_TEST_PRIMARY_SERVER,
+    UNIT_TEST_INITIALIZE_METHOD,
+)
+UNIT_TEST_BACKUP_INITIALIZE_CALL_ORDER_ENTRY = (
+    UNIT_TEST_BACKUP_SERVER,
+    UNIT_TEST_INITIALIZE_METHOD,
+)
 
 
 @pytest.mark.asyncio
@@ -1629,7 +1637,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert third_slice == [
-        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY,
         (UNIT_TEST_PRIMARY_SERVER, method),
     ]
 
@@ -1771,7 +1779,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reentry_slice == [
-        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY,
         (UNIT_TEST_PRIMARY_SERVER, method),
     ]
 
@@ -1821,7 +1829,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert backup_reentry_slice == [
-        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        UNIT_TEST_BACKUP_INITIALIZE_CALL_ORDER_ENTRY,
         (UNIT_TEST_BACKUP_SERVER, method),
     ]
 
@@ -1890,7 +1898,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
         if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
     ]
     assert reentry_slice == [
-        (UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+        UNIT_TEST_BACKUP_INITIALIZE_CALL_ORDER_ENTRY,
         (UNIT_TEST_BACKUP_SERVER, method),
     ]
 
