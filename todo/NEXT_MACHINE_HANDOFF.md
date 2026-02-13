@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `aa695a6f489a3b93d11ee0492ee2f7c585676730`
-- Last commit: `aa695a6 2026-02-13 09:30:29 -0600 Consolidate primary diagnostics assertion helper`
-- Working tree at handoff creation: dirty (`unreachable-transition call-order expectation vector constants`)
+- HEAD: `3e9638ae5188b28a2e37b0dcc5e64e3109ab7215`
+- Last commit: `3e9638a 2026-02-13 09:31:38 -0600 Extract unreachable-transition call-order expectation constants`
+- Working tree at handoff creation: dirty (`call-order collection helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated call-order collection scaffolding with shared helper wiring:
+  - added shared transport call-order collection helper for method-scoped `initialize` + invoke call tuples with optional start offsets.
+  - migrated unreachable-transition and retry-window gating call-order helpers to consume this shared collector while preserving existing per-slice literal assertions (`second_slice`/`third_slice`/`fifth_slice`).
+  - preserved diagnostics filter assertions and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated unreachable-transition call-order expectation vectors with shared constants:
   - extracted shared module-level constants for method-specific unreachable-transition call-order expectations (`expected_fifth_slice` and full `expected_observed_call_order` tuples).
   - migrated both tool/resource unreachable-transition call-order tests to consume these shared constants via the existing unreachable-transition call-order helper.
@@ -173,17 +177,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated call-order collection scaffolding:
-1. Extract shared observed-call-order collection helper:
-   - factor repeated `(server, method)` transport-call collection comprehensions used by unreachable-transition and retry-window gating call-order helpers into one shared utility.
-   - keep per-slice literal assertions (`second_slice`/`third_slice`/`fifth_slice`) explicit and unchanged.
+Continue `P12/P13` test-structure hardening by reducing duplicated request-id tuple scaffolding:
+1. Extract shared request-id tuple helpers for retry-window and unreachable-transition sequences:
+   - factor repeated request-id tuple assembly in tool/resource retry-window + unreachable-transition tests into small sequence-to-request-id helper utilities.
+   - keep request ordering explicit and unchanged for diagnostics/filter assertions.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current helper signatures and constant wiring unchanged at call sites.
+   - keep current diagnostics/call-order helper signatures and constant wiring unchanged.
    - retain phase-start/transport subsequence assertions exactly.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing helper style from nearby call-order helpers.
+- Reuse existing helper style from nearby diagnostics and call-order helpers.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

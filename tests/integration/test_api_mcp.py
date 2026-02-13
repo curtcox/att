@@ -422,6 +422,20 @@ def _assert_primary_request_diagnostics(
         )
 
 
+def _collect_method_call_order(
+    *,
+    factory: ClusterNatSessionFactory,
+    method: str,
+    start_index: int = 0,
+) -> list[tuple[str, str]]:
+    relevant_methods = {"initialize", method}
+    return [
+        (server, call_method)
+        for server, _, call_method in factory.calls[start_index:]
+        if call_method in relevant_methods
+    ]
+
+
 def _assert_unreachable_transition_call_order_literals(
     *,
     factory: ClusterNatSessionFactory,
@@ -430,19 +444,14 @@ def _assert_unreachable_transition_call_order_literals(
     expected_fifth_slice: list[tuple[str, str]],
     expected_observed_call_order: list[tuple[str, str]],
 ) -> list[tuple[str, str]]:
-    relevant_methods = {"initialize", method}
-    fifth_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[sequence.calls_before_fifth :]
-        if call_method in relevant_methods
-    ]
+    fifth_slice = _collect_method_call_order(
+        factory=factory,
+        method=method,
+        start_index=sequence.calls_before_fifth,
+    )
     assert fifth_slice == expected_fifth_slice
 
-    observed_call_order = [
-        (server, call_method)
-        for server, _, call_method in factory.calls
-        if call_method in relevant_methods
-    ]
+    observed_call_order = _collect_method_call_order(factory=factory, method=method)
     assert observed_call_order == expected_observed_call_order
     return observed_call_order
 
@@ -459,19 +468,14 @@ def _assert_retry_window_gating_call_order_literals(
     assert second_slice
     assert all(server == "backup" for server, _, _ in second_slice)
 
-    relevant_methods = {"initialize", method}
-    third_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[sequence.calls_before_third :]
-        if call_method in relevant_methods
-    ]
+    third_slice = _collect_method_call_order(
+        factory=factory,
+        method=method,
+        start_index=sequence.calls_before_third,
+    )
     assert third_slice == expected_third_slice
 
-    observed_call_order = [
-        (server, call_method)
-        for server, _, call_method in factory.calls
-        if call_method in relevant_methods
-    ]
+    observed_call_order = _collect_method_call_order(factory=factory, method=method)
     assert observed_call_order == expected_observed_call_order
     return observed_call_order
 
