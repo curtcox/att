@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from att.api.deps import get_mcp_client_manager
 from att.api.schemas.mcp import (
     InvokeToolRequest,
+    MCPCapabilitySnapshotResponse,
     MCPConnectionEventResponse,
     MCPConnectionEventsResponse,
     MCPInvocationResponse,
@@ -42,6 +43,16 @@ def _as_response(server: ExternalServer) -> MCPServerResponse:
         initialized=server.initialized,
         protocol_version=server.protocol_version,
         last_initialized_at=server.last_initialized_at,
+        capability_snapshot=(
+            MCPCapabilitySnapshotResponse(
+                protocol_version=server.capability_snapshot.protocol_version,
+                server_info=server.capability_snapshot.server_info,
+                capabilities=server.capability_snapshot.capabilities,
+                captured_at=server.capability_snapshot.captured_at,
+            )
+            if server.capability_snapshot is not None
+            else None
+        ),
     )
 
 

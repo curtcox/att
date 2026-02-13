@@ -37,3 +37,10 @@ P11
 - Added connect API endpoints:
   - `POST /api/v1/mcp/servers/{name}/connect`
   - `POST /api/v1/mcp/servers/connect`
+- Added explicit per-server capability snapshots captured from successful MCP initialize responses:
+  - new manager model `CapabilitySnapshot` persisted on `ExternalServer`.
+  - snapshots include `protocol_version`, `server_info`, `capabilities`, and `captured_at`.
+  - API server payloads now expose `capability_snapshot` for operational visibility.
+- Added test coverage for capability-snapshot lifecycle:
+  - snapshot population on initialize success.
+  - snapshot retention across later initialize failures (partial initialization state recovery).

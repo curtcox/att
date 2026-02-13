@@ -107,12 +107,17 @@ def test_mcp_server_initialize_endpoints() -> None:
     one = client.post("/api/v1/mcp/servers/github/initialize")
     assert one.status_code == 200
     assert one.json()["initialized"] is True
+    assert one.json()["capability_snapshot"] is not None
+    assert one.json()["capability_snapshot"]["protocol_version"] is None
+    assert one.json()["capability_snapshot"]["server_info"] is None
+    assert one.json()["capability_snapshot"]["capabilities"] is None
 
     all_servers = client.post("/api/v1/mcp/servers/initialize")
     assert all_servers.status_code == 200
     assert len(all_servers.json()["items"]) == 2
     by_name = {item["name"]: item for item in all_servers.json()["items"]}
     assert by_name["github"]["initialized"] is True
+    assert by_name["github"]["capability_snapshot"] is not None
     assert by_name["codex"]["initialized"] is False
     assert by_name["codex"]["status"] in {
         ServerStatus.DEGRADED.value,
@@ -138,6 +143,7 @@ def test_mcp_server_connect_endpoints() -> None:
     assert one.status_code == 200
     assert one.json()["initialized"] is True
     assert one.json()["status"] == ServerStatus.HEALTHY.value
+    assert one.json()["capability_snapshot"] is not None
 
     failing = client.post("/api/v1/mcp/servers/codex/connect")
     assert failing.status_code == 200

@@ -23,6 +23,16 @@ class ServerStatus(StrEnum):
 
 
 @dataclass(slots=True)
+class CapabilitySnapshot:
+    """Last known MCP capability surface captured at initialize time."""
+
+    protocol_version: str | None
+    server_info: JSONObject | None
+    capabilities: JSONObject | None
+    captured_at: datetime
+
+
+@dataclass(slots=True)
 class ExternalServer:
     """Connected external MCP server and health metadata."""
 
@@ -36,6 +46,7 @@ class ExternalServer:
     initialized: bool = False
     protocol_version: str | None = None
     last_initialized_at: datetime | None = None
+    capability_snapshot: CapabilitySnapshot | None = None
 
     @property
     def healthy(self) -> bool:
@@ -213,8 +224,15 @@ class MCPClientManager:
 
         protocol = result.get("protocolVersion")
         server.protocol_version = protocol if isinstance(protocol, str) else None
+        initialized_at = datetime.now(UTC)
         server.initialized = True
-        server.last_initialized_at = datetime.now(UTC)
+        server.last_initialized_at = initialized_at
+        server.capability_snapshot = CapabilitySnapshot(
+            protocol_version=server.protocol_version,
+            server_info=self._as_json_object(result.get("serverInfo")),
+            capabilities=self._as_json_object(result.get("capabilities")),
+            captured_at=initialized_at,
+        )
         self.record_check_result(name, healthy=True)
 
         initialized_notification = self._build_request(
@@ -413,6 +431,12 @@ class MCPClientManager:
             code = error_payload.get("code")
             return f"code={code}"
         return str(error_payload)
+
+    @staticmethod
+    def _as_json_object(value: JSONValue) -> JSONObject | None:
+        if isinstance(value, dict) and all(isinstance(key, str) for key in value):
+            return value
+        return None
 
     def _invocation_candidates(self, preferred: list[str] | None) -> list[ExternalServer]:
         ordered = self._order_candidates(preferred)

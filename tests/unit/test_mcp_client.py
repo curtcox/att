@@ -192,7 +192,11 @@ async def test_initialize_server_updates_state_on_success() -> None:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
-                "result": {"protocolVersion": "2025-11-25"},
+                "result": {
+                    "protocolVersion": "2025-11-25",
+                    "serverInfo": {"name": "codex", "version": "1.0.0"},
+                    "capabilities": {"tools": {}, "resources": {}},
+                },
             }
         if method == "notifications/initialized":
             return {
@@ -216,6 +220,13 @@ async def test_initialize_server_updates_state_on_success() -> None:
     assert initialized.initialized is True
     assert initialized.protocol_version == "2025-11-25"
     assert initialized.last_initialized_at is not None
+    assert initialized.capability_snapshot is not None
+    assert initialized.capability_snapshot.protocol_version == "2025-11-25"
+    assert initialized.capability_snapshot.server_info == {
+        "name": "codex",
+        "version": "1.0.0",
+    }
+    assert initialized.capability_snapshot.capabilities == {"tools": {}, "resources": {}}
 
 
 @pytest.mark.asyncio
@@ -232,6 +243,49 @@ async def test_initialize_server_marks_degraded_on_error() -> None:
     assert initialized.status is ServerStatus.DEGRADED
     assert initialized.initialized is False
     assert initialized.last_error == "init failed"
+
+
+@pytest.mark.asyncio
+async def test_initialize_server_failure_preserves_last_capability_snapshot() -> None:
+    calls = 0
+
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        nonlocal calls
+        method = str(request.get("method", ""))
+        if method == "initialize":
+            calls += 1
+            if calls == 1:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": str(request.get("id", "")),
+                    "result": {
+                        "protocolVersion": "2025-11-25",
+                        "serverInfo": {"name": "github", "version": "2.0.0"},
+                        "capabilities": {"tools": {}},
+                    },
+                }
+            raise RuntimeError("init failed")
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {},
+        }
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("github", "http://github.local")
+
+    first = await manager.initialize_server("github")
+    second = await manager.initialize_server("github", force=True)
+
+    assert first is not None
+    assert first.capability_snapshot is not None
+    assert first.capability_snapshot.server_info == {"name": "github", "version": "2.0.0"}
+
+    assert second is not None
+    assert second.initialized is False
+    assert second.status is ServerStatus.DEGRADED
+    assert second.capability_snapshot is not None
+    assert second.capability_snapshot.server_info == {"name": "github", "version": "2.0.0"}
 
 
 @pytest.mark.asyncio

@@ -5,43 +5,37 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (self-bootstrap release-source/policy-matrix hardening + plan doc updates)
+- Working tree at handoff creation: dirty (MCP capability-snapshot hardening + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`128 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`129 passed`)
 
 ## Recent Delivered Work
-- Self-bootstrap release source abstraction delivered:
-  - added `ReleaseSourceContext` + `ReleaseSourceAdapter` contract in `SelfBootstrapManager`
-  - added fallback-chain resolution support while preserving compatibility with legacy `release_metadata_provider` hooks
-- Source-of-truth fallback chain wired in API deps:
-  - runtime-log adapter scans for `release_id` / `previous_release_id`
-  - git adapter fallback (`HEAD`, `HEAD^`)
-- Rollback policy matrix hardened by failure class + deployment context:
-  - failure classes enforced: `deploy_failure`, `restart_watchdog_failure`, `health_failure`
-  - explicit request controls added: `rollback_on_deploy_failure`, `rollback_on_restart_watchdog_failure`, `rollback_on_health_failure`
-  - deployment context added: `deployment_context` (`self_hosted`/`external`)
-  - policy deny path for external context without explicit rollback target: `rollback_target_required_for_external_context`
-- Self-bootstrap result/API payload expanded with policy diagnostics:
-  - `rollback_failure_class`
-  - `rollback_deployment_context`
-- API route/schema wiring updated for new request+response policy fields.
-- Test coverage expanded:
-  - new unit tests for adapter fallback chain and policy matrix branches
-  - integration route test verifies new request field passthrough + response fields
+- MCP client lifecycle hardening delivered for `P13`:
+  - added explicit per-server capability snapshots in `MCPClientManager`:
+    - new `CapabilitySnapshot` model
+    - persisted on `ExternalServer.capability_snapshot`
+    - captured on successful `initialize` handshake with `protocolVersion`, `serverInfo`, and `capabilities`
+  - snapshots are retained across later initialize failures, preserving last-known capability context during partial initialization states.
+- MCP API surface expanded:
+  - `MCPServerResponse` now includes optional `capability_snapshot` payload.
+  - route mapping in `src/att/api/routes/mcp.py` now exposes snapshot metadata.
+- Tests expanded:
+  - unit tests for snapshot capture + retention after forced initialize failure.
+  - integration tests for `initialize`/`connect` endpoints asserting snapshot presence.
 
 ## Active Next Slice (Recommended)
-Focus next on `P12/P13` transport hardening for real multi-server MCP operations:
-1. Drive `nat.mcp` external-server connect/invoke flows through live transport behavior (beyond in-memory baseline assumptions).
-2. Expand failover/recovery semantics for mixed server health and partial initialization states.
+Continue `P12/P13` transport hardening with deterministic partial-failure behavior:
+1. Add explicit invocation-attempt traces per server (initialize + call outcome) in `MCPInvocationError` details.
+2. Tighten API error payload mapping for partial multi-server failures (deterministic machine-readable structure).
 
 Suggested implementation direction:
-- Strengthen `MCPClientManager` server lifecycle transitions with explicit per-server capability snapshots.
-- Add integration tests for connect/initialize/invoke sequencing with degraded and recovering peers.
-- Tighten API error mapping for partial-failure multi-server calls (deterministic status + payload shape).
+- Extend `MCPInvocationResult`/`MCPInvocationError` with structured attempt diagnostics.
+- Add route-level response model fields for invocation failures (while preserving 503 status).
+- Expand integration tests to validate degraded + recovering server sequences and error payload shape.
 
 ## Resume Checklist
 1. Sync and verify environment:
@@ -61,12 +55,10 @@ Suggested implementation direction:
 
 ## Key Files for Next Slice
 - `src/att/mcp/client.py`
-- `src/att/mcp/server.py`
 - `src/att/api/routes/mcp.py`
-- `src/att/api/routes/mcp_transport.py`
+- `src/att/api/schemas/mcp.py`
 - `tests/unit/test_mcp_client.py`
 - `tests/integration/test_api_mcp.py`
-- `tests/integration/test_mcp_transport.py`
 
 ## Remaining Program-Level Milestones
 From `todo/master_plan.md`:

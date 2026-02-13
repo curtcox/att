@@ -17,6 +17,15 @@ class RegisterMCPServerRequest(BaseModel):
     url: HttpUrl
 
 
+class MCPCapabilitySnapshotResponse(BaseModel):
+    """Last known capability snapshot for one MCP server."""
+
+    protocol_version: str | None
+    server_info: dict[str, Any] | None
+    capabilities: dict[str, Any] | None
+    captured_at: datetime
+
+
 class MCPServerResponse(BaseModel):
     """MCP server status payload."""
 
@@ -30,6 +39,7 @@ class MCPServerResponse(BaseModel):
     initialized: bool
     protocol_version: str | None
     last_initialized_at: datetime | None
+    capability_snapshot: MCPCapabilitySnapshotResponse | None = None
 
 
 class MCPServersResponse(BaseModel):
