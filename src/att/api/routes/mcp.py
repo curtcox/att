@@ -40,6 +40,7 @@ def _as_response(server: ExternalServer) -> MCPServerResponse:
         url=server.url,
         status=server.status,
         last_error=server.last_error,
+        last_error_category=server.last_error_category,
         retry_count=server.retry_count,
         last_checked_at=server.last_checked_at,
         next_retry_at=server.next_retry_at,
@@ -67,6 +68,7 @@ def _invocation_error_detail(exc: MCPInvocationError) -> MCPInvocationErrorDetai
             stage=attempt.stage,
             success=attempt.success,
             error=attempt.error,
+            error_category=attempt.error_category,
         )
 
     return MCPInvocationErrorDetailResponse(

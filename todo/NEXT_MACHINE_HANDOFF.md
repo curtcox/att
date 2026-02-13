@@ -5,35 +5,35 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (MCP stale-initialization/recovery hardening + plan doc updates)
+- Working tree at handoff creation: dirty (MCP transport error-categorization hardening + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`135 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`138 passed`)
 
 ## Recent Delivered Work
-- MCP stale-initialization and recovery sequencing hardening delivered (`P13`):
-  - added initialization freshness metadata to servers:
-    - `initialization_expires_at`
-  - `MCPClientManager` now supports staleness gating via `max_initialization_age_seconds` and forces reinitialize before invocation when initialization is stale.
-  - unhealthy transitions now invalidate initialization expiry metadata.
-- API surface updated:
-  - MCP server payload now includes `initialization_expires_at` in `MCPServerResponse`.
+- MCP transport failure categorization and diagnostics hardening delivered (`P13`):
+  - added stable `ErrorCategory` model and `MCPTransportError` in MCP client manager.
+  - default transport now classifies timeout/http-status/transport/malformed-payload failures.
+  - server state now tracks categorized failures via `last_error_category`.
+  - invocation attempt diagnostics now include `error_category` in 503 error details.
+- Extended stale/recovery lifecycle metadata in server payloads:
+  - `initialization_expires_at` now surfaced in API responses.
 - Test coverage expanded:
-  - unit test validates stale initialized server is reinitialized before invocation.
-  - unit/integration tests validate deterministic mixed-state recovery order (`healthy` -> fallback to `recovered`, while skipping unnecessary degraded attempts after recovery succeeds).
+  - unit tests for transport category propagation.
+  - integration tests for category-aware 503 detail payloads and server last-error category mapping.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` transport hardening with live external-server realism:
-1. Add explicit transport-classified failure reasons (network timeout vs HTTP status vs malformed payload) and map these into stable server error categories.
-2. Extend API/integration coverage for these categories to confirm deterministic status transitions and diagnostic payloads.
+Continue `P12/P13` toward live external transport realism:
+1. Add per-server initialization/transport event audit records for invocation lifecycle (`initialize_start/success/failure`, `invoke_start/success/failure`).
+2. Expose these invocation lifecycle events via API for diagnostics and recovery orchestration verification.
 
 Suggested implementation direction:
-- Introduce typed transport error classification in `MCPClientManager` (and default transport wrapper) instead of plain string errors.
-- Preserve backward-compatible error text while surfacing structured error category fields.
-- Add integration tests for malformed JSON-RPC payloads and non-2xx transport responses.
+- Add a lightweight invocation event model in `MCPClientManager` with bounded retention.
+- Emit lifecycle events alongside existing connection transitions.
+- Add API endpoint(s) and integration tests to validate event ordering and payload stability under mixed-state failover.
 
 ## Resume Checklist
 1. Sync and verify environment:

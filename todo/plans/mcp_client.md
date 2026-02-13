@@ -57,3 +57,10 @@ P11
 - Added mixed-state recovery sequencing tests:
   - deterministic preferred-order fallback across `healthy` + `recovered` + `degraded` servers.
   - explicit stale-server reinitialize assertions in both unit and API integration tests.
+- Added explicit transport-classified failure categories:
+  - `ErrorCategory` classification now tracked on servers (`last_error_category`) and invocation attempts (`error_category`).
+  - introduced `MCPTransportError` for category-preserving transport failures.
+  - default transport now classifies timeout/http-status/malformed-payload failures into stable categories.
+- Added integration coverage for category mapping:
+  - invocation 503 detail now includes category-aware attempts.
+  - server state payloads expose categorized last error for deterministic diagnostics.

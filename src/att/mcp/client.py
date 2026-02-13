@@ -12,6 +12,16 @@ import httpx
 
 type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
 type JSONObject = dict[str, JSONValue]
+type ErrorCategory = Literal[
+    "health_check",
+    "initialize_error",
+    "network_timeout",
+    "http_status",
+    "invalid_payload",
+    "rpc_error",
+    "transport_error",
+    "unknown",
+]
 
 
 class ServerStatus(StrEnum):
@@ -40,6 +50,7 @@ class ExternalServer:
     url: str
     status: ServerStatus = ServerStatus.HEALTHY
     last_error: str | None = None
+    last_error_category: ErrorCategory | None = None
     retry_count: int = 0
     last_checked_at: datetime | None = None
     next_retry_at: datetime | None = None
@@ -85,6 +96,7 @@ class MCPInvocationAttempt:
     stage: Literal["initialize", "invoke"]
     success: bool
     error: str | None = None
+    error_category: ErrorCategory | None = None
 
 
 class MCPInvocationError(RuntimeError):
@@ -100,6 +112,14 @@ class MCPInvocationError(RuntimeError):
         super().__init__(message)
         self.method = method
         self.attempts = list(attempts or [])
+
+
+class MCPTransportError(RuntimeError):
+    """Transport failure with explicit category."""
+
+    def __init__(self, message: str, *, category: ErrorCategory) -> None:
+        super().__init__(message)
+        self.category = category
 
 
 class HealthProbe(Protocol):
@@ -188,7 +208,12 @@ class MCPClientManager:
             return server
         probe = self._probe or self._default_probe
         healthy, error = await probe(server)
-        self.record_check_result(name, healthy=healthy, error=error)
+        self.record_check_result(
+            name,
+            healthy=healthy,
+            error=error,
+            error_category="health_check" if not healthy else None,
+        )
         return self._servers.get(name)
 
     async def health_check_all(self) -> list[ExternalServer]:
@@ -227,14 +252,24 @@ class MCPClientManager:
         except Exception as exc:  # noqa: BLE001
             server.initialized = False
             server.protocol_version = None
-            self.record_check_result(name, healthy=False, error=str(exc))
+            self.record_check_result(
+                name,
+                healthy=False,
+                error=str(exc),
+                error_category=self._error_category_from_exception(exc),
+            )
             return self._servers.get(name)
 
         rpc_error = self._extract_error(response)
         if rpc_error is not None:
             server.initialized = False
             server.protocol_version = None
-            self.record_check_result(name, healthy=False, error=f"rpc error: {rpc_error}")
+            self.record_check_result(
+                name,
+                healthy=False,
+                error=f"rpc error: {rpc_error}",
+                error_category="rpc_error",
+            )
             return self._servers.get(name)
 
         result = response.get("result")
@@ -242,7 +277,10 @@ class MCPClientManager:
             server.initialized = False
             server.protocol_version = None
             self.record_check_result(
-                name, healthy=False, error="rpc error: invalid initialize result"
+                name,
+                healthy=False,
+                error="rpc error: invalid initialize result",
+                error_category="invalid_payload",
             )
             return self._servers.get(name)
 
@@ -269,7 +307,12 @@ class MCPClientManager:
             await transport(server, initialized_notification)
         except Exception as exc:  # noqa: BLE001
             server.initialized = False
-            self.record_check_result(name, healthy=False, error=str(exc))
+            self.record_check_result(
+                name,
+                healthy=False,
+                error=str(exc),
+                error_category=self._error_category_from_exception(exc),
+            )
         return self._servers.get(name)
 
     async def initialize_all(self, *, force: bool = False) -> list[ExternalServer]:
@@ -329,6 +372,7 @@ class MCPClientManager:
         *,
         healthy: bool,
         error: str | None = None,
+        error_category: ErrorCategory | None = None,
         checked_at: datetime | None = None,
     ) -> None:
         """Apply one health check result and update retry metadata."""
@@ -340,6 +384,7 @@ class MCPClientManager:
         if healthy:
             server.status = ServerStatus.HEALTHY
             server.last_error = None
+            server.last_error_category = None
             server.retry_count = 0
             server.next_retry_at = None
         else:
@@ -351,6 +396,7 @@ class MCPClientManager:
             else:
                 server.status = ServerStatus.DEGRADED
             server.last_error = error or "health check failed"
+            server.last_error_category = error_category or "unknown"
             backoff_seconds = min(
                 2 ** (server.retry_count - 1),
                 self._max_backoff_seconds,
@@ -409,6 +455,7 @@ class MCPClientManager:
                         stage="initialize",
                         success=False,
                         error="server not found",
+                        error_category="initialize_error",
                     )
                 )
                 errors.append(f"{server.name}: server not found")
@@ -421,6 +468,7 @@ class MCPClientManager:
                         stage="initialize",
                         success=False,
                         error=init_error,
+                        error_category=initialized.last_error_category or "initialize_error",
                     )
                 )
                 errors.append(f"{server.name}: initialize failed ({init_error})")
@@ -436,13 +484,20 @@ class MCPClientManager:
                 response = await transport(initialized, request)
             except Exception as exc:  # noqa: BLE001
                 message = str(exc)
-                self.record_check_result(initialized.name, healthy=False, error=message)
+                error_category = self._error_category_from_exception(exc)
+                self.record_check_result(
+                    initialized.name,
+                    healthy=False,
+                    error=message,
+                    error_category=error_category,
+                )
                 attempts.append(
                     MCPInvocationAttempt(
                         server=initialized.name,
                         stage="invoke",
                         success=False,
                         error=message,
+                        error_category=error_category,
                     )
                 )
                 errors.append(f"{initialized.name}: {message}")
@@ -455,6 +510,7 @@ class MCPClientManager:
                     initialized.name,
                     healthy=False,
                     error=invocation_error,
+                    error_category="rpc_error",
                 )
                 attempts.append(
                     MCPInvocationAttempt(
@@ -462,6 +518,7 @@ class MCPClientManager:
                         stage="invoke",
                         success=False,
                         error=invocation_error,
+                        error_category="rpc_error",
                     )
                 )
                 errors.append(f"{initialized.name}: {invocation_error}")
@@ -469,13 +526,19 @@ class MCPClientManager:
 
             if "result" not in response:
                 missing_result = "rpc error: missing result"
-                self.record_check_result(initialized.name, healthy=False, error=missing_result)
+                self.record_check_result(
+                    initialized.name,
+                    healthy=False,
+                    error=missing_result,
+                    error_category="invalid_payload",
+                )
                 attempts.append(
                     MCPInvocationAttempt(
                         server=initialized.name,
                         stage="invoke",
                         success=False,
                         error=missing_result,
+                        error_category="invalid_payload",
                     )
                 )
                 errors.append(f"{initialized.name}: {missing_result}")
@@ -581,16 +644,26 @@ class MCPClientManager:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(endpoint, json=request)
             response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise MCPTransportError(str(exc), category="network_timeout") from exc
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            message = f"http status {status_code}"
+            raise MCPTransportError(message, category="http_status") from exc
         except httpx.HTTPError as exc:
-            raise RuntimeError(str(exc)) from exc
+            raise MCPTransportError(str(exc), category="transport_error") from exc
 
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            msg = "Invalid JSON-RPC response payload"
+            raise MCPTransportError(msg, category="invalid_payload") from exc
         if not isinstance(payload, dict):
             msg = "Invalid JSON-RPC response payload"
-            raise RuntimeError(msg)
+            raise MCPTransportError(msg, category="invalid_payload")
         if not all(isinstance(key, str) for key in payload):
             msg = "Invalid JSON-RPC response keys"
-            raise RuntimeError(msg)
+            raise MCPTransportError(msg, category="invalid_payload")
         return cast(JSONObject, payload)
 
     def _order_candidates(self, preferred: list[str] | None) -> list[ExternalServer]:
@@ -600,3 +673,15 @@ class MCPClientManager:
         prioritized = [self._servers[name] for name in preferred if name in self._servers]
         others = [server for server in self.list_servers() if server.name not in preferred_set]
         return [*prioritized, *others]
+
+    @staticmethod
+    def _error_category_from_exception(exc: Exception) -> ErrorCategory:
+        if isinstance(exc, MCPTransportError):
+            return exc.category
+        if isinstance(exc, httpx.TimeoutException):
+            return "network_timeout"
+        if isinstance(exc, httpx.HTTPStatusError):
+            return "http_status"
+        if isinstance(exc, httpx.HTTPError):
+            return "transport_error"
+        return "transport_error"

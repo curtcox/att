@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
-from att.mcp.client import ServerStatus
+from att.mcp.client import ErrorCategory, ServerStatus
 
 
 class RegisterMCPServerRequest(BaseModel):
@@ -33,6 +33,7 @@ class MCPServerResponse(BaseModel):
     url: str
     status: ServerStatus
     last_error: str | None
+    last_error_category: ErrorCategory | None
     retry_count: int
     last_checked_at: datetime | None
     next_retry_at: datetime | None
@@ -111,6 +112,7 @@ class MCPInvocationAttemptResponse(BaseModel):
     stage: Literal["initialize", "invoke"]
     success: bool
     error: str | None = None
+    error_category: ErrorCategory | None = None
 
 
 class MCPInvocationErrorDetailResponse(BaseModel):

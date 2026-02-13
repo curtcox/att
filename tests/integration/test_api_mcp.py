@@ -10,6 +10,7 @@ from att.mcp.client import (
     ExternalServer,
     JSONObject,
     MCPClientManager,
+    MCPTransportError,
     ServerStatus,
 )
 
@@ -75,6 +76,31 @@ class RecoveringTransport:
             "id": str(request.get("id", "")),
             "result": {"served_by": server.name, "method": str(request.get("method", ""))},
         }
+
+
+class CategorizedTransport:
+    def __init__(self, *, invoke_failure: str) -> None:
+        self.invoke_failure = invoke_failure
+        self.calls: list[tuple[str, str]] = []
+
+    async def __call__(self, server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        self.calls.append((server.name, method))
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        if self.invoke_failure == "http_status":
+            raise MCPTransportError("http status 503", category="http_status")
+        return {"jsonrpc": "2.0", "id": str(request.get("id", ""))}
 
 
 def _client_with_manager(manager: MCPClientManager) -> TestClient:
@@ -204,6 +230,7 @@ def test_mcp_server_health_check_degraded_and_missing() -> None:
     assert checked.status_code == 200
     assert checked.json()["status"] == ServerStatus.DEGRADED.value
     assert checked.json()["last_error"] == "timeout"
+    assert checked.json()["last_error_category"] == "health_check"
 
     events = client.get("/api/v1/mcp/events")
     assert events.status_code == 200
@@ -346,6 +373,7 @@ def test_mcp_invoke_error_payload_includes_attempt_trace() -> None:
     assert detail["attempts"][0]["stage"] == "initialize"
     assert detail["attempts"][0]["success"] is False
     assert detail["attempts"][0]["error"] == "rpc error: rpc failure"
+    assert detail["attempts"][0]["error_category"] == "rpc_error"
 
 
 def test_mcp_invoke_tool_reinitializes_stale_server_before_call() -> None:
@@ -437,5 +465,63 @@ def test_mcp_invoke_mixed_state_cluster_recovers_in_order() -> None:
     assert servers.status_code == 200
     by_name = {item["name"]: item for item in servers.json()["items"]}
     assert by_name["primary"]["status"] == ServerStatus.DEGRADED.value
+    assert by_name["primary"]["last_error_category"] == "rpc_error"
     assert by_name["recovered"]["status"] == ServerStatus.HEALTHY.value
     assert by_name["recovered"]["initialized"] is True
+
+
+def test_mcp_invoke_error_payload_http_status_category() -> None:
+    transport = CategorizedTransport(invoke_failure="http_status")
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "httpfail", "url": "http://httpfail.local"},
+    )
+    failed = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["httpfail"],
+        },
+    )
+    assert failed.status_code == 503
+    detail = failed.json()["detail"]
+    assert detail["method"] == "tools/call"
+    assert len(detail["attempts"]) == 2
+    assert detail["attempts"][1]["stage"] == "invoke"
+    assert detail["attempts"][1]["error_category"] == "http_status"
+
+    server = client.get("/api/v1/mcp/servers/httpfail")
+    assert server.status_code == 200
+    assert server.json()["last_error_category"] == "http_status"
+
+
+def test_mcp_invoke_error_payload_malformed_category() -> None:
+    transport = CategorizedTransport(invoke_failure="invalid_payload")
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "malformed", "url": "http://malformed.local"},
+    )
+    failed = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["malformed"],
+        },
+    )
+    assert failed.status_code == 503
+    detail = failed.json()["detail"]
+    assert detail["method"] == "resources/read"
+    assert len(detail["attempts"]) == 2
+    assert detail["attempts"][1]["stage"] == "invoke"
+    assert detail["attempts"][1]["error_category"] == "invalid_payload"
+
+    server = client.get("/api/v1/mcp/servers/malformed")
+    assert server.status_code == 200
+    assert server.json()["last_error_category"] == "invalid_payload"

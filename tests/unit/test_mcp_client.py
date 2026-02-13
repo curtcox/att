@@ -9,6 +9,7 @@ from att.mcp.client import (
     JSONObject,
     MCPClientManager,
     MCPInvocationError,
+    MCPTransportError,
     ServerStatus,
 )
 
@@ -224,13 +225,16 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     assert error.attempts[0].stage == "initialize"
     assert error.attempts[0].success is False
     assert error.attempts[0].error == "primary down"
+    assert error.attempts[0].error_category == "transport_error"
     assert error.attempts[1].server == "backup"
     assert error.attempts[1].stage == "initialize"
     assert error.attempts[1].success is True
+    assert error.attempts[1].error_category is None
     assert error.attempts[2].server == "backup"
     assert error.attempts[2].stage == "invoke"
     assert error.attempts[2].success is False
     assert error.attempts[2].error == "rpc error: rpc failure"
+    assert error.attempts[2].error_category == "rpc_error"
 
 
 @pytest.mark.asyncio
@@ -275,6 +279,39 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
     server = manager.get("codex")
     assert server is not None
     assert server.initialization_expires_at is not None
+
+
+@pytest.mark.asyncio
+async def test_invoke_tool_transport_error_category_http_status() -> None:
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        raise MCPTransportError("http status 503", category="http_status")
+
+    manager = MCPClientManager(transport=transport)
+    manager.register("codex", "http://codex.local")
+
+    with pytest.raises(MCPInvocationError) as exc_info:
+        await manager.invoke_tool("att.project.list")
+
+    error = exc_info.value
+    assert len(error.attempts) == 2
+    assert error.attempts[1].stage == "invoke"
+    assert error.attempts[1].error_category == "http_status"
+    server = manager.get("codex")
+    assert server is not None
+    assert server.last_error_category == "http_status"
 
 
 @pytest.mark.asyncio
