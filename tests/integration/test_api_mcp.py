@@ -392,6 +392,26 @@ def _run_unreachable_transition_sequence(
     )
 
 
+def _retry_window_request_ids(sequence: RetryWindowGatingSequence) -> tuple[str, str, str]:
+    return (
+        sequence.request_id_1,
+        sequence.request_id_2,
+        sequence.request_id_3,
+    )
+
+
+def _unreachable_transition_request_ids(
+    sequence: UnreachableTransitionSequence,
+) -> tuple[str, str, str, str, str]:
+    return (
+        sequence.request_id_1,
+        sequence.request_id_2,
+        sequence.request_id_3,
+        sequence.request_id_4,
+        sequence.request_id_5,
+    )
+
+
 def _assert_primary_request_diagnostics(
     *,
     client: TestClient,
@@ -2220,11 +2240,7 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         third_preferred=["primary", "backup"],
     )
 
-    request_ids = (
-        sequence.request_id_1,
-        sequence.request_id_2,
-        sequence.request_id_3,
-    )
+    request_ids = _retry_window_request_ids(sequence)
     _assert_primary_request_diagnostics(
         client=harness.client,
         method="tools/call",
@@ -2269,13 +2285,7 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         factory=harness.factory,
     )
 
-    request_ids = (
-        sequence.request_id_1,
-        sequence.request_id_2,
-        sequence.request_id_3,
-        sequence.request_id_4,
-        sequence.request_id_5,
-    )
+    request_ids = _unreachable_transition_request_ids(sequence)
     _assert_primary_request_diagnostics(
         client=harness.client,
         method="tools/call",
@@ -2320,11 +2330,7 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         third_preferred=["backup", "primary"],
     )
 
-    request_ids = (
-        sequence.request_id_1,
-        sequence.request_id_2,
-        sequence.request_id_3,
-    )
+    request_ids = _retry_window_request_ids(sequence)
     _assert_primary_request_diagnostics(
         client=harness.client,
         method="resources/read",
@@ -2369,13 +2375,7 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         factory=harness.factory,
     )
 
-    request_ids = (
-        sequence.request_id_1,
-        sequence.request_id_2,
-        sequence.request_id_3,
-        sequence.request_id_4,
-        sequence.request_id_5,
-    )
+    request_ids = _unreachable_transition_request_ids(sequence)
     _assert_primary_request_diagnostics(
         client=harness.client,
         method="resources/read",

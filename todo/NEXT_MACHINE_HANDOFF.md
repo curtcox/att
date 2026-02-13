@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `3e9638ae5188b28a2e37b0dcc5e64e3109ab7215`
-- Last commit: `3e9638a 2026-02-13 09:31:38 -0600 Extract unreachable-transition call-order expectation constants`
-- Working tree at handoff creation: dirty (`call-order collection helper extraction`)
+- HEAD: `71c9c63cb769f628ff87bca8c089bf610baa0e0a`
+- Last commit: `71c9c63 2026-02-13 09:32:44 -0600 Extract shared method call-order collector`
+- Working tree at handoff creation: dirty (`request-id tuple helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated request-id tuple scaffolding in retry-window and unreachable-transition tests:
+  - added shared helper utilities to derive ordered request-id tuples from `RetryWindowGatingSequence` and `UnreachableTransitionSequence`.
+  - migrated tool/resource retry-window gating and unreachable-transition tests to consume these helpers for diagnostics/event filtering inputs.
+  - preserved diagnostics filter assertions, call-order literal assertions, and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated call-order collection scaffolding with shared helper wiring:
   - added shared transport call-order collection helper for method-scoped `initialize` + invoke call tuples with optional start offsets.
   - migrated unreachable-transition and retry-window gating call-order helpers to consume this shared collector while preserving existing per-slice literal assertions (`second_slice`/`third_slice`/`fifth_slice`).
@@ -177,17 +181,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated request-id tuple scaffolding:
-1. Extract shared request-id tuple helpers for retry-window and unreachable-transition sequences:
-   - factor repeated request-id tuple assembly in tool/resource retry-window + unreachable-transition tests into small sequence-to-request-id helper utilities.
-   - keep request ordering explicit and unchanged for diagnostics/filter assertions.
+Continue `P12/P13` test-structure hardening by reducing duplicated expected-call-order derivation scaffolding:
+1. Extract shared helper for expected-call-order derivation from request ids:
+   - factor repeated `collect_invocation_events_for_requests(...)` + `expected_call_order_from_phase_starts(...)` sequences in retry-window/unreachable-transition tests into one helper utility.
+   - keep request-id ordering explicit at each test call site.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current diagnostics/call-order helper signatures and constant wiring unchanged.
+   - keep current diagnostics and call-order literal helper signatures unchanged.
    - retain phase-start/transport subsequence assertions exactly.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing helper style from nearby diagnostics and call-order helpers.
+- Reuse existing helper style from nearby request-id and call-order helpers.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

@@ -130,6 +130,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added a shared method-scoped transport call-order collector for `initialize` + invoke tuple streams with optional starting offset support.
   - migrated both retry-window gating and unreachable-transition call-order helpers to consume the shared collector while preserving per-slice literal assertions.
   - preserved diagnostics-filter assertions and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated request-id tuple scaffolding across retry-window and unreachable-transition integration assertions:
+  - added shared helper utilities to derive ordered request-id tuples from retry-window and unreachable-transition sequence dataclasses.
+  - migrated tool/resource retry-window gating and unreachable-transition tests to consume the shared request-id helpers for diagnostics/event filtering inputs.
+  - preserved diagnostics-filter assertions, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
