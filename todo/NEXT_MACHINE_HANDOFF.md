@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`stage-paired convergence degraded-status constant reuse`)
+- Working tree at handoff creation: dirty (`scripted failover degraded-status constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,14 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated degraded-status vectors in remaining scripted failover diagnostics assertions (outside stage-paired and transport-error tests):
+  - replaced scripted failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in initialize/invoke isolation, initialize-script exhaustion fallback, and scripted initialize-precedence tool/resource tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - intentionally left non-scripted degraded-status vectors unchanged in this slice to preserve handoff scope boundaries.
+  - preserved invocation/connection filter semantics and call-order/subsequence parity behavior unchanged.
+- Reduced duplicated degraded-status vectors in scripted transport-error failover diagnostics assertions:
+  - replaced scripted transport-error failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in both tool/resource error-action tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order/subsequence parity behavior unchanged.
 - Reduced duplicated degraded-status vectors in stage-paired timeout convergence diagnostics assertions:
   - replaced stage-paired tool/resource timeout convergence `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
   - kept diagnostics filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
@@ -293,17 +301,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated degraded-status vectors in scripted transport-error failover diagnostics assertions:
-1. Reuse shared degraded-status vector constant in scripted error-action failover tests:
-   - replace repeated `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in tool/resource scripted transport-error failover diagnostics assertions with `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`.
-   - keep diagnostics filter and call-order assertions explicit at each test call site.
+Continue `P12/P13` test-structure hardening by reducing the final duplicated degraded-status vectors in non-scripted diagnostics assertions:
+1. Dedupe the two remaining non-scripted degraded-status vectors in integration diagnostics tests:
+   - replace remaining `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in `test_mcp_event_endpoints_support_filters_limits_and_correlation` and `test_mcp_resource_failover_recovery_filters_and_correlation`.
+   - prefer shared constant reuse; if current scripted naming is too specific, introduce a neutral alias constant in `tests/integration/test_api_mcp.py` and reuse it at both call sites.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current invocation-event and connection-event filter behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse tuple-constant style from nearby retry-window/unreachable call-order expectation vectors.
+- Keep diagnostics filter and call-order assertions explicit at each test call site.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

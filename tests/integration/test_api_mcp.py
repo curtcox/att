@@ -2767,7 +2767,7 @@ def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() ->
         client,
         request_id=request_id_1,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     manager.record_check_result("primary", healthy=True)
@@ -2832,7 +2832,7 @@ def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() ->
         client,
         request_id=request_id_3,
         server="backup",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
 
@@ -2909,7 +2909,7 @@ def test_mcp_init_script_exhaustion_falls_back_without_mutating_method_queue() -
         client,
         request_id=request_id_2,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     manager.record_check_result("primary", healthy=True)
@@ -3038,7 +3038,7 @@ def test_mcp_scripted_initialize_precedence_and_failover() -> None:
         client,
         request_id=request_id_2,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
 
@@ -3114,7 +3114,7 @@ def test_mcp_resource_scripted_initialize_precedence_overrides_timeout_toggle() 
         client,
         request_id=request_id_2,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id_1})
@@ -3223,7 +3223,7 @@ def test_mcp_scripted_error_actions_preserve_transport_error_failover_and_correl
         client,
         request_id=request_id,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})
@@ -3337,7 +3337,7 @@ def test_mcp_resource_scripted_error_actions_preserve_transport_error_failover_a
         client,
         request_id=request_id,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})

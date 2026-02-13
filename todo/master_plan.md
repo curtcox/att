@@ -6,6 +6,14 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Reduced duplicated degraded-status vectors in remaining scripted failover diagnostics assertions (outside stage-paired and transport-error tests):
+  - replaced scripted failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in initialize/invoke isolation, initialize-script exhaustion fallback, and scripted initialize-precedence tool/resource tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated degraded-status vectors in scripted transport-error failover diagnostics assertions:
+  - replaced scripted transport-error failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in both tool/resource error-action tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence behavior unchanged.
 - [x] Reduced duplicated degraded-status vectors in stage-paired timeout convergence diagnostics assertions:
   - replaced stage-paired tool/resource timeout convergence `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
   - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
