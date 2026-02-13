@@ -17,6 +17,12 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
+- Added process-change proposal doc and started two concrete trials:
+  - added `/Users/curt/me/att/todo/proposed_process_changes.md` capturing the six proposed process changes and marking trial picks.
+  - trial 1: added `/Users/curt/me/att/scripts/update_handoff_snapshot.sh` to auto-update handoff snapshot fields (`Date`, `Branch`, `HEAD`, `Last commit`, working-tree state) plus optional pytest pass count (`--pytest-passed`).
+  - trial 2: extended `/Users/curt/me/att/tests/unit/test_docs_guardrails.py` with `test_master_plan_size_guardrail` and `MAX_MASTER_PLAN_LINES = 1300`, complementing the existing handoff-size guardrail.
+  - preserved product/runtime behavior unchanged while adding CI-visible planning-file guardrails and a repeatable snapshot-maintenance utility.
+
 - Added automated handoff-size guardrail test coverage:
   - added new unit test `/Users/curt/me/att/tests/unit/test_docs_guardrails.py` with `test_next_machine_handoff_size_guardrail`.
   - guardrail enforces `todo/NEXT_MACHINE_HANDOFF.md` max size of `250` lines and fails with explicit archive guidance (`done/`) when exceeded.
@@ -90,7 +96,9 @@ Continue `P12/P13` test-structure hardening by extending stable server-name cons
    - `./.venv313/bin/ruff check .`
    - `PYTHONPATH=src ./.venv313/bin/mypy`
    - `PYTHONPATH=src ./.venv313/bin/pytest`
-5. Record new state back into this file and `todo/master_plan.md`.
+5. Refresh handoff snapshot metadata:
+   - `./scripts/update_handoff_snapshot.sh --pytest-passed <N>`
+6. Record new state back into this file and `todo/master_plan.md`.
 
 ## Key Files for Next Slice
 - `src/att/mcp/client.py`

@@ -9,6 +9,12 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Added process-change proposal doc and started two concrete trials:
+  - added `/Users/curt/me/att/todo/proposed_process_changes.md` capturing the six proposed process changes and marking trial picks.
+  - trial 1: added `/Users/curt/me/att/scripts/update_handoff_snapshot.sh` to auto-update handoff snapshot fields (`Date`, `Branch`, `HEAD`, `Last commit`, working-tree state) plus optional pytest pass count (`--pytest-passed`).
+  - trial 2: extended `/Users/curt/me/att/tests/unit/test_docs_guardrails.py` with `test_master_plan_size_guardrail` and `MAX_MASTER_PLAN_LINES = 1300`, complementing the existing handoff-size guardrail.
+  - preserved product/runtime behavior unchanged while adding CI-visible planning-file guardrails and a repeatable snapshot-maintenance utility.
+
 - [x] Added automated handoff-size guardrail test coverage:
   - added new unit test `/Users/curt/me/att/tests/unit/test_docs_guardrails.py` with `test_next_machine_handoff_size_guardrail`.
   - guardrail enforces `todo/NEXT_MACHINE_HANDOFF.md` max size of `250` lines and fails with explicit archive guidance (`done/`) when exceeded.
