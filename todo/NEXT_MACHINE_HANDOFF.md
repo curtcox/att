@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `12f076963276282ba77b3ba877c6084b30c4e08a`
-- Last commit: `12f0769 2026-02-13 15:09:33 -0600 - Refresh handoff snapshot after process-trial updates`
+- HEAD: `33ca11fa7c571d6b41b20eaa951ccfea511eb157`
+- Last commit: `33ca11f 2026-02-13 15:23:02 -0600 - Require and shortcut handoff snapshot refresh`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
