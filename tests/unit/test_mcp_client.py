@@ -81,6 +81,14 @@ UNIT_TEST_BACKUP_INITIALIZE_CALL_ORDER_ENTRY = (
 )
 
 
+def _unit_test_primary_method_call_order_entry(method: str) -> tuple[str, str]:
+    return (UNIT_TEST_PRIMARY_SERVER, method)
+
+
+def _unit_test_backup_method_call_order_entry(method: str) -> tuple[str, str]:
+    return (UNIT_TEST_BACKUP_SERVER, method)
+
+
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
@@ -1566,9 +1574,9 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     ]
     assert call_order == [
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
-        (UNIT_TEST_PRIMARY_SERVER, method),
+        _unit_test_primary_method_call_order_entry(method),
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
-        (UNIT_TEST_PRIMARY_SERVER, method),
+        _unit_test_primary_method_call_order_entry(method),
     ]
 
 
@@ -1638,7 +1646,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     ]
     assert third_slice == [
         UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY,
-        (UNIT_TEST_PRIMARY_SERVER, method),
+        _unit_test_primary_method_call_order_entry(method),
     ]
 
 
@@ -1780,7 +1788,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     ]
     assert reentry_slice == [
         UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY,
-        (UNIT_TEST_PRIMARY_SERVER, method),
+        _unit_test_primary_method_call_order_entry(method),
     ]
 
 
@@ -1830,7 +1838,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     ]
     assert backup_reentry_slice == [
         UNIT_TEST_BACKUP_INITIALIZE_CALL_ORDER_ENTRY,
-        (UNIT_TEST_BACKUP_SERVER, method),
+        _unit_test_backup_method_call_order_entry(method),
     ]
 
 
@@ -1899,7 +1907,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     ]
     assert reentry_slice == [
         UNIT_TEST_BACKUP_INITIALIZE_CALL_ORDER_ENTRY,
-        (UNIT_TEST_BACKUP_SERVER, method),
+        _unit_test_backup_method_call_order_entry(method),
     ]
 
 
