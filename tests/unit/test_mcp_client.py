@@ -60,6 +60,7 @@ UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
 UNIT_TEST_FAILURE_ACTION_OK = "ok"
 UNIT_TEST_FAILURE_ACTION_TIMEOUT = "timeout"
+UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 
 
 @pytest.mark.asyncio
@@ -643,13 +644,13 @@ async def test_initialize_server_failure_preserves_last_capability_snapshot() ->
 
     assert first is not None
     assert first.capability_snapshot is not None
-    assert first.capability_snapshot.server_info == {"name": "github", "version": "2.0.0"}
+    assert first.capability_snapshot.server_info == UNIT_TEST_GITHUB_SERVER_INFO
 
     assert second is not None
     assert second.initialized is False
     assert second.status is ServerStatus.DEGRADED
     assert second.capability_snapshot is not None
-    assert second.capability_snapshot.server_info == {"name": "github", "version": "2.0.0"}
+    assert second.capability_snapshot.server_info == UNIT_TEST_GITHUB_SERVER_INFO
 
 
 @pytest.mark.asyncio

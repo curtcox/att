@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit remaining order-test timeout/error assertion constant reuse`)
+- Working tree at handoff creation: dirty (`unit github server-info assertion dict constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended capability snapshot `server_info` assertion dictionary constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_GITHUB_SERVER_INFO` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side comparisons against `{"name": "github", "version": "2.0.0"}` for `capability_snapshot.server_info` to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended remaining order-test failure-action timeout/error assertion constant reuse in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_FAILURE_ACTION_TIMEOUT` in `tests/unit/test_mcp_client.py`.
   - migrated remaining order-test and adjacent scripted isolation `consume_failure_action(... ) == "timeout"` assertions to `UNIT_TEST_FAILURE_ACTION_TIMEOUT` and migrated the remaining order-test `== "error"` assertion to existing `UNIT_TEST_FAILURE_ACTION_ERROR`, while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
@@ -421,9 +425,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable assertion-literal constant reuse for repeated capability snapshot `server_info` dictionaries in unit MCP client coverage:
-1. Reuse a shared unit-test constant for repeated assertion-side `server_info` dictionary literals in `tests/unit/test_mcp_client.py`:
-   - target repeated assertions that compare `capability_snapshot.server_info` to `{"name": "github", "version": "2.0.0"}` where reuse is meaningful.
+Continue `P12/P13` test-structure hardening by extending stable assertion-vector constant reuse for repeated phase-list expectations in unit MCP client coverage:
+1. Reuse shared unit-test constants for repeated assertion-side phase vectors in `tests/unit/test_mcp_client.py`:
+   - target repeated phase-list expectations such as `[UNIT_TEST_INITIALIZE_START_PHASE, UNIT_TEST_INITIALIZE_FAILURE_PHASE]` and `[UNIT_TEST_INVOKE_START_PHASE, UNIT_TEST_INVOKE_SUCCESS_PHASE]` where reuse is meaningful.
    - keep registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
