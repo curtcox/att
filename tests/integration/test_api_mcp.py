@@ -605,6 +605,16 @@ def _collect_mixed_method_call_order(
     ]
 
 
+def _assert_mixed_method_call_order_literals(
+    *,
+    factory: ClusterNatSessionFactory,
+    expected_observed_call_order: Sequence[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    observed_call_order = _collect_mixed_method_call_order(factory=factory)
+    assert observed_call_order == list(expected_observed_call_order)
+    return observed_call_order
+
+
 def _expected_call_order_for_requests(
     *,
     client: TestClient,
@@ -2207,8 +2217,10 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
             expected_statuses=(),
         )
 
-    observed_call_order = _collect_mixed_method_call_order(factory=factory)
-    assert observed_call_order == list(MIXED_METHOD_REPEATED_EXPECTED_OBSERVED_CALL_ORDER)
+    observed_call_order = _assert_mixed_method_call_order_literals(
+        factory=factory,
+        expected_observed_call_order=MIXED_METHOD_REPEATED_EXPECTED_OBSERVED_CALL_ORDER,
+    )
 
     _assert_call_order_subsequence_for_requests(
         client=client,
@@ -2257,8 +2269,10 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
             expected_statuses=expected_statuses,
         )
 
-    observed_call_order = _collect_mixed_method_call_order(factory=factory)
-    assert observed_call_order == list(MIXED_METHOD_FORCE_REINITIALIZE_EXPECTED_OBSERVED_CALL_ORDER)
+    observed_call_order = _assert_mixed_method_call_order_literals(
+        factory=factory,
+        expected_observed_call_order=MIXED_METHOD_FORCE_REINITIALIZE_EXPECTED_OBSERVED_CALL_ORDER,
+    )
 
     _assert_call_order_subsequence_for_requests(
         client=client,

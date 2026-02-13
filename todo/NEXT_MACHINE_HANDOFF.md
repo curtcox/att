@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `13ff5995297074f170155cdf317d38ff8293d261`
-- Last commit: `13ff599 2026-02-13 10:00:34 -0600 Extract mixed-method request-spec constants`
-- Working tree at handoff creation: dirty (`mixed-method observed call-order constants extraction`)
+- HEAD: `d4085e047dea07059eadd271db78767a77d1ddd4`
+- Last commit: `d4085e0 2026-02-13 09:52:57 -0600 Extract mixed-method observed call-order constants`
+- Working tree at handoff creation: dirty (`mixed-method call-order literal helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated mixed-method call-order literal assertion wiring in call-order tests:
+  - added shared helper to collect mixed-method observed transport call order and assert expected literal vectors.
+  - migrated repeated-same-server and force-reinitialize call-order tests to helper-driven literal assertions while keeping explicit expected vectors at test call sites.
+  - preserved diagnostics-filter assertions and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated mixed-method observed call-order literal vectors in call-order tests:
   - extracted shared expected observed call-order constants for repeated-same-server and force-reinitialize mixed-method call-order tests.
   - rewired both tests to assert against tuple-backed shared constants while preserving literal call-order auditability.
@@ -225,10 +229,11 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method assertion wiring:
-1. Extract shared mixed-method call-order literal assertion helper:
-   - factor repeated `_collect_mixed_method_call_order(...)` + literal equality assert scaffolding in repeated-same-server and force-reinitialize tests into one helper.
-   - keep expected literal vectors explicit at call sites for auditability.
+Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method request-execution scaffolding:
+1. Extract shared mixed-method request-sequence execution helper:
+   - factor repeated request loop scaffolding (POST + request-id collection + primary success diagnostics assertions) in repeated-same-server and force-reinitialize tests into one helper.
+   - allow per-index pre-request mutation hook so stale-expiry/degraded trigger wiring remains explicit in force-reinitialize coverage.
+   - keep request-spec and expected-status vectors explicit at test call sites for auditability.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current diagnostics and call-order assertion behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.
