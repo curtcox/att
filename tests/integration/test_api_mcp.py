@@ -144,6 +144,104 @@ class UnreachableTransitionSequence:
     calls_before_fifth: int
 
 
+@dataclass(frozen=True)
+class RetryWindowHarness:
+    factory: ClusterNatSessionFactory
+    clock: MCPTestClock
+    manager: MCPClientManager
+    client: TestClient
+
+
+@dataclass(frozen=True)
+class RetryWindowGatingSequence:
+    request_id_1: str
+    request_id_2: str
+    request_id_3: str
+    calls_after_first: int
+    calls_before_third: int
+
+
+@dataclass(frozen=True)
+class SimultaneousUnreachableReopenSequence:
+    request_id: str
+    method: str
+    calls_before_reopen: int
+
+
+def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarness:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=unreachable_after,
+    )
+    client = _client_with_manager(manager)
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+    return RetryWindowHarness(
+        factory=factory,
+        clock=clock,
+        manager=manager,
+        client=client,
+    )
+
+
+def _build_invoke_with_preferred(
+    client: TestClient,
+    *,
+    invoke_path: str,
+    payload: dict[str, object],
+) -> Callable[[list[str]], Any]:
+    def invoke(preferred_servers: list[str]) -> Any:
+        return client.post(
+            invoke_path,
+            json={**payload, "preferred_servers": preferred_servers},
+        )
+
+    return invoke
+
+
+def _run_retry_window_gating_sequence(
+    *,
+    invoke: Callable[[list[str]], Any],
+    manager: MCPClientManager,
+    clock: MCPTestClock,
+    factory: ClusterNatSessionFactory,
+    third_preferred: list[str],
+) -> RetryWindowGatingSequence:
+    first = invoke(["primary", "backup"])
+    assert first.status_code == 200
+    assert first.json()["server"] == "backup"
+    request_id_1 = first.json()["request_id"]
+
+    calls_after_first = len(factory.calls)
+    second = invoke(["primary", "backup"])
+    assert second.status_code == 200
+    assert second.json()["server"] == "backup"
+    request_id_2 = second.json()["request_id"]
+    second_slice = factory.calls[calls_after_first:]
+    assert second_slice
+    assert all(server == "backup" for server, _, _ in second_slice)
+
+    clock.advance(seconds=1)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    calls_before_third = len(factory.calls)
+    third = invoke(third_preferred)
+    assert third.status_code == 200
+    assert third.json()["server"] == "primary"
+    request_id_3 = third.json()["request_id"]
+
+    return RetryWindowGatingSequence(
+        request_id_1=request_id_1,
+        request_id_2=request_id_2,
+        request_id_3=request_id_3,
+        calls_after_first=calls_after_first,
+        calls_before_third=calls_before_third,
+    )
+
+
 def _run_unreachable_transition_sequence(
     *,
     invoke: Callable[[list[str]], Any],
@@ -213,6 +311,53 @@ def _run_unreachable_transition_sequence(
         calls_after_first=calls_after_first,
         calls_after_third=calls_after_third,
         calls_before_fifth=calls_before_fifth,
+    )
+
+
+def _run_simultaneous_unreachable_reopen_sequence(
+    *,
+    invoke: Callable[[list[str]], Any],
+    client: TestClient,
+    manager: MCPClientManager,
+    clock: MCPTestClock,
+    factory: ClusterNatSessionFactory,
+    preferred: list[str],
+    expected_first: str,
+    expected_second: str,
+) -> SimultaneousUnreachableReopenSequence:
+    manager.record_check_result("primary", healthy=False, error="hold primary")
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+    primary = manager.get("primary")
+    backup = manager.get("backup")
+    assert primary is not None
+    assert backup is not None
+    assert primary.status is ServerStatus.UNREACHABLE
+    assert backup.status is ServerStatus.UNREACHABLE
+
+    calls_before_closed = len(factory.calls)
+    invocation_count_before_closed = len(
+        client.get("/api/v1/mcp/invocation-events").json()["items"]
+    )
+    closed = invoke(preferred)
+    assert closed.status_code == 503
+    assert closed.json()["detail"]["message"] == "No reachable MCP servers are currently available"
+    invocation_count_after_closed = len(client.get("/api/v1/mcp/invocation-events").json()["items"])
+    assert invocation_count_after_closed == invocation_count_before_closed
+    assert len(factory.calls) == calls_before_closed
+
+    factory.set_failure_script(expected_first, "initialize", ["timeout"])
+    factory.set_failure_script(expected_second, "initialize", ["ok"])
+    clock.advance(seconds=1)
+
+    calls_before_reopen = len(factory.calls)
+    reopened = invoke(preferred)
+    assert reopened.status_code == 200
+    assert reopened.json()["server"] == expected_second
+
+    return SimultaneousUnreachableReopenSequence(
+        request_id=reopened.json()["request_id"],
+        method=reopened.json()["method"],
+        calls_before_reopen=calls_before_reopen,
     )
 
 
@@ -1893,33 +2038,25 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
 
 
 def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
-    factory = ClusterNatSessionFactory()
-    clock = MCPTestClock()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        now_provider=clock,
-        unreachable_after=2,
+    harness = _create_retry_window_harness(unreachable_after=2)
+    harness.factory.set_failure_script("primary", "tools/call", ["timeout", "ok"])
+    invoke = _build_invoke_with_preferred(
+        harness.client,
+        invoke_path="/api/v1/mcp/invoke/tool",
+        payload={"tool_name": "att.project.list", "arguments": {}},
     )
-    client = _client_with_manager(manager)
 
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
-    factory.set_failure_script("primary", "tools/call", ["timeout", "ok"])
-
-    first = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary", "backup"],
-        },
+    sequence = _run_retry_window_gating_sequence(
+        invoke=invoke,
+        manager=harness.manager,
+        clock=harness.clock,
+        factory=harness.factory,
+        third_preferred=["primary", "backup"],
     )
-    assert first.status_code == 200
-    assert first.json()["server"] == "backup"
-    request_id_1 = first.json()["request_id"]
+
     assert_invocation_event_filters(
-        client,
-        request_id=request_id_1,
+        harness.client,
+        request_id=sequence.request_id_1,
         server="primary",
         method="tools/call",
         expected_phases=[
@@ -1930,59 +2067,30 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         ],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id_1,
+        harness.client,
+        request_id=sequence.request_id_1,
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
-
-    calls_after_first = len(factory.calls)
-    second = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert second.status_code == 200
-    assert second.json()["server"] == "backup"
-    request_id_2 = second.json()["request_id"]
     assert_invocation_event_filters(
-        client,
-        request_id=request_id_2,
+        harness.client,
+        request_id=sequence.request_id_2,
         server="primary",
         method="tools/call",
         expected_phases=[],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id_2,
+        harness.client,
+        request_id=sequence.request_id_2,
         server="primary",
         expected_statuses=[],
     )
-    second_slice = factory.calls[calls_after_first:]
+    second_slice = harness.factory.calls[sequence.calls_after_first : sequence.calls_before_third]
     assert second_slice
     assert all(server == "backup" for server, _, _ in second_slice)
-
-    clock.advance(seconds=1)
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-
-    calls_before_third = len(factory.calls)
-    third = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert third.status_code == 200
-    assert third.json()["server"] == "primary"
-    request_id_3 = third.json()["request_id"]
     assert_invocation_event_filters(
-        client,
-        request_id=request_id_3,
+        harness.client,
+        request_id=sequence.request_id_3,
         server="primary",
         method="tools/call",
         expected_phases=[
@@ -1993,14 +2101,14 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         ],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id_3,
+        harness.client,
+        request_id=sequence.request_id_3,
         server="primary",
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
     third_slice = [
         (server, method)
-        for server, _, method in factory.calls[calls_before_third:]
+        for server, _, method in harness.factory.calls[sequence.calls_before_third :]
         if method in {"initialize", "tools/call"}
     ]
     assert third_slice == [
@@ -2009,13 +2117,13 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
     ]
 
     events = collect_invocation_events_for_requests(
-        client,
-        request_ids=(request_id_1, request_id_2, request_id_3),
+        harness.client,
+        request_ids=(sequence.request_id_1, sequence.request_id_2, sequence.request_id_3),
     )
     expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
-        for server, _, method in factory.calls
+        for server, _, method in harness.factory.calls
         if method in {"initialize", "tools/call"}
     ]
     assert observed_call_order == [
@@ -2035,39 +2143,24 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
 
 
 def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None:
-    factory = ClusterNatSessionFactory()
-    clock = MCPTestClock()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        now_provider=clock,
-        unreachable_after=2,
+    harness = _create_retry_window_harness(unreachable_after=2)
+    harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+    invoke = _build_invoke_with_preferred(
+        harness.client,
+        invoke_path="/api/v1/mcp/invoke/tool",
+        payload={"tool_name": "att.project.list", "arguments": {}},
     )
-    client = _client_with_manager(manager)
-
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
-    factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
-
-    def invoke(preferred_servers: list[str]) -> Any:
-        return client.post(
-            "/api/v1/mcp/invoke/tool",
-            json={
-                "tool_name": "att.project.list",
-                "arguments": {},
-                "preferred_servers": preferred_servers,
-            },
-        )
 
     sequence = _run_unreachable_transition_sequence(
         invoke=invoke,
-        client=client,
-        manager=manager,
-        clock=clock,
-        factory=factory,
+        client=harness.client,
+        manager=harness.manager,
+        clock=harness.clock,
+        factory=harness.factory,
     )
 
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_1,
         server="primary",
         method="tools/call",
@@ -2077,26 +2170,26 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         ],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_1,
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_2,
         server="primary",
         method="tools/call",
         expected_phases=[],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_2,
         server="primary",
         expected_statuses=[],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_3,
         server="primary",
         method="tools/call",
@@ -2106,26 +2199,26 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         ],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_3,
         server="primary",
         expected_statuses=[ServerStatus.UNREACHABLE.value],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_4,
         server="primary",
         method="tools/call",
         expected_phases=[],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_4,
         server="primary",
         expected_statuses=[],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_5,
         server="primary",
         method="tools/call",
@@ -2137,14 +2230,14 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         ],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_5,
         server="primary",
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
     fifth_slice = [
         (server, method)
-        for server, _, method in factory.calls[sequence.calls_before_fifth :]
+        for server, _, method in harness.factory.calls[sequence.calls_before_fifth :]
         if method in {"initialize", "tools/call"}
     ]
     assert fifth_slice == [
@@ -2153,7 +2246,7 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     ]
 
     events = collect_invocation_events_for_requests(
-        client,
+        harness.client,
         request_ids=(
             sequence.request_id_1,
             sequence.request_id_2,
@@ -2165,7 +2258,7 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
-        for server, _, method in factory.calls
+        for server, _, method in harness.factory.calls
         if method in {"initialize", "tools/call"}
     ]
     assert observed_call_order == [
@@ -2185,32 +2278,25 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
 
 
 def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
-    factory = ClusterNatSessionFactory()
-    clock = MCPTestClock()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        now_provider=clock,
-        unreachable_after=2,
+    harness = _create_retry_window_harness(unreachable_after=2)
+    harness.factory.set_failure_script("primary", "resources/read", ["timeout", "ok"])
+    invoke = _build_invoke_with_preferred(
+        harness.client,
+        invoke_path="/api/v1/mcp/invoke/resource",
+        payload={"uri": "att://projects"},
     )
-    client = _client_with_manager(manager)
 
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
-    factory.set_failure_script("primary", "resources/read", ["timeout", "ok"])
-
-    first = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["primary", "backup"],
-        },
+    sequence = _run_retry_window_gating_sequence(
+        invoke=invoke,
+        manager=harness.manager,
+        clock=harness.clock,
+        factory=harness.factory,
+        third_preferred=["backup", "primary"],
     )
-    assert first.status_code == 200
-    assert first.json()["server"] == "backup"
-    request_id_1 = first.json()["request_id"]
+
     assert_invocation_event_filters(
-        client,
-        request_id=request_id_1,
+        harness.client,
+        request_id=sequence.request_id_1,
         server="primary",
         method="resources/read",
         expected_phases=[
@@ -2221,57 +2307,30 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         ],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id_1,
+        harness.client,
+        request_id=sequence.request_id_1,
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
-
-    calls_after_first = len(factory.calls)
-    second = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert second.status_code == 200
-    assert second.json()["server"] == "backup"
-    request_id_2 = second.json()["request_id"]
     assert_invocation_event_filters(
-        client,
-        request_id=request_id_2,
+        harness.client,
+        request_id=sequence.request_id_2,
         server="primary",
         method="resources/read",
         expected_phases=[],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id_2,
+        harness.client,
+        request_id=sequence.request_id_2,
         server="primary",
         expected_statuses=[],
     )
-    second_slice = factory.calls[calls_after_first:]
+    second_slice = harness.factory.calls[sequence.calls_after_first : sequence.calls_before_third]
     assert second_slice
     assert all(server == "backup" for server, _, _ in second_slice)
-
-    clock.advance(seconds=1)
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-
-    calls_before_third = len(factory.calls)
-    third = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["backup", "primary"],
-        },
-    )
-    assert third.status_code == 200
-    assert third.json()["server"] == "primary"
-    request_id_3 = third.json()["request_id"]
     assert_invocation_event_filters(
-        client,
-        request_id=request_id_3,
+        harness.client,
+        request_id=sequence.request_id_3,
         server="primary",
         method="resources/read",
         expected_phases=[
@@ -2282,14 +2341,14 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         ],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id_3,
+        harness.client,
+        request_id=sequence.request_id_3,
         server="primary",
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
     third_slice = [
         (server, method)
-        for server, _, method in factory.calls[calls_before_third:]
+        for server, _, method in harness.factory.calls[sequence.calls_before_third :]
         if method in {"initialize", "resources/read"}
     ]
     assert third_slice == [
@@ -2298,13 +2357,13 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
     ]
 
     events = collect_invocation_events_for_requests(
-        client,
-        request_ids=(request_id_1, request_id_2, request_id_3),
+        harness.client,
+        request_ids=(sequence.request_id_1, sequence.request_id_2, sequence.request_id_3),
     )
     expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
-        for server, _, method in factory.calls
+        for server, _, method in harness.factory.calls
         if method in {"initialize", "resources/read"}
     ]
     assert observed_call_order == [
@@ -2324,38 +2383,24 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
 
 
 def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> None:
-    factory = ClusterNatSessionFactory()
-    clock = MCPTestClock()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        now_provider=clock,
-        unreachable_after=2,
+    harness = _create_retry_window_harness(unreachable_after=2)
+    harness.factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+    invoke = _build_invoke_with_preferred(
+        harness.client,
+        invoke_path="/api/v1/mcp/invoke/resource",
+        payload={"uri": "att://projects"},
     )
-    client = _client_with_manager(manager)
-
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
-    factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
-
-    def invoke(preferred_servers: list[str]) -> Any:
-        return client.post(
-            "/api/v1/mcp/invoke/resource",
-            json={
-                "uri": "att://projects",
-                "preferred_servers": preferred_servers,
-            },
-        )
 
     sequence = _run_unreachable_transition_sequence(
         invoke=invoke,
-        client=client,
-        manager=manager,
-        clock=clock,
-        factory=factory,
+        client=harness.client,
+        manager=harness.manager,
+        clock=harness.clock,
+        factory=harness.factory,
     )
 
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_1,
         server="primary",
         method="resources/read",
@@ -2365,26 +2410,26 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         ],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_1,
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_2,
         server="primary",
         method="resources/read",
         expected_phases=[],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_2,
         server="primary",
         expected_statuses=[],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_3,
         server="primary",
         method="resources/read",
@@ -2394,26 +2439,26 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         ],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_3,
         server="primary",
         expected_statuses=[ServerStatus.UNREACHABLE.value],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_4,
         server="primary",
         method="resources/read",
         expected_phases=[],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_4,
         server="primary",
         expected_statuses=[],
     )
     assert_invocation_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_5,
         server="primary",
         method="resources/read",
@@ -2425,14 +2470,14 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         ],
     )
     assert_connection_event_filters(
-        client,
+        harness.client,
         request_id=sequence.request_id_5,
         server="primary",
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
     fifth_slice = [
         (server, method)
-        for server, _, method in factory.calls[sequence.calls_before_fifth :]
+        for server, _, method in harness.factory.calls[sequence.calls_before_fifth :]
         if method in {"initialize", "resources/read"}
     ]
     assert fifth_slice == [
@@ -2441,7 +2486,7 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     ]
 
     events = collect_invocation_events_for_requests(
-        client,
+        harness.client,
         request_ids=(
             sequence.request_id_1,
             sequence.request_id_2,
@@ -2453,7 +2498,7 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
         (server, method)
-        for server, _, method in factory.calls
+        for server, _, method in harness.factory.calls
         if method in {"initialize", "resources/read"}
     ]
     assert observed_call_order == [
@@ -2502,58 +2547,27 @@ def test_mcp_simultaneous_unreachable_retry_window_reopen_prefers_ordered_candid
     expected_first: str,
     expected_second: str,
 ) -> None:
-    factory = ClusterNatSessionFactory()
-    clock = MCPTestClock()
-    manager = MCPClientManager(
-        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        now_provider=clock,
-        unreachable_after=1,
+    harness = _create_retry_window_harness(unreachable_after=1)
+    invoke_once = _build_invoke_with_preferred(
+        harness.client,
+        invoke_path=invoke_path,
+        payload=payload,
     )
-    client = _client_with_manager(manager)
-
-    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
-
-    manager.record_check_result("primary", healthy=False, error="hold primary")
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-    primary = manager.get("primary")
-    backup = manager.get("backup")
-    assert primary is not None
-    assert backup is not None
-    assert primary.status is ServerStatus.UNREACHABLE
-    assert backup.status is ServerStatus.UNREACHABLE
-
-    def invoke_once(preferred_servers: list[str]) -> Any:
-        return client.post(
-            invoke_path,
-            json={**payload, "preferred_servers": preferred_servers},
-        )
-
-    calls_before_closed = len(factory.calls)
-    invocation_count_before_closed = len(
-        client.get("/api/v1/mcp/invocation-events").json()["items"]
+    sequence = _run_simultaneous_unreachable_reopen_sequence(
+        invoke=invoke_once,
+        client=harness.client,
+        manager=harness.manager,
+        clock=harness.clock,
+        factory=harness.factory,
+        preferred=preferred,
+        expected_first=expected_first,
+        expected_second=expected_second,
     )
-    closed = invoke_once(preferred)
-    assert closed.status_code == 503
-    assert closed.json()["detail"]["message"] == "No reachable MCP servers are currently available"
-    invocation_count_after_closed = len(client.get("/api/v1/mcp/invocation-events").json()["items"])
-    assert invocation_count_after_closed == invocation_count_before_closed
-    assert len(factory.calls) == calls_before_closed
-
-    factory.set_failure_script(expected_first, "initialize", ["timeout"])
-    factory.set_failure_script(expected_second, "initialize", ["ok"])
-    clock.advance(seconds=1)
-
-    calls_before_reopen = len(factory.calls)
-    reopened = invoke_once(preferred)
-    assert reopened.status_code == 200
-    assert reopened.json()["server"] == expected_second
-    assert reopened.json()["method"] == method
-    request_id = reopened.json()["request_id"]
+    assert sequence.method == method
 
     assert_invocation_event_filters(
-        client,
-        request_id=request_id,
+        harness.client,
+        request_id=sequence.request_id,
         server=expected_first,
         method=method,
         expected_phases=[
@@ -2562,14 +2576,14 @@ def test_mcp_simultaneous_unreachable_retry_window_reopen_prefers_ordered_candid
         ],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id,
+        harness.client,
+        request_id=sequence.request_id,
         server=expected_first,
         expected_statuses=[],
     )
     assert_invocation_event_filters(
-        client,
-        request_id=request_id,
+        harness.client,
+        request_id=sequence.request_id,
         server=expected_second,
         method=method,
         expected_phases=[
@@ -2580,13 +2594,16 @@ def test_mcp_simultaneous_unreachable_retry_window_reopen_prefers_ordered_candid
         ],
     )
     assert_connection_event_filters(
-        client,
-        request_id=request_id,
+        harness.client,
+        request_id=sequence.request_id,
         server=expected_second,
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
 
-    events = collect_invocation_events_for_requests(client, request_ids=(request_id,))
+    events = collect_invocation_events_for_requests(
+        harness.client,
+        request_ids=(sequence.request_id,),
+    )
     initialize_starts = [
         str(item["server"]) for item in events if item["phase"] == "initialize_start"
     ]
@@ -2595,7 +2612,7 @@ def test_mcp_simultaneous_unreachable_retry_window_reopen_prefers_ordered_candid
 
     reopen_slice = [
         (server, call_method)
-        for server, _, call_method in factory.calls[calls_before_reopen:]
+        for server, _, call_method in harness.factory.calls[sequence.calls_before_reopen :]
         if call_method in {"initialize", method}
     ]
     assert reopen_slice == [

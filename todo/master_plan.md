@@ -102,6 +102,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added one parametrized integration regression covering both invoke endpoints and both preferred-order permutations under closed-window no-candidate and simultaneous reopen progression.
   - assertions now verify deterministic preferred-order candidate attempt sequencing via invocation `initialize_start` phases while preserving transport call-order semantics that only successful initialize/invoke calls are logged.
   - retained deterministic diagnostics filter parity (`server`, `method`, `request_id`, `correlation_id`, `limit`) and shared phase-start/transport subsequence checks for the reopen request.
+- [x] Reduced duplicated retry-window API scenario scaffolding in integration tests:
+  - added shared retry-window test harness setup helpers for cluster manager/session factory/clock/client creation and server registration.
+  - added shared invoke-construction and progression helpers for retry-window gating and simultaneous unreachable-reopen sequences.
+  - migrated tool/resource gating, tool/resource unreachable-transition, and simultaneous unreachable-reopen tests to shared progression scaffolding while preserving explicit per-request diagnostics assertions and explicit per-test transport call-order literals.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.

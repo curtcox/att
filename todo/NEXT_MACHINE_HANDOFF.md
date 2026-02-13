@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `f32d487bcfe2fe2307bcd8338ea3436fc2574cc5`
-- Last commit: `f32d487 2026-02-13 09:17:53 -0600 Complete call-order helper migration and unreachable reopen matrix`
-- Working tree at handoff creation: dirty (`API simultaneous unreachable retry-window reopen parity`)
+- HEAD: `bc055352dbc0a65d6f69ce47478eeb730169d22f`
+- Last commit: `bc05535 2026-02-13 09:22:59 -0600 Add API parity for simultaneous unreachable retry-window reopen`
+- Working tree at handoff creation: dirty (`retry-window API scenario helper refactor`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated retry-window API scenario scaffolding across gating/unreachable/simultaneous flows:
+  - added shared retry-window test harness setup helper for cluster manager/clock/factory/client creation + server registration.
+  - added shared invoke-construction helper and shared progression helpers for retry-window gating and simultaneous unreachable-reopen paths.
+  - migrated tool/resource retry-window gating tests, tool/resource unreachable-transition tests, and simultaneous unreachable-reopen tests to use shared helpers while preserving explicit per-request diagnostics assertions and explicit transport call-order literals in each test.
 - Added API-level simultaneous `UNREACHABLE` retry-window reopen parity coverage across tool/resource invoke paths:
   - added a parametrized integration regression covering both `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` under both preferred-order permutations.
   - assertions verify closed-window no-candidate behavior (503 + no invocation events + no transport calls), then deterministic preferred-order `initialize_start` attempt sequencing after simultaneous retry-window reopen.
@@ -137,18 +141,18 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening by reducing duplicated retry-window API scenario scaffolding:
-1. Extract shared API retry-window progression helper(s) for tool/resource paths:
-   - unify repeated setup + invoke/clock progression + diagnostics assertion scaffolding across gating, unreachable-transition, and simultaneous-reopen regressions.
-   - keep endpoint-specific payload differences and explicit expected transport-call literals local to each test.
-2. Preserve deterministic semantics while refactoring:
-   - keep request-correlated invocation/connection filter assertions explicit (`server`, `method`, `request_id`, `correlation_id`, `limit`).
-   - retain subsequence parity checks and avoid assuming every `initialize_start` produces a transport `initialize` call entry.
+Continue `P12/P13` call-order hardening by extracting shared diagnostics assertion helpers for unreachable-transition parity:
+1. Reduce duplicated primary diagnostics assertions between tool/resource unreachable-transition tests:
+   - factor repeated `assert_invocation_event_filters` + `assert_connection_event_filters` request-sequence checks into shared helper(s) that accept `method` and request ids.
+   - keep explicit expected phase/status vectors visible at call sites (or as close constants) so request-correlation intent remains readable.
+2. Preserve transport/call-order behavior checks:
+   - keep per-test explicit `fifth_slice` and `observed_call_order` literal assertions local to each test.
+   - retain shared subsequence parity checks and avoid assumptions that every `initialize_start` has a matching transport `initialize`.
 
 Suggested implementation direction:
-- Extend existing `_run_unreachable_transition_sequence(...)` pattern to cover shared closed-window/reopen progression primitives.
-- Reuse `mcp_convergence_helpers` for event aggregation/call-order derivation; avoid introducing new ad-hoc parsing helpers.
-- Keep behavior unchanged; this slice should be test-structure refactoring + parity retention only.
+- Extend helper usage in `tests/integration/test_api_mcp.py` only; avoid product code changes for this slice.
+- Keep endpoint payload differences and preferred-order inputs localized to each test.
+- Run full validation and update both plan docs after refactor.
 
 ## Resume Checklist
 1. Sync and verify environment:
