@@ -200,12 +200,20 @@ class ClusterNatSession:
     ) -> ModelPayload:
         del read_timeout_seconds, progress_callback, meta
         self.factory.calls.append((self.server_name, self.session_id, "tools/call"))
-        if self.server_name in self.factory.fail_on_timeout_tool_calls:
+        scripted = self.factory.consume_failure_action(self.server_name, "tools/call")
+        if scripted == "timeout":
             msg = f"{self.server_name} timed out"
             raise httpx.ReadTimeout(msg)
-        if self.server_name in self.factory.fail_on_tool_calls:
+        if scripted == "error":
             msg = f"{self.server_name} unavailable"
             raise RuntimeError(msg)
+        if scripted is None:
+            if self.server_name in self.factory.fail_on_timeout_tool_calls:
+                msg = f"{self.server_name} timed out"
+                raise httpx.ReadTimeout(msg)
+            if self.server_name in self.factory.fail_on_tool_calls:
+                msg = f"{self.server_name} unavailable"
+                raise RuntimeError(msg)
         return ModelPayload(
             {
                 "content": [{"type": "text", "text": "ok"}],
@@ -221,12 +229,20 @@ class ClusterNatSession:
 
     async def read_resource(self, uri: object) -> ModelPayload:
         self.factory.calls.append((self.server_name, self.session_id, "resources/read"))
-        if self.server_name in self.factory.fail_on_timeout_resource_reads:
+        scripted = self.factory.consume_failure_action(self.server_name, "resources/read")
+        if scripted == "timeout":
             msg = f"{self.server_name} timed out"
             raise httpx.ReadTimeout(msg)
-        if self.server_name in self.factory.fail_on_resource_reads:
+        if scripted == "error":
             msg = f"{self.server_name} unavailable"
             raise RuntimeError(msg)
+        if scripted is None:
+            if self.server_name in self.factory.fail_on_timeout_resource_reads:
+                msg = f"{self.server_name} timed out"
+                raise httpx.ReadTimeout(msg)
+            if self.server_name in self.factory.fail_on_resource_reads:
+                msg = f"{self.server_name} unavailable"
+                raise RuntimeError(msg)
         return ModelPayload(
             {
                 "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
@@ -242,8 +258,23 @@ class ClusterNatSessionFactory:
         self.fail_on_timeout_tool_calls: set[str] = set()
         self.fail_on_resource_reads: set[str] = set()
         self.fail_on_timeout_resource_reads: set[str] = set()
+        self.failure_scripts: dict[tuple[str, str], list[str]] = {}
         self.created_by_server: dict[str, int] = {}
         self.closed_by_server: dict[str, int] = {}
+
+    def set_failure_script(self, server_name: str, method: str, script: list[str]) -> None:
+        """Set ordered per-server/per-method failure script (e.g., timeout->ok)."""
+        self.failure_scripts[(server_name, method)] = list(script)
+
+    def consume_failure_action(self, server_name: str, method: str) -> str | None:
+        script = self.failure_scripts.get((server_name, method))
+        if not script:
+            return None
+        action = script.pop(0)
+        if action not in {"ok", "timeout", "error"}:
+            msg = f"unsupported scripted action: {action}"
+            raise ValueError(msg)
+        return action
 
     @asynccontextmanager
     async def __call__(self, endpoint: str) -> Any:

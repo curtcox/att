@@ -15,6 +15,11 @@ from att.mcp.client import (
     NATMCPTransportAdapter,
     ServerStatus,
 )
+from tests.support.mcp_convergence_helpers import (
+    assert_connection_event_filters,
+    assert_invocation_event_filters,
+    expected_phases_for_server,
+)
 from tests.support.mcp_helpers import MCPTestClock
 from tests.support.mcp_nat_helpers import APIFakeNatSessionFactory, ClusterNatSessionFactory
 
@@ -1308,6 +1313,202 @@ def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() 
     assert by_name["backup"]["freshness"] == "active_recent"
 
 
+def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=3,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    factory.set_failure_script("primary", "tools/call", ["timeout", "ok"])
+    factory.set_failure_script("backup", "resources/read", ["timeout", "ok"])
+
+    first_tool = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first_tool.status_code == 200
+    assert first_tool.json()["server"] == "backup"
+    request_id_tool_1 = first_tool.json()["request_id"]
+
+    tool_failover = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id_tool_1},
+    )
+    assert tool_failover.status_code == 200
+    tool_failover_items = tool_failover.json()["items"]
+    assert [item["phase"] for item in tool_failover_items] == [
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in tool_failover_items] == [
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    ]
+    assert tool_failover_items[3]["error_category"] == "network_timeout"
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_tool_1,
+        server="primary",
+        method="tools/call",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_tool_1,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    clock.advance(seconds=1)
+
+    first_resource = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert first_resource.status_code == 200
+    assert first_resource.json()["server"] == "primary"
+    request_id_resource_1 = first_resource.json()["request_id"]
+
+    resource_failover = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id_resource_1},
+    )
+    assert resource_failover.status_code == 200
+    resource_failover_items = resource_failover.json()["items"]
+    assert [item["phase"] for item in resource_failover_items] == [
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in resource_failover_items] == [
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+    ]
+    assert resource_failover_items[3]["error_category"] == "network_timeout"
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_resource_1,
+        server="backup",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_resource_1,
+        server="backup",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    resource_correlation = client.get(
+        "/api/v1/mcp/events",
+        params={"correlation_id": request_id_resource_1},
+    )
+    assert resource_correlation.status_code == 200
+    assert [item["server"] for item in resource_correlation.json()["items"]] == [
+        "backup",
+        "primary",
+    ]
+    assert [item["to_status"] for item in resource_correlation.json()["items"]] == [
+        ServerStatus.DEGRADED.value,
+        ServerStatus.HEALTHY.value,
+    ]
+
+    second_tool = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert second_tool.status_code == 200
+    assert second_tool.json()["server"] == "primary"
+
+    manager.record_check_result("primary", healthy=False, error="hold primary")
+    clock.advance(seconds=1)
+    second_resource = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["backup"],
+        },
+    )
+    assert second_resource.status_code == 200
+    assert second_resource.json()["server"] == "backup"
+    request_id_resource_2 = second_resource.json()["request_id"]
+
+    backup_recovery_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id_resource_2},
+    )
+    assert backup_recovery_events.status_code == 200
+    assert [item["phase"] for item in backup_recovery_events.json()["items"]] == [
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in backup_recovery_events.json()["items"]] == [
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    ]
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_resource_2,
+        server="backup",
+        expected_statuses=[ServerStatus.HEALTHY.value],
+    )
+
+
 @pytest.mark.parametrize("timeout_stage", ["initialize", "invoke"])
 def test_mcp_retry_window_convergence_stage_specific_timeouts(
     timeout_stage: str,
@@ -1320,54 +1521,6 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         now_provider=clock,
     )
     client = _client_with_manager(manager)
-
-    def _expected_phases_for_server(
-        phases: list[str],
-        servers: list[str],
-        *,
-        server: str,
-    ) -> list[str]:
-        return [
-            phase
-            for phase, event_server in zip(phases, servers, strict=True)
-            if event_server == server
-        ]
-
-    def _assert_invocation_filters(request_id: str, *, expected_primary_phases: list[str]) -> None:
-        filtered = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"server": "primary", "request_id": request_id},
-        )
-        assert filtered.status_code == 200
-        assert [item["phase"] for item in filtered.json()["items"]] == expected_primary_phases
-
-        limited = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"server": "primary", "request_id": request_id, "limit": 1},
-        )
-        assert limited.status_code == 200
-        assert [item["phase"] for item in limited.json()["items"]] == expected_primary_phases[-1:]
-
-    def _assert_connection_filters(
-        request_id: str,
-        *,
-        expected_primary_statuses: list[str],
-    ) -> None:
-        filtered = client.get(
-            "/api/v1/mcp/events",
-            params={"server": "primary", "correlation_id": request_id},
-        )
-        assert filtered.status_code == 200
-        assert [item["to_status"] for item in filtered.json()["items"]] == expected_primary_statuses
-
-        limited = client.get(
-            "/api/v1/mcp/events",
-            params={"server": "primary", "correlation_id": request_id, "limit": 1},
-        )
-        assert limited.status_code == 200
-        assert [item["to_status"] for item in limited.json()["items"]] == expected_primary_statuses[
-            -1:
-        ]
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
@@ -1471,17 +1624,21 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     assert [item["phase"] for item in first_items] == failover_phases
     assert [item["server"] for item in first_items] == failover_servers
     assert first_items[failover_error_index]["error_category"] == "network_timeout"
-    _assert_invocation_filters(
-        request_id_1,
-        expected_primary_phases=_expected_phases_for_server(
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_phases=expected_phases_for_server(
             failover_phases,
             failover_servers,
             server="primary",
         ),
     )
-    _assert_connection_filters(
-        request_id_1,
-        expected_primary_statuses=[ServerStatus.DEGRADED.value],
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
     )
 
     primary_after_first = client.get("/api/v1/mcp/servers/primary")
@@ -1524,11 +1681,21 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         "backup",
         "backup",
     ]
-    _assert_invocation_filters(request_id_2, expected_primary_phases=[])
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_phases=[],
+    )
     no_transition = client.get("/api/v1/mcp/events", params={"correlation_id": request_id_2})
     assert no_transition.status_code == 200
     assert no_transition.json()["items"] == []
-    _assert_connection_filters(request_id_2, expected_primary_statuses=[])
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[],
+    )
 
     clock.advance(seconds=2)
     manager.record_check_result("backup", healthy=False, error="manual degrade")
@@ -1555,9 +1722,11 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     assert [item["phase"] for item in third_items] == failover_phases
     assert [item["server"] for item in third_items] == failover_servers
     assert third_items[failover_error_index]["error_category"] == "network_timeout"
-    _assert_invocation_filters(
-        request_id_3,
-        expected_primary_phases=_expected_phases_for_server(
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        expected_phases=expected_phases_for_server(
             failover_phases,
             failover_servers,
             server="primary",
@@ -1599,9 +1768,11 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
             item["server"] == "primary" and item["to_status"] == ServerStatus.UNREACHABLE.value
             for item in stage_items
         )
-        _assert_connection_filters(
-            request_id_3,
-            expected_primary_statuses=[ServerStatus.UNREACHABLE.value],
+        assert_connection_event_filters(
+            client,
+            request_id=request_id_3,
+            server="primary",
+            expected_statuses=[ServerStatus.UNREACHABLE.value],
         )
     else:
         assert any(
@@ -1612,9 +1783,11 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
             item["server"] == "primary" and item["to_status"] == ServerStatus.DEGRADED.value
             for item in stage_items
         )
-        _assert_connection_filters(
-            request_id_3,
-            expected_primary_statuses=[
+        assert_connection_event_filters(
+            client,
+            request_id=request_id_3,
+            server="primary",
+            expected_statuses=[
                 ServerStatus.HEALTHY.value,
                 ServerStatus.DEGRADED.value,
             ],
@@ -1657,9 +1830,11 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         "primary",
         "primary",
     ]
-    _assert_invocation_filters(
-        request_id_4,
-        expected_primary_phases=[
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_4,
+        server="primary",
+        expected_phases=[
             "initialize_start",
             "initialize_success",
             "invoke_start",
@@ -1676,9 +1851,11 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     assert len(recovered_items) == 1
     assert recovered_items[0]["server"] == "primary"
     assert recovered_items[0]["to_status"] == ServerStatus.HEALTHY.value
-    _assert_connection_filters(
-        request_id_4,
-        expected_primary_statuses=[ServerStatus.HEALTHY.value],
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_4,
+        server="primary",
+        expected_statuses=[ServerStatus.HEALTHY.value],
     )
 
     primary_final = client.get("/api/v1/mcp/servers/primary")
@@ -1711,63 +1888,6 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
         now_provider=clock,
     )
     client = _client_with_manager(manager)
-
-    def _expected_phases_for_server(
-        phases: list[str],
-        servers: list[str],
-        *,
-        server: str,
-    ) -> list[str]:
-        return [
-            phase
-            for phase, event_server in zip(phases, servers, strict=True)
-            if event_server == server
-        ]
-
-    def _assert_invocation_filters(request_id: str, *, expected_primary_phases: list[str]) -> None:
-        filtered = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={
-                "server": "primary",
-                "method": "resources/read",
-                "request_id": request_id,
-            },
-        )
-        assert filtered.status_code == 200
-        assert [item["phase"] for item in filtered.json()["items"]] == expected_primary_phases
-
-        limited = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={
-                "server": "primary",
-                "method": "resources/read",
-                "request_id": request_id,
-                "limit": 1,
-            },
-        )
-        assert limited.status_code == 200
-        assert [item["phase"] for item in limited.json()["items"]] == expected_primary_phases[-1:]
-
-    def _assert_connection_filters(
-        request_id: str,
-        *,
-        expected_primary_statuses: list[str],
-    ) -> None:
-        filtered = client.get(
-            "/api/v1/mcp/events",
-            params={"server": "primary", "correlation_id": request_id},
-        )
-        assert filtered.status_code == 200
-        assert [item["to_status"] for item in filtered.json()["items"]] == expected_primary_statuses
-
-        limited = client.get(
-            "/api/v1/mcp/events",
-            params={"server": "primary", "correlation_id": request_id, "limit": 1},
-        )
-        assert limited.status_code == 200
-        assert [item["to_status"] for item in limited.json()["items"]] == expected_primary_statuses[
-            -1:
-        ]
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
@@ -1871,17 +1991,22 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
     assert [item["phase"] for item in first_items] == failover_phases
     assert [item["server"] for item in first_items] == failover_servers
     assert first_items[failover_error_index]["error_category"] == "network_timeout"
-    _assert_invocation_filters(
-        request_id_1,
-        expected_primary_phases=_expected_phases_for_server(
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="resources/read",
+        expected_phases=expected_phases_for_server(
             failover_phases,
             failover_servers,
             server="primary",
         ),
     )
-    _assert_connection_filters(
-        request_id_1,
-        expected_primary_statuses=[ServerStatus.DEGRADED.value],
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
     )
 
     primary_after_first = client.get("/api/v1/mcp/servers/primary")
@@ -1924,11 +2049,22 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
         "backup",
         "backup",
     ]
-    _assert_invocation_filters(request_id_2, expected_primary_phases=[])
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        method="resources/read",
+        expected_phases=[],
+    )
     no_transition = client.get("/api/v1/mcp/events", params={"correlation_id": request_id_2})
     assert no_transition.status_code == 200
     assert no_transition.json()["items"] == []
-    _assert_connection_filters(request_id_2, expected_primary_statuses=[])
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[],
+    )
 
     clock.advance(seconds=2)
     manager.record_check_result("backup", healthy=False, error="manual degrade")
@@ -1955,9 +2091,12 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
     assert [item["phase"] for item in third_items] == failover_phases
     assert [item["server"] for item in third_items] == failover_servers
     assert third_items[failover_error_index]["error_category"] == "network_timeout"
-    _assert_invocation_filters(
-        request_id_3,
-        expected_primary_phases=_expected_phases_for_server(
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        method="resources/read",
+        expected_phases=expected_phases_for_server(
             failover_phases,
             failover_servers,
             server="primary",
@@ -1999,9 +2138,11 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
             item["server"] == "primary" and item["to_status"] == ServerStatus.UNREACHABLE.value
             for item in stage_items
         )
-        _assert_connection_filters(
-            request_id_3,
-            expected_primary_statuses=[ServerStatus.UNREACHABLE.value],
+        assert_connection_event_filters(
+            client,
+            request_id=request_id_3,
+            server="primary",
+            expected_statuses=[ServerStatus.UNREACHABLE.value],
         )
     else:
         assert any(
@@ -2012,9 +2153,11 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
             item["server"] == "primary" and item["to_status"] == ServerStatus.DEGRADED.value
             for item in stage_items
         )
-        _assert_connection_filters(
-            request_id_3,
-            expected_primary_statuses=[
+        assert_connection_event_filters(
+            client,
+            request_id=request_id_3,
+            server="primary",
+            expected_statuses=[
                 ServerStatus.HEALTHY.value,
                 ServerStatus.DEGRADED.value,
             ],
@@ -2057,9 +2200,12 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
         "primary",
         "primary",
     ]
-    _assert_invocation_filters(
-        request_id_4,
-        expected_primary_phases=[
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_4,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
             "initialize_start",
             "initialize_success",
             "invoke_start",
@@ -2076,9 +2222,11 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
     assert len(recovered_items) == 1
     assert recovered_items[0]["server"] == "primary"
     assert recovered_items[0]["to_status"] == ServerStatus.HEALTHY.value
-    _assert_connection_filters(
-        request_id_4,
-        expected_primary_statuses=[ServerStatus.HEALTHY.value],
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_4,
+        server="primary",
+        expected_statuses=[ServerStatus.HEALTHY.value],
     )
 
     primary_final = client.get("/api/v1/mcp/servers/primary")

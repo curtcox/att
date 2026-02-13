@@ -154,3 +154,9 @@ P11
 - Added stage-paired `resources/read` convergence matrix:
   - integration coverage now runs paired `initialize`-timeout and `invoke`-timeout paths for `/api/v1/mcp/invoke/resource` under controlled clock progression.
   - assertions capture stage-specific retry/unreachable semantics, server-local capability snapshot retention/replacement timing, and correlated event-filter determinism.
+- Reduced stage-matrix assertion duplication:
+  - added shared test helper module `tests/support/mcp_convergence_helpers.py` for phase/server shaping and deterministic invocation/connection filter assertions.
+  - migrated stage-paired `tools/call` and `resources/read` convergence tests to shared convergence helper assertions.
+- Added scripted mixed-method flapping coverage:
+  - `ClusterNatSessionFactory` now supports ordered per-server/per-method failure scripts via `set_failure_script(...)`.
+  - integration scenario now validates scripted flapping across `tools/call` and `resources/read` with deterministic fallback ordering and correlated connection/invocation streams.

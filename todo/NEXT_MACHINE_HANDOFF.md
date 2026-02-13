@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (`resources/read` stage-paired convergence + cluster helper resource-failure controls + plan doc updates)
+- Working tree at handoff creation: dirty (convergence helper extraction + scripted flapping controls + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`173 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`174 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -53,15 +53,21 @@
 - Added stage-paired `resources/read` retry-window convergence coverage:
   - added paired `initialize`-timeout vs `invoke`-timeout convergence scenarios for `/api/v1/mcp/invoke/resource` under controlled clock progression.
   - assertions preserve stage-specific retry/unreachable behavior, server-local capability snapshot timing (retention vs replacement), and deterministic correlated diagnostics-filter semantics.
+- Reduced stage-matrix assertion duplication:
+  - extracted shared convergence helpers into `tests/support/mcp_convergence_helpers.py`.
+  - migrated stage-paired `tools/call`/`resources/read` convergence tests to shared phase/filter assertion helpers.
+- Added scripted mixed-method flapping controls and coverage:
+  - `ClusterNatSessionFactory` now supports ordered per-server/per-method scripted actions (`ok`/`timeout`/`error`) via `set_failure_script(...)`.
+  - added integration coverage that validates deterministic fallback order and correlation streams across scripted `tools/call` and `resources/read` flapping without manual failure-set toggling between calls.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` with convergence realism + maintainability:
-1. Reduce duplicated stage-matrix integration scaffolding:
-   - extract shared convergence assertion helpers (phase/server expectation shaping + filter checks) used by tool/resource stage-paired tests into `tests/support`.
-   - keep assertions and behavior unchanged while shrinking repeated test-local boilerplate.
-2. Add scripted flapping controls for cluster NAT helper:
-   - extend `ClusterNatSessionFactory` with ordered per-server/per-method failure scripts (e.g., timeout once then recover) for both `tools/call` and `resources/read`.
-   - add one integration scenario that uses scripted flapping across mixed tool/resource calls to verify deterministic fallback ordering and correlation streams without manual set toggling between calls.
+Continue `P12/P13` with scripted-failure realism hardening:
+1. Add script-precedence and initialize-stage script coverage:
+   - add tests proving scripted actions take precedence over set-based failure toggles when both are configured.
+   - extend script controls to support initialize-stage scripted failures (`initialize`) and cover deterministic failover behavior.
+2. Expand helper adoption beyond stage matrices:
+   - migrate remaining diagnostics-filter tests in `tests/integration/test_api_mcp.py` to `tests/support/mcp_convergence_helpers.py` to reduce repeated route/filter assertions.
+   - keep assertions identical while shrinking test-local boilerplate.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
@@ -90,6 +96,7 @@ Suggested implementation direction:
 - `src/att/api/schemas/mcp.py`
 - `tests/unit/test_mcp_client.py`
 - `tests/integration/test_api_mcp.py`
+- `tests/support/mcp_convergence_helpers.py`
 - `tests/support/mcp_nat_helpers.py`
 - `src/att/api/deps.py`
 
