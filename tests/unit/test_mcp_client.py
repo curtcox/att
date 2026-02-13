@@ -117,6 +117,18 @@ def _assert_unit_test_backup_reentry_slice(
     assert observed_slice == _unit_test_backup_reentry_call_order_slice(method)
 
 
+def _unit_test_collect_reentry_call_order_slice(
+    calls: list[tuple[str, str, str]],
+    start_index: int,
+    method: str,
+) -> list[tuple[str, str]]:
+    return [
+        (server, call_method)
+        for server, _, call_method in calls[start_index:]
+        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
+    ]
+
+
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
@@ -1667,11 +1679,11 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     assert third.server == UNIT_TEST_PRIMARY_SERVER
     assert third.method == method
 
-    third_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[calls_before_third:]
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    third_slice = _unit_test_collect_reentry_call_order_slice(
+        factory.calls,
+        calls_before_third,
+        method,
+    )
     _assert_unit_test_primary_reentry_slice(third_slice, method)
 
 
@@ -1806,11 +1818,11 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     assert reentry.server == UNIT_TEST_PRIMARY_SERVER
     assert reentry.method == method
 
-    reentry_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[calls_before_reentry:]
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    reentry_slice = _unit_test_collect_reentry_call_order_slice(
+        factory.calls,
+        calls_before_reentry,
+        method,
+    )
     _assert_unit_test_primary_reentry_slice(reentry_slice, method)
 
 
@@ -1853,11 +1865,11 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     assert backup_reentry.server == UNIT_TEST_BACKUP_SERVER
     assert backup_reentry.method == method
 
-    backup_reentry_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[calls_before_backup_reentry:]
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    backup_reentry_slice = _unit_test_collect_reentry_call_order_slice(
+        factory.calls,
+        calls_before_backup_reentry,
+        method,
+    )
     _assert_unit_test_backup_reentry_slice(backup_reentry_slice, method)
 
 
@@ -1919,11 +1931,11 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     assert reentry.server == UNIT_TEST_BACKUP_SERVER
     assert reentry.method == method
 
-    reentry_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[calls_before_reentry:]
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    reentry_slice = _unit_test_collect_reentry_call_order_slice(
+        factory.calls,
+        calls_before_reentry,
+        method,
+    )
     _assert_unit_test_backup_reentry_slice(reentry_slice, method)
 
 
@@ -1986,11 +1998,11 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     ]
     assert initialize_starts == [expected_first, expected_second]
 
-    reopen_slice = [
-        (server, call_method)
-        for server, _, call_method in factory.calls[calls_before_reopen:]
-        if call_method in {UNIT_TEST_INITIALIZE_METHOD, method}
-    ]
+    reopen_slice = _unit_test_collect_reentry_call_order_slice(
+        factory.calls,
+        calls_before_reopen,
+        method,
+    )
     assert reopen_slice == [
         (expected_second, UNIT_TEST_INITIALIZE_METHOD),
         (expected_second, method),

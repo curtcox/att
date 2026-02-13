@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended repeated re-entry slice collection helper reuse in unit MCP client coverage:
+  - added local unit-test helper `_unit_test_collect_reentry_call_order_slice(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated list-comprehension scaffolding that collected `initialize`+`method` re-entry slices from `factory.calls[start:]` to helper-driven collection across retry-window/unreachable and simultaneous-reopen call-order assertions while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended repeated re-entry slice assertion helper reuse in unit MCP client coverage:
   - added local unit-test assertion helpers `_assert_unit_test_primary_reentry_slice(...)` and `_assert_unit_test_backup_reentry_slice(...)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side re-entry slice checks (`assert <slice_var> == _unit_test_*_reentry_call_order_slice(method)`) to helper-driven assertions across retry-window/unreachable tests while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
