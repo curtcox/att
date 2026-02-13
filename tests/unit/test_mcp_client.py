@@ -55,6 +55,7 @@ UNIT_TEST_PROJECTS_URI = "att://projects"
 UNIT_TEST_FRESHNESS_UNKNOWN = "unknown"
 UNIT_TEST_FRESHNESS_ACTIVE_RECENT = "active_recent"
 UNIT_TEST_FRESHNESS_STALE = "stale"
+UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 
 
 @pytest.mark.asyncio
@@ -1254,13 +1255,15 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
         == "timeout"
     )
-    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == [
-        "ok"
-    ]
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
     assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)] == [
         "error"
     ]
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
     assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == [
         "error",
         "ok",
@@ -1270,14 +1273,18 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
         factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
         == "error"
     )
-    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == [
-        "ok"
-    ]
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
     assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)] == [
         "error"
     ]
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == ["ok"]
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == ["ok"]
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
 
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)

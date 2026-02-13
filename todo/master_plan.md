@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended failure-script `["ok"]` assertion-vector constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `["ok"]` failure-script queue vectors in scripted failure isolation assertions to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended freshness-state assertion constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_FRESHNESS_UNKNOWN`, `UNIT_TEST_FRESHNESS_ACTIVE_RECENT`, and `UNIT_TEST_FRESHNESS_STALE` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side freshness literals (`"unknown"`, `"active_recent"`, and `"stale"`) in adapter session freshness diagnostics assertions to shared constants while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
