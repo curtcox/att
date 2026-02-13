@@ -70,6 +70,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - unit coverage now validates stale-expiry and non-healthy-status trigger paths each force a transport `initialize` before the next invoke, with paired `tools/call` and `resources/read` assertions.
   - integration coverage now drives stale-expiry and degraded-status transitions between repeated same-server requests and verifies transport call-order includes the expected additional `initialize` calls.
   - integration coverage preserves deterministic diagnostics-filter assertions and maintains invocation-phase/transport-call subsequence parity checks across the trigger sequence.
+- [x] Added retry-window gating call-order parity coverage:
+  - unit coverage now validates both degraded and unreachable retry-window-closed servers are skipped without primary transport calls and deterministically re-enter with `initialize` before invoke once retry windows reopen.
+  - unit coverage includes paired `tools/call` and `resources/read` assertions for method parity.
+  - integration coverage now validates timeout -> closed retry window skip -> retry-window reopen sequencing while backup serves requests, including transport call-order subsequence parity with invocation phase starts and deterministic diagnostics-filter assertions per request.
 - [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
 - [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
 - [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
@@ -117,7 +121,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (197 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (202 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).

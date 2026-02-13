@@ -3,15 +3,15 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `7b7ce3a0b0a8f48f6cb63d4fbc12abcf565cfb9f`
-- Last commit: `7b7ce3a 2026-02-13 08:15:14 -0600 Add MCP initialize-cache call-order parity tests`
-- Working tree at handoff creation: dirty (force-reinitialize trigger call-order parity coverage + plan doc updates)
+- HEAD: `11d08cf9297eff24bec2dc7a6552edff4eb3fc8f`
+- Last commit: `11d08cf 2026-02-13 08:31:17 -0600 Add MCP force-reinitialize call-order parity tests`
+- Working tree at handoff creation: dirty (retry-window gating call-order parity coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`197 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`202 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -102,16 +102,21 @@
   - unit coverage includes paired `tools/call` and `resources/read` assertions so trigger parity remains method-consistent.
   - added API-level repeated-request regression that injects stale-expiry and degraded-status transitions between calls and verifies transport call-order contains the expected additional `initialize` calls.
   - retained deterministic diagnostics-filter assertions per request and preserved invocation-phase to transport-call subsequence parity checks in the new API scenario.
+- Added retry-window gating call-order parity coverage:
+  - added helper-level unit coverage asserting degraded and unreachable retry-window-closed servers are skipped without primary transport calls and re-enter deterministically once retry windows reopen.
+  - unit assertions include paired `tools/call` and `resources/read` checks and explicit re-entry call-order expectations (`initialize` before invoke).
+  - added API-level regression covering timeout -> closed retry window skip -> retry-window reopen while backup serves requests.
+  - API assertions now cross-check transport call order against invocation-event `initialize_start`/`invoke_start` phase streams via subsequence parity and keep deterministic diagnostics-filter checks (`server`, `method`, `request_id`, `correlation_id`, `limit`) per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening with retry-window gating parity:
-1. Add helper-level retry-window gating call-order unit coverage:
-   - add unit assertions proving degraded/unreachable servers with closed retry windows are skipped without transport `initialize`/invoke calls.
-   - add paired assertions proving reopening the retry window triggers deterministic re-entry with `initialize` before invoke.
-2. Add API-level retry-window gating call-order regression:
-   - add integration coverage that drives a primary server through timeout -> closed retry window -> retry-window reopen while a backup serves requests.
-   - cross-check transport call order against invocation-event `initialize_start`/`invoke_start` ordering via subsequence parity across skipped and resumed primary attempts.
+Continue `P12/P13` call-order hardening with `resources/read` retry-window parity:
+1. Add API-level `resources/read` retry-window gating call-order regression:
+   - mirror the new tool-call retry-window sequence for `/api/v1/mcp/invoke/resource` (timeout -> closed retry-window skip -> retry-window reopen while backup serves).
+   - cross-check `factory.calls` ordering against invocation-event `initialize_start`/`invoke_start` phase streams via subsequence parity.
    - preserve deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) for each request in the sequence.
+2. Extend helper-level retry-window call-order matrix coverage:
+   - add focused helper assertions that distinguish degraded vs unreachable re-entry ordering under mixed preferred-server lists when backup transitions to non-retryable state.
+   - keep assertions on transport-level ordering only (`initialize`, `resources/read`) to avoid coupling to invocation event internals.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

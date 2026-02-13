@@ -1426,6 +1426,76 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize(
+    ("unreachable_after", "expected_status"),
+    [
+        (3, ServerStatus.DEGRADED),
+        (1, ServerStatus.UNREACHABLE),
+    ],
+)
+async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_order(
+    method: str,
+    unreachable_after: int,
+    expected_status: ServerStatus,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=unreachable_after,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+    factory.set_failure_script("primary", method, ["timeout", "ok"])
+
+    async def invoke_once() -> object:
+        if method == "resources/read":
+            return await manager.read_resource(
+                "att://projects",
+                preferred=["primary", "backup"],
+            )
+        return await manager.invoke_tool(
+            "att.project.list",
+            preferred=["primary", "backup"],
+        )
+
+    first = await invoke_once()
+    assert first.server == "backup"
+
+    primary = manager.get("primary")
+    assert primary is not None
+    assert primary.status is expected_status
+
+    calls_after_first = len(factory.calls)
+    second = await invoke_once()
+    assert second.server == "backup"
+
+    second_slice = factory.calls[calls_after_first:]
+    assert second_slice
+    assert all(server == "backup" for server, _, _ in second_slice)
+
+    clock.advance(seconds=1)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    calls_before_third = len(factory.calls)
+    third = await invoke_once()
+    assert third.server == "primary"
+    assert third.method == method
+
+    third_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[calls_before_third:]
+        if call_method in {"initialize", method}
+    ]
+    assert third_slice == [
+        ("primary", "initialize"),
+        ("primary", method),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
