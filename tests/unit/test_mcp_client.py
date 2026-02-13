@@ -1019,16 +1019,16 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     manager.register("nat", "http://nat.local")
 
     assert manager.supports_adapter_session_controls() is True
-    diagnostics = manager.adapter_session_diagnostics("nat")
+    diagnostics = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert diagnostics is not None
     assert diagnostics.active is False
 
-    initialized = await manager.initialize_server("nat")
+    initialized = await manager.initialize_server(UNIT_TEST_NAT_SERVER)
     assert initialized is not None
     assert initialized.initialized is True
     assert factory.created == 1
 
-    after_initialize = manager.adapter_session_diagnostics("nat")
+    after_initialize = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert after_initialize is not None
     assert after_initialize.active is True
     assert after_initialize.initialized is True
@@ -1037,11 +1037,11 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     invalidated = await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
     assert factory.closed == 1
-    server = manager.get("nat")
+    server = manager.get(UNIT_TEST_NAT_SERVER)
     assert server is not None
     assert server.initialized is False
 
-    refreshed = await manager.refresh_adapter_session("nat")
+    refreshed = await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
     assert refreshed is not None
     assert refreshed.initialized is True
     assert factory.created == 2
@@ -1114,13 +1114,13 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     )
     manager.register("nat", "http://nat.local")
 
-    initial = manager.adapter_session_diagnostics("nat")
+    initial = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert initial is not None
     assert initial.freshness == UNIT_TEST_FRESHNESS_UNKNOWN
 
     await manager.invoke_tool("att.project.list", preferred=["nat"])
 
-    recent = manager.adapter_session_diagnostics("nat")
+    recent = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert recent is not None
     assert recent.active is True
     assert recent.freshness == UNIT_TEST_FRESHNESS_ACTIVE_RECENT
@@ -1129,7 +1129,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert adapter is not None
     adapter._sessions["nat"].last_activity_at = datetime.now(UTC) - timedelta(seconds=301)
 
-    stale = manager.adapter_session_diagnostics("nat")
+    stale = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert stale is not None
     assert stale.freshness == UNIT_TEST_FRESHNESS_STALE
 
@@ -1177,7 +1177,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     first_session_id = first.result["structuredContent"]["session_id"]
     assert first_session_id == UNIT_TEST_SESSION_ID_FIRST
 
-    refreshed = await manager.refresh_adapter_session("nat")
+    refreshed = await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
     assert refreshed is not None
     assert factory.created == 2
     assert factory.closed == 1
@@ -1210,7 +1210,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     with pytest.raises(MCPInvocationError):
         await manager.invoke_tool("att.project.list", preferred=["nat"])
 
-    first_diag = manager.adapter_session_diagnostics("nat")
+    first_diag = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert first_diag is not None
     assert first_diag.active is False
     assert factory.created == 1

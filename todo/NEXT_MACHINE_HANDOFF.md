@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `b7cfad2420041885d6c716ed5cb70b9bb0b1eaa5`
-- Last commit: `b7cfad2 2026-02-13 15:24:21 -0600 - Refresh handoff snapshot after workflow update`
+- HEAD: `04a19dd7f6d6b9526921cee7f4c4bb333ef03779`
+- Last commit: `04a19dd 2026-02-13 15:28:09 -0600 - Update NAT session invalidation`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended adapter control server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `adapter_session_diagnostics("nat")`, `initialize_server("nat")`, `refresh_adapter_session("nat")`, and adjacent `get("nat")` call arguments to `UNIT_TEST_NAT_SERVER` in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended adapter invalidation server-name constant reuse in unit MCP client coverage:
   - migrated remaining inline `invalidate_adapter_session("nat")` and `invalidate_adapter_session("primary")` call arguments to existing constants (`UNIT_TEST_NAT_SERVER`, `UNIT_TEST_PRIMARY_SERVER`) in `tests/unit/test_mcp_client.py`.
@@ -83,7 +88,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
 1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in adapter control calls:
-   - target remaining inline `adapter_session_diagnostics("nat")`, `initialize_server("nat")`, `refresh_adapter_session("nat")`, and adjacent `get("nat")` call arguments where reuse is meaningful.
+   - target remaining inline adapter-scoped helper call arguments where reuse is meaningful: `adapter.session_diagnostics("nat")`, `adapter.invalidate_session("nat")`, and `list_adapter_sessions(server_name="nat")`.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
