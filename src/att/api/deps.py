@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 from typing import Literal
@@ -15,6 +16,7 @@ from att.core.runtime_manager import RuntimeManager
 from att.core.self_bootstrap_integrations import parse_gh_actions_status
 from att.core.self_bootstrap_manager import (
     ReleaseMetadata,
+    ReleaseSourceContext,
     RestartWatchdogSignal,
     SelfBootstrapManager,
 )
@@ -33,6 +35,9 @@ _DEPLOY_MANAGER = DeployManager(_RUNTIME_MANAGER)
 _MCP_CLIENT_MANAGER = MCPClientManager()
 _TEST_RESULTS: dict[str, TestResultPayload] = {}
 _DEBUG_LOGS: dict[str, list[str]] = {}
+_RELEASE_LOG_FIELD_PATTERN = re.compile(
+    r"\b(?P<key>release_id|previous_release_id)\s*[=:]\s*(?P<value>[A-Za-z0-9][A-Za-z0-9._:/-]*)"
+)
 
 
 def get_store() -> SQLiteStore:
@@ -152,10 +157,34 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
         runtime.stop()
         return True
 
-    async def release_metadata_provider(
-        project_id: str, project_path: Path
+    async def runtime_release_metadata_adapter(
+        context: ReleaseSourceContext,
     ) -> ReleaseMetadata | None:
-        del project_id
+        log_lines = runtime.logs(limit=200)
+        current_release: str | None = None
+        previous_release: str | None = None
+        for line in reversed(log_lines):
+            for match in _RELEASE_LOG_FIELD_PATTERN.finditer(line):
+                key = match.group("key")
+                value = match.group("value")
+                if key == "release_id" and current_release is None:
+                    current_release = value
+                if key == "previous_release_id" and previous_release is None:
+                    previous_release = value
+            if current_release is not None and previous_release is not None:
+                break
+        if current_release is None:
+            return None
+        return ReleaseMetadata(
+            current_release_id=current_release,
+            previous_release_id=previous_release,
+            source="runtime_logs",
+        )
+
+    async def git_release_metadata_adapter(
+        context: ReleaseSourceContext,
+    ) -> ReleaseMetadata | None:
+        project_path = context.project_path
 
         def _git_rev_parse(revision: str) -> str | None:
             completed = subprocess.run(
@@ -190,7 +219,10 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
         deployer=deployer,
         restart_watchdog=restart_watchdog,
         rollback_executor=rollback_executor,
-        release_metadata_provider=release_metadata_provider,
+        release_source_adapters=(
+            runtime_release_metadata_adapter,
+            git_release_metadata_adapter,
+        ),
     )
 
 

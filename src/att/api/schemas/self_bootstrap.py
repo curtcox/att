@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -22,6 +24,10 @@ class SelfBootstrapRequestModel(BaseModel):
     requested_release_id: str | None = None
     previous_release_id: str | None = None
     rollback_release_id: str | None = None
+    rollback_on_deploy_failure: bool = False
+    rollback_on_restart_watchdog_failure: bool = True
+    rollback_on_health_failure: bool = True
+    deployment_context: Literal["self_hosted", "external"] = "self_hosted"
     health_check_target: str | None = None
     health_check_retries: int = 1
     health_check_interval_seconds: int = 5
@@ -49,6 +55,10 @@ class SelfBootstrapResponseModel(BaseModel):
     rollback_policy_status: str = "not_evaluated"
     rollback_policy_reason: str | None = None
     rollback_target_valid: bool | None = None
+    rollback_failure_class: (
+        Literal["deploy_failure", "restart_watchdog_failure", "health_failure"] | None
+    ) = None
+    rollback_deployment_context: Literal["self_hosted", "external"] = "self_hosted"
     success: bool
     test_returncode: int
     event_ids: list[str] = Field(default_factory=list)

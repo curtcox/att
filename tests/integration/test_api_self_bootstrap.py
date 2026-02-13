@@ -15,7 +15,11 @@ from att.models.events import ATTEvent, EventType
 
 
 class FakeSelfBootstrapManager:
+    def __init__(self) -> None:
+        self.last_request: SelfBootstrapRequest | None = None
+
     async def execute(self, request: SelfBootstrapRequest) -> SelfBootstrapResult:
+        self.last_request = request
         return SelfBootstrapResult(
             branch_name=request.branch_name or "codex/fake-branch",
             committed=True,
@@ -34,6 +38,8 @@ class FakeSelfBootstrapManager:
             rollback_policy_status="allowed",
             rollback_policy_reason="rollback_target_validated",
             rollback_target_valid=True,
+            rollback_failure_class=None,
+            rollback_deployment_context=request.deployment_context,
             success=True,
             workflow_result=WorkflowRunResult(
                 diff="diff",
@@ -52,19 +58,20 @@ class FakeSelfBootstrapManager:
         )
 
 
-def _client(tmp_path: Path) -> TestClient:
+def _client(tmp_path: Path) -> tuple[TestClient, FakeSelfBootstrapManager]:
     app = create_app()
     store = SQLiteStore(tmp_path / "att.db")
     manager = ProjectManager(store)
+    bootstrap = FakeSelfBootstrapManager()
 
     app.dependency_overrides[get_project_manager] = lambda: manager
-    app.dependency_overrides[get_self_bootstrap_manager] = lambda: FakeSelfBootstrapManager()
+    app.dependency_overrides[get_self_bootstrap_manager] = lambda: bootstrap
 
-    return TestClient(app)
+    return TestClient(app), bootstrap
 
 
 def test_self_bootstrap_run_endpoint(tmp_path: Path) -> None:
-    client = _client(tmp_path)
+    client, bootstrap = _client(tmp_path)
 
     project_path = tmp_path / "project"
     project_path.mkdir(parents=True, exist_ok=True)
@@ -83,6 +90,10 @@ def test_self_bootstrap_run_endpoint(tmp_path: Path) -> None:
             "content": "print('x')\n",
             "commit_message": "feat: x",
             "branch_name": "codex/self-bootstrap-demo",
+            "rollback_on_deploy_failure": True,
+            "rollback_on_restart_watchdog_failure": False,
+            "rollback_on_health_failure": True,
+            "deployment_context": "external",
         },
     )
 
@@ -101,12 +112,19 @@ def test_self_bootstrap_run_endpoint(tmp_path: Path) -> None:
     assert payload["rollback_policy_status"] == "allowed"
     assert payload["rollback_policy_reason"] == "rollback_target_validated"
     assert payload["rollback_target_valid"] is True
+    assert payload["rollback_failure_class"] is None
+    assert payload["rollback_deployment_context"] == "external"
     assert payload["test_returncode"] == 0
     assert len(payload["event_ids"]) == 2
+    assert bootstrap.last_request is not None
+    assert bootstrap.last_request.rollback_on_deploy_failure is True
+    assert bootstrap.last_request.rollback_on_restart_watchdog_failure is False
+    assert bootstrap.last_request.rollback_on_health_failure is True
+    assert bootstrap.last_request.deployment_context == "external"
 
 
 def test_self_bootstrap_run_requires_project(tmp_path: Path) -> None:
-    client = _client(tmp_path)
+    client, _ = _client(tmp_path)
 
     response = client.post(
         "/api/v1/projects/missing/self-bootstrap/run",

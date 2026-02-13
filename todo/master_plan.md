@@ -4,7 +4,7 @@
 
 ATT is a web-based application for developing, running, debugging, and deploying NVIDIA NeMo Agent Toolkit (NAT) apps. It is built on NAT itself, exposes an OpenAPI interface, and functions as both an MCP client and MCP server. The top priority is reaching self-bootstrapping: the point where ATT can create future versions of itself.
 
-## Implementation Progress (2026-02-12)
+## Implementation Progress (2026-02-13)
 
 - [x] P01 `project_skeleton.md` baseline implemented: `pyproject.toml`, `src/` package layout, test directories, config/ui folders, and package entrypoint.
 - [x] P03 `data_models.md` baseline implemented: `Project` + `ATTEvent` models, SQLite migrations, async store with CRUD and event queries.
@@ -63,13 +63,16 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Added baseline release-aware rollback metadata in self-bootstrap (`requested_release_id`, `previous_release_id`, `rollback_release_id`) and surfaced resolved rollback target diagnostics in manager/API results.
 - [x] Integrated release metadata source resolution for self-bootstrap rollback defaults via git (`HEAD`/`HEAD^`) and surfaced `release_metadata_source` in API responses.
 - [x] Added rollback policy gating/validation outcomes in self-bootstrap (`rollback_policy_status`, `rollback_policy_reason`, `rollback_target_valid`) with deny-before-execute behavior for invalid targets.
+- [x] Added self-bootstrap release-source adapter abstraction (`ReleaseSourceContext`, `ReleaseSourceAdapter`) with fallback-chain resolution and backward-compatible legacy provider support.
+- [x] Expanded self-bootstrap rollback policy matrix with failure-class/deployment-context controls (`rollback_on_*_failure`, `deployment_context`) and result diagnostics (`rollback_failure_class`, `rollback_deployment_context`).
+- [x] Wired runtime-log release metadata adapter + git fallback in API deps for release source-of-truth resolution beyond commit history only.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (110 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (128 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates are implemented; remaining work is deeper production release-source integration and policy matrix hardening).
+- [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).
 - [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 

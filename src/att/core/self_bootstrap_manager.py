@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,6 +26,12 @@ type Deployer = Callable[[str, str], Awaitable[bool]]
 type RollbackExecutorLegacy = Callable[[str, str], Awaitable[bool]]
 type RollbackExecutorWithRelease = Callable[[str, str, str | None], Awaitable[bool]]
 type RollbackExecutor = RollbackExecutorLegacy | RollbackExecutorWithRelease
+type RollbackFailureClass = Literal[
+    "deploy_failure",
+    "restart_watchdog_failure",
+    "health_failure",
+]
+type DeploymentContext = Literal["self_hosted", "external"]
 
 
 @dataclass(slots=True)
@@ -53,12 +59,28 @@ type ReleaseMetadataProvider = Callable[[str, Path], Awaitable[ReleaseMetadata |
 
 
 @dataclass(slots=True)
+class ReleaseSourceContext:
+    """Runtime context passed to release-source adapters."""
+
+    project_id: str
+    project_path: Path
+    deploy_target: str | None
+    health_check_target: str | None
+    deployment_context: DeploymentContext
+
+
+type ReleaseSourceAdapter = Callable[[ReleaseSourceContext], Awaitable[ReleaseMetadata | None]]
+
+
+@dataclass(slots=True)
 class RollbackPolicyDecision:
     """Rollback policy decision with validation outcome."""
 
     allowed: bool
     reason: str
     target_valid: bool | None
+    failure_class: RollbackFailureClass
+    deployment_context: DeploymentContext
 
 
 @dataclass(slots=True)
@@ -81,6 +103,10 @@ class SelfBootstrapRequest:
     requested_release_id: str | None = None
     previous_release_id: str | None = None
     rollback_release_id: str | None = None
+    rollback_on_deploy_failure: bool = False
+    rollback_on_restart_watchdog_failure: bool = True
+    rollback_on_health_failure: bool = True
+    deployment_context: DeploymentContext = "self_hosted"
     health_check_target: str | None = None
     health_check_retries: int = 1
     health_check_interval_seconds: int = 5
@@ -111,6 +137,8 @@ class SelfBootstrapResult:
     rollback_policy_status: str = "not_evaluated"
     rollback_policy_reason: str | None = None
     rollback_target_valid: bool | None = None
+    rollback_failure_class: RollbackFailureClass | None = None
+    rollback_deployment_context: DeploymentContext = "self_hosted"
 
 
 class SelfBootstrapManager:
@@ -130,6 +158,8 @@ class SelfBootstrapManager:
         restart_watchdog: RestartWatchdog | None = None,
         rollback_executor: RollbackExecutor | None = None,
         release_metadata_provider: ReleaseMetadataProvider | None = None,
+        release_metadata_providers: Sequence[ReleaseMetadataProvider] | None = None,
+        release_source_adapters: Sequence[ReleaseSourceAdapter] | None = None,
         sleeper: Sleeper | None = None,
     ) -> None:
         self._git = git_manager
@@ -142,7 +172,16 @@ class SelfBootstrapManager:
         self._deployer = deployer
         self._restart_watchdog = restart_watchdog
         self._rollback_executor = rollback_executor
-        self._release_metadata_provider = release_metadata_provider
+        adapters: list[ReleaseSourceAdapter] = []
+        if release_source_adapters is not None:
+            adapters.extend(release_source_adapters)
+        providers: list[ReleaseMetadataProvider] = []
+        if release_metadata_provider is not None:
+            providers.append(release_metadata_provider)
+        if release_metadata_providers is not None:
+            providers.extend(release_metadata_providers)
+        adapters.extend(self._legacy_release_provider_adapter(provider) for provider in providers)
+        self._release_source_adapters = tuple(adapters)
         self._sleep = sleeper or asyncio.sleep
 
     async def execute(self, request: SelfBootstrapRequest) -> SelfBootstrapResult:
@@ -190,6 +229,7 @@ class SelfBootstrapManager:
                 success=False,
                 workflow_result=workflow,
                 release_metadata_source=release_metadata_source,
+                rollback_deployment_context=request.deployment_context,
             )
 
         self._git.push(request.project_path, "origin", branch_name)
@@ -238,6 +278,7 @@ class SelfBootstrapManager:
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
                     release_metadata_source=release_metadata_source,
+                    rollback_deployment_context=request.deployment_context,
                 )
 
         if request.auto_merge_on_ci_success and pr_url is not None and self._pr_merger is not None:
@@ -270,6 +311,7 @@ class SelfBootstrapManager:
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
                     release_metadata_source=release_metadata_source,
+                    rollback_deployment_context=request.deployment_context,
                 )
 
         health_status = "not_run"
@@ -278,6 +320,8 @@ class SelfBootstrapManager:
         rollback_policy_status = "not_evaluated"
         rollback_policy_reason: str | None = None
         rollback_target_valid: bool | None = None
+        rollback_failure_class: RollbackFailureClass | None = None
+        rollback_deployment_context = request.deployment_context
         deploy_target = request.deploy_target or request.health_check_target
 
         if self._deployer is not None and deploy_target is not None:
@@ -301,6 +345,24 @@ class SelfBootstrapManager:
                         "message": "Deploy failed",
                     },
                 )
+                (
+                    rollback_performed,
+                    rollback_succeeded,
+                    rollback_policy_decision,
+                ) = await self._attempt_rollback(
+                    project_id=request.project_id,
+                    target=deploy_target,
+                    target_release_id=rollback_target_release_id,
+                    deployed_release_id=deployed_release_id,
+                    failure_class="deploy_failure",
+                    rollback_enabled=request.rollback_on_deploy_failure,
+                    deployment_context=request.deployment_context,
+                )
+                rollback_policy_status = "allowed" if rollback_policy_decision.allowed else "denied"
+                rollback_policy_reason = rollback_policy_decision.reason
+                rollback_target_valid = rollback_policy_decision.target_valid
+                rollback_failure_class = rollback_policy_decision.failure_class
+                rollback_deployment_context = rollback_policy_decision.deployment_context
                 await self._record_event(
                     project_id=request.project_id,
                     event_type=EventType.DEPLOY_COMPLETED,
@@ -308,6 +370,10 @@ class SelfBootstrapManager:
                         "target": deploy_target,
                         "healthy": False,
                         "release_id": deployed_release_id,
+                        "rollback_performed": rollback_performed,
+                        "rollback_policy_status": rollback_policy_status,
+                        "rollback_policy_reason": rollback_policy_reason,
+                        "rollback_target_valid": rollback_target_valid,
                     },
                 )
                 return SelfBootstrapResult(
@@ -319,10 +385,18 @@ class SelfBootstrapManager:
                     merged=merged,
                     restart_watchdog_status=restart_watchdog_status,
                     health_status="not_run",
-                    rollback_performed=False,
-                    rollback_succeeded=None,
+                    rollback_performed=rollback_performed,
+                    rollback_succeeded=rollback_succeeded,
                     success=False,
                     workflow_result=workflow,
+                    deployed_release_id=deployed_release_id,
+                    rollback_target_release_id=rollback_target_release_id,
+                    release_metadata_source=release_metadata_source,
+                    rollback_policy_status=rollback_policy_status,
+                    rollback_policy_reason=rollback_policy_reason,
+                    rollback_target_valid=rollback_target_valid,
+                    rollback_failure_class=rollback_failure_class,
+                    rollback_deployment_context=rollback_deployment_context,
                 )
 
         if self._restart_watchdog is not None and deploy_target is not None:
@@ -355,10 +429,15 @@ class SelfBootstrapManager:
                     target=deploy_target,
                     target_release_id=rollback_target_release_id,
                     deployed_release_id=deployed_release_id,
+                    failure_class="restart_watchdog_failure",
+                    rollback_enabled=request.rollback_on_restart_watchdog_failure,
+                    deployment_context=request.deployment_context,
                 )
                 rollback_policy_status = "allowed" if rollback_policy_decision.allowed else "denied"
                 rollback_policy_reason = rollback_policy_decision.reason
                 rollback_target_valid = rollback_policy_decision.target_valid
+                rollback_failure_class = rollback_policy_decision.failure_class
+                rollback_deployment_context = rollback_policy_decision.deployment_context
                 await self._record_event(
                     project_id=request.project_id,
                     event_type=EventType.DEPLOY_COMPLETED,
@@ -391,6 +470,8 @@ class SelfBootstrapManager:
                     rollback_policy_status=rollback_policy_status,
                     rollback_policy_reason=rollback_policy_reason,
                     rollback_target_valid=rollback_target_valid,
+                    rollback_failure_class=rollback_failure_class,
+                    rollback_deployment_context=rollback_deployment_context,
                 )
 
         if self._health_checker is not None and request.health_check_target is not None:
@@ -422,12 +503,17 @@ class SelfBootstrapManager:
                         target=deploy_target,
                         target_release_id=rollback_target_release_id,
                         deployed_release_id=deployed_release_id,
+                        failure_class="health_failure",
+                        rollback_enabled=request.rollback_on_health_failure,
+                        deployment_context=request.deployment_context,
                     )
                     rollback_policy_status = (
                         "allowed" if rollback_policy_decision.allowed else "denied"
                     )
                     rollback_policy_reason = rollback_policy_decision.reason
                     rollback_target_valid = rollback_policy_decision.target_valid
+                    rollback_failure_class = rollback_policy_decision.failure_class
+                    rollback_deployment_context = rollback_policy_decision.deployment_context
 
                 return SelfBootstrapResult(
                     branch_name=branch_name,
@@ -449,6 +535,8 @@ class SelfBootstrapManager:
                     rollback_policy_status=rollback_policy_status,
                     rollback_policy_reason=rollback_policy_reason,
                     rollback_target_valid=rollback_target_valid,
+                    rollback_failure_class=rollback_failure_class,
+                    rollback_deployment_context=rollback_deployment_context,
                 )
 
         if deploy_target is not None and not (
@@ -486,6 +574,8 @@ class SelfBootstrapManager:
             rollback_policy_status=rollback_policy_status,
             rollback_policy_reason=rollback_policy_reason,
             rollback_target_valid=rollback_target_valid,
+            rollback_failure_class=rollback_failure_class,
+            rollback_deployment_context=rollback_deployment_context,
         )
 
     async def _attempt_rollback(
@@ -495,10 +585,16 @@ class SelfBootstrapManager:
         target: str,
         target_release_id: str | None,
         deployed_release_id: str | None,
+        failure_class: RollbackFailureClass,
+        rollback_enabled: bool,
+        deployment_context: DeploymentContext,
     ) -> tuple[bool, bool | None, RollbackPolicyDecision]:
         decision = self._evaluate_rollback_policy(
             target_release_id=target_release_id,
             deployed_release_id=deployed_release_id,
+            failure_class=failure_class,
+            rollback_enabled=rollback_enabled,
+            deployment_context=deployment_context,
         )
         if not decision.allowed:
             await self._record_event(
@@ -512,6 +608,8 @@ class SelfBootstrapManager:
                     "allowed": False,
                     "reason": decision.reason,
                     "target_valid": decision.target_valid,
+                    "failure_class": decision.failure_class,
+                    "deployment_context": decision.deployment_context,
                 },
             )
             return False, None, decision
@@ -532,6 +630,8 @@ class SelfBootstrapManager:
                 "deployed_release_id": deployed_release_id,
                 "policy_reason": decision.reason,
                 "target_valid": decision.target_valid,
+                "failure_class": decision.failure_class,
+                "deployment_context": decision.deployment_context,
             },
         )
         return True, rollback_succeeded, decision
@@ -541,29 +641,56 @@ class SelfBootstrapManager:
         *,
         target_release_id: str | None,
         deployed_release_id: str | None,
+        failure_class: RollbackFailureClass,
+        rollback_enabled: bool,
+        deployment_context: DeploymentContext,
     ) -> RollbackPolicyDecision:
+        if not rollback_enabled:
+            return RollbackPolicyDecision(
+                allowed=False,
+                reason=f"rollback_disabled_for_{failure_class}",
+                target_valid=None,
+                failure_class=failure_class,
+                deployment_context=deployment_context,
+            )
         if self._rollback_executor is None:
             return RollbackPolicyDecision(
                 allowed=False,
                 reason="rollback_executor_missing",
                 target_valid=None,
+                failure_class=failure_class,
+                deployment_context=deployment_context,
+            )
+        if deployment_context == "external" and target_release_id is None:
+            return RollbackPolicyDecision(
+                allowed=False,
+                reason="rollback_target_required_for_external_context",
+                target_valid=False,
+                failure_class=failure_class,
+                deployment_context=deployment_context,
             )
         if target_release_id is None:
             return RollbackPolicyDecision(
                 allowed=True,
                 reason="rollback_target_unspecified",
                 target_valid=None,
+                failure_class=failure_class,
+                deployment_context=deployment_context,
             )
         if deployed_release_id is not None and target_release_id == deployed_release_id:
             return RollbackPolicyDecision(
                 allowed=False,
                 reason="rollback_target_same_as_deployed",
                 target_valid=False,
+                failure_class=failure_class,
+                deployment_context=deployment_context,
             )
         return RollbackPolicyDecision(
             allowed=True,
             reason="rollback_target_validated",
             target_valid=True,
+            failure_class=failure_class,
+            deployment_context=deployment_context,
         )
 
     @staticmethod
@@ -583,11 +710,31 @@ class SelfBootstrapManager:
         self,
         request: SelfBootstrapRequest,
     ) -> ReleaseMetadata | None:
-        if self._release_metadata_provider is None:
+        if not self._release_source_adapters:
             return None
         if request.requested_release_id is not None and request.previous_release_id is not None:
             return None
-        return await self._release_metadata_provider(request.project_id, request.project_path)
+        context = ReleaseSourceContext(
+            project_id=request.project_id,
+            project_path=request.project_path,
+            deploy_target=request.deploy_target,
+            health_check_target=request.health_check_target,
+            deployment_context=request.deployment_context,
+        )
+        for adapter in self._release_source_adapters:
+            metadata = await adapter(context)
+            if metadata is not None:
+                return metadata
+        return None
+
+    @staticmethod
+    def _legacy_release_provider_adapter(
+        provider: ReleaseMetadataProvider,
+    ) -> ReleaseSourceAdapter:
+        async def adapter(context: ReleaseSourceContext) -> ReleaseMetadata | None:
+            return await provider(context.project_id, context.project_path)
+
+        return adapter
 
     async def _run_rollback_executor(
         self,

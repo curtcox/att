@@ -34,13 +34,21 @@ P04-P13
 - Added release-source integration for rollback metadata:
   - `SelfBootstrapManager` now accepts `release_metadata_provider` and resolves release metadata when request fields are omitted.
   - Default API dependency wiring resolves release metadata from git (`HEAD` and `HEAD^`) and exposes `release_metadata_source` in self-bootstrap results.
+- Added release-source adapter abstraction and fallback chain:
+  - `SelfBootstrapManager` now supports `ReleaseSourceAdapter` with `ReleaseSourceContext` for deployment-aware metadata lookup.
+  - legacy `release_metadata_provider` hooks remain supported through an internal compatibility adapter.
+  - API deps now attempt runtime log release extraction first (`release_id`/`previous_release_id`), then fallback to git metadata.
 - Added rollback policy gates and validation outcomes:
   - rollback now evaluates allow/deny policy before executor invocation (`rollback_executor_missing`, `rollback_target_same_as_deployed`, etc.).
   - validation outcomes are surfaced through `rollback_policy_status`, `rollback_policy_reason`, and `rollback_target_valid`.
   - policy outcomes are also recorded in error events for denied rollback attempts.
+- Added rollback policy matrix controls by failure class and deployment context:
+  - request overrides: `rollback_on_deploy_failure`, `rollback_on_restart_watchdog_failure`, `rollback_on_health_failure`
+  - deployment context gate: `deployment_context` (`self_hosted`/`external`) with external target requirement enforcement.
+  - result diagnostics now include `rollback_failure_class` and `rollback_deployment_context`.
 - Remaining scope before completion:
-  - Integrate policy inputs from deploy/runtime release signals beyond git metadata (release registry/source-of-truth integration).
-  - Refine production rollback policy matrix (failure classes, policy overrides, and safe-mode behaviors).
+  - Integrate production deployment registry release-source adapter(s) beyond runtime logs/git fallback.
+  - Add additional safe-mode and rollout guardrails for production self-updates.
 - Wired baseline live adapters in `src/att/api/deps.py`:
   - CI status parsing from `gh run list` output
   - PR creation via `gh pr create`
