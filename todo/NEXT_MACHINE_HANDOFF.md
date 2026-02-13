@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `ab8c2bd56a7a061e631901877e632d4b488a0876`
 - Last commit: `ab8c2bd 2026-02-13 14:34:21 -0600 Replace unit failure-script method literals with constants`
-- Working tree at handoff creation: clean
+- Working tree at handoff creation: dirty (`unit set_failure_script server-name constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended `set_failure_script` server-name constant reuse in unit MCP client coverage:
+  - migrated the remaining inline `set_failure_script("primary", method, ...)` setup wiring in retry-window resource re-entry coverage to `UNIT_TEST_PRIMARY_SERVER`.
+  - preserved failure-script action vectors, preferred-order inputs, setup sequencing, and method-branch conditionals unchanged while reducing setup-side server literal duplication.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended `set_failure_script` method constant reuse in unit MCP client coverage:
   - migrated remaining inline `set_failure_script(..., "initialize" | "tools/call" | "resources/read", ...)` setup literals in `tests/unit/test_mcp_client.py` to existing method constants (`UNIT_TEST_INITIALIZE_METHOD`, `UNIT_TEST_TOOLS_CALL_METHOD`, `UNIT_TEST_RESOURCES_READ_METHOD`).
   - preserved failure-script action vectors, preferred-order inputs, setup sequencing, and method-branch conditionals unchanged while reducing setup-side method literal duplication.
@@ -478,9 +482,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining setup scaffolding in unit MCP client coverage:
-1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in setup calls:
-   - target remaining `set_failure_script("primary", method, ...)` setup wiring in retry-window resource re-entry coverage where reuse is meaningful.
+Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining timeout-toggle setup scaffolding in unit MCP client coverage:
+1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in timeout-toggle setup calls:
+   - target remaining `factory.fail_on_timeout_* .add("primary")` setup literals (initialize/tools/resources) where reuse is meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

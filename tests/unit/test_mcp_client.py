@@ -1735,7 +1735,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     )
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
-    factory.set_failure_script("primary", method, ["timeout", "ok"])
+    factory.set_failure_script(UNIT_TEST_PRIMARY_SERVER, method, ["timeout", "ok"])
 
     async def invoke_once() -> object:
         if method == "resources/read":
