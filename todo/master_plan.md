@@ -9,7 +9,6 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-
 - [x] Extended invocation-filter server-name constant reuse in unit MCP client coverage:
   - migrated the remaining diagnostics filter argument literal `list_invocation_events(server="primary", ...)` to `UNIT_TEST_PRIMARY_SERVER` in `tests/unit/test_mcp_client.py`.
   - preserved diagnostics filter scope (`server`, `method`, `request_id`), request sequencing, timeout-toggle setup flow, and method-branch conditionals unchanged.
