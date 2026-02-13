@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `2b872c898e8fe7dc264a5fa5282d192d19001b52`
-- Last commit: `2b872c8 2026-02-13 09:01:42 -0600 Refactor retry-window API integration test scaffolding`
-- Working tree at handoff creation: dirty (`unreachable-transition diagnostics helper extraction`)
+- HEAD: `f694d07230c974daf447d6425347a46007064236`
+- Last commit: `f694d07 2026-02-13 09:12:08 -0600 Extract unreachable-transition diagnostics assertion helper`
+- Working tree at handoff creation: dirty (`unreachable-transition call-order literal helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated unreachable-transition call-order literal assertions with shared helper wiring:
+  - added shared integration helper that asserts unreachable-transition `fifth_slice` and full `observed_call_order` literal expectations per method using explicit expected tuples supplied by each test.
+  - migrated both tool and resource unreachable-transition parity tests to helper-driven call-order literal assertions while keeping explicit expected tuple lists visible at each call site.
+  - preserved existing diagnostics assertions and phase-start/transport subsequence parity checks unchanged.
 - Reduced duplicated unreachable-transition primary diagnostics assertions with shared helper wiring:
   - added shared integration helper to assert per-request primary invocation/connection diagnostics for unreachable-transition sequences based on explicit request-id order, method, expected phases, and expected status transitions.
   - migrated both tool and resource unreachable-transition parity tests to this shared helper while keeping explicit expected phase/status vectors at each call site.
@@ -145,18 +149,18 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing remaining duplicated unreachable-transition call-order literals:
-1. Extract shared call-order literal helpers for tool/resource unreachable-transition tests:
-   - factor repeated `fifth_slice` and full `observed_call_order` literal blocks into shared helper(s) parameterized by `method`.
-   - keep explicit expected tuples visible at or near call sites so ordering intent remains auditable.
-2. Preserve parity semantics and diagnostics determinism:
-   - keep existing request-correlated invocation/connection diagnostics assertions in place.
-   - retain `assert_call_order_subsequence(...)` usage and do not assume one-to-one mapping between `initialize_start` events and transport `initialize` entries.
+Continue `P12/P13` test-structure hardening by reducing remaining duplicated unreachable-transition expectation vectors:
+1. Extract shared expected phase/status vectors for primary unreachable-transition diagnostics:
+   - remove repeated `expected_primary_phases` and `expected_primary_statuses` tuple literals between tool/resource unreachable-transition tests.
+   - keep expected vectors explicit and close to call sites (e.g., shared module-level constants with clear naming).
+2. Preserve current assertion semantics:
+   - keep `_assert_primary_unreachable_transition_diagnostics(...)` and `_assert_unreachable_transition_call_order_literals(...)` call sites explicit per method.
+   - retain existing transport literal assertions and `assert_call_order_subsequence(...)` behavior unchanged.
 
 Suggested implementation direction:
-- Scope edits to `tests/integration/test_api_mcp.py` and avoid production code changes.
-- Reuse existing helper/harness structures introduced in recent slices instead of adding new ad-hoc setup paths.
-- Run full validation and update both plan docs after changes.
+- Limit edits to `tests/integration/test_api_mcp.py`; no product code changes for this slice.
+- Prefer small constant/fixture extraction over deeper helper abstraction to keep readability high.
+- Run full validation and update both plan docs after completion.
 
 ## Resume Checklist
 1. Sync and verify environment:

@@ -344,6 +344,31 @@ def _assert_primary_unreachable_transition_diagnostics(
         )
 
 
+def _assert_unreachable_transition_call_order_literals(
+    *,
+    factory: ClusterNatSessionFactory,
+    sequence: UnreachableTransitionSequence,
+    method: str,
+    expected_fifth_slice: list[tuple[str, str]],
+    expected_observed_call_order: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    relevant_methods = {"initialize", method}
+    fifth_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[sequence.calls_before_fifth :]
+        if call_method in relevant_methods
+    ]
+    assert fifth_slice == expected_fifth_slice
+
+    observed_call_order = [
+        (server, call_method)
+        for server, _, call_method in factory.calls
+        if call_method in relevant_methods
+    ]
+    assert observed_call_order == expected_observed_call_order
+    return observed_call_order
+
+
 def _run_simultaneous_unreachable_reopen_sequence(
     *,
     invoke: Callable[[list[str]], Any],
@@ -2217,35 +2242,32 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         expected_phases=expected_primary_phases,
         expected_statuses=expected_primary_statuses,
     )
-    fifth_slice = [
-        (server, method)
-        for server, _, method in harness.factory.calls[sequence.calls_before_fifth :]
-        if method in {"initialize", "tools/call"}
-    ]
-    assert fifth_slice == [
+    expected_fifth_slice = [
         ("primary", "initialize"),
         ("primary", "tools/call"),
     ]
+    expected_observed_call_order = [
+        ("backup", "initialize"),
+        ("backup", "tools/call"),
+        ("backup", "tools/call"),
+        ("backup", "initialize"),
+        ("backup", "tools/call"),
+        ("primary", "initialize"),
+        ("primary", "tools/call"),
+    ]
+    observed_call_order = _assert_unreachable_transition_call_order_literals(
+        factory=harness.factory,
+        sequence=sequence,
+        method="tools/call",
+        expected_fifth_slice=expected_fifth_slice,
+        expected_observed_call_order=expected_observed_call_order,
+    )
 
     events = collect_invocation_events_for_requests(
         harness.client,
         request_ids=request_ids,
     )
     expected_call_order = expected_call_order_from_phase_starts(events)
-    observed_call_order = [
-        (server, method)
-        for server, _, method in harness.factory.calls
-        if method in {"initialize", "tools/call"}
-    ]
-    assert observed_call_order == [
-        ("backup", "initialize"),
-        ("backup", "tools/call"),
-        ("backup", "tools/call"),
-        ("backup", "initialize"),
-        ("backup", "tools/call"),
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-    ]
 
     assert_call_order_subsequence(
         observed_call_order=observed_call_order,
@@ -2403,35 +2425,32 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         expected_phases=expected_primary_phases,
         expected_statuses=expected_primary_statuses,
     )
-    fifth_slice = [
-        (server, method)
-        for server, _, method in harness.factory.calls[sequence.calls_before_fifth :]
-        if method in {"initialize", "resources/read"}
-    ]
-    assert fifth_slice == [
+    expected_fifth_slice = [
         ("primary", "initialize"),
         ("primary", "resources/read"),
     ]
+    expected_observed_call_order = [
+        ("backup", "initialize"),
+        ("backup", "resources/read"),
+        ("backup", "resources/read"),
+        ("backup", "initialize"),
+        ("backup", "resources/read"),
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+    ]
+    observed_call_order = _assert_unreachable_transition_call_order_literals(
+        factory=harness.factory,
+        sequence=sequence,
+        method="resources/read",
+        expected_fifth_slice=expected_fifth_slice,
+        expected_observed_call_order=expected_observed_call_order,
+    )
 
     events = collect_invocation_events_for_requests(
         harness.client,
         request_ids=request_ids,
     )
     expected_call_order = expected_call_order_from_phase_starts(events)
-    observed_call_order = [
-        (server, method)
-        for server, _, method in harness.factory.calls
-        if method in {"initialize", "resources/read"}
-    ]
-    assert observed_call_order == [
-        ("backup", "initialize"),
-        ("backup", "resources/read"),
-        ("backup", "resources/read"),
-        ("backup", "initialize"),
-        ("backup", "resources/read"),
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-    ]
 
     assert_call_order_subsequence(
         observed_call_order=observed_call_order,
