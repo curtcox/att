@@ -425,6 +425,35 @@ def _assert_unreachable_transition_call_order_literals(
     return observed_call_order
 
 
+def _assert_retry_window_gating_call_order_literals(
+    *,
+    factory: ClusterNatSessionFactory,
+    sequence: RetryWindowGatingSequence,
+    method: str,
+    expected_third_slice: list[tuple[str, str]],
+    expected_observed_call_order: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    second_slice = factory.calls[sequence.calls_after_first : sequence.calls_before_third]
+    assert second_slice
+    assert all(server == "backup" for server, _, _ in second_slice)
+
+    relevant_methods = {"initialize", method}
+    third_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[sequence.calls_before_third :]
+        if call_method in relevant_methods
+    ]
+    assert third_slice == expected_third_slice
+
+    observed_call_order = [
+        (server, call_method)
+        for server, _, call_method in factory.calls
+        if call_method in relevant_methods
+    ]
+    assert observed_call_order == expected_observed_call_order
+    return observed_call_order
+
+
 def _run_simultaneous_unreachable_reopen_sequence(
     *,
     invoke: Callable[[list[str]], Any],
@@ -2177,30 +2206,11 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         expected_phases=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES,
         expected_statuses=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES,
     )
-    second_slice = harness.factory.calls[sequence.calls_after_first : sequence.calls_before_third]
-    assert second_slice
-    assert all(server == "backup" for server, _, _ in second_slice)
-    third_slice = [
-        (server, method)
-        for server, _, method in harness.factory.calls[sequence.calls_before_third :]
-        if method in {"initialize", "tools/call"}
-    ]
-    assert third_slice == [
+    expected_third_slice = [
         ("primary", "initialize"),
         ("primary", "tools/call"),
     ]
-
-    events = collect_invocation_events_for_requests(
-        harness.client,
-        request_ids=request_ids,
-    )
-    expected_call_order = expected_call_order_from_phase_starts(events)
-    observed_call_order = [
-        (server, method)
-        for server, _, method in harness.factory.calls
-        if method in {"initialize", "tools/call"}
-    ]
-    assert observed_call_order == [
+    expected_observed_call_order = [
         ("primary", "initialize"),
         ("primary", "tools/call"),
         ("backup", "initialize"),
@@ -2209,6 +2219,19 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         ("primary", "initialize"),
         ("primary", "tools/call"),
     ]
+    observed_call_order = _assert_retry_window_gating_call_order_literals(
+        factory=harness.factory,
+        sequence=sequence,
+        method="tools/call",
+        expected_third_slice=expected_third_slice,
+        expected_observed_call_order=expected_observed_call_order,
+    )
+
+    events = collect_invocation_events_for_requests(
+        harness.client,
+        request_ids=request_ids,
+    )
+    expected_call_order = expected_call_order_from_phase_starts(events)
 
     assert_call_order_subsequence(
         observed_call_order=observed_call_order,
@@ -2309,30 +2332,11 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         expected_phases=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES,
         expected_statuses=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES,
     )
-    second_slice = harness.factory.calls[sequence.calls_after_first : sequence.calls_before_third]
-    assert second_slice
-    assert all(server == "backup" for server, _, _ in second_slice)
-    third_slice = [
-        (server, method)
-        for server, _, method in harness.factory.calls[sequence.calls_before_third :]
-        if method in {"initialize", "resources/read"}
-    ]
-    assert third_slice == [
+    expected_third_slice = [
         ("primary", "initialize"),
         ("primary", "resources/read"),
     ]
-
-    events = collect_invocation_events_for_requests(
-        harness.client,
-        request_ids=request_ids,
-    )
-    expected_call_order = expected_call_order_from_phase_starts(events)
-    observed_call_order = [
-        (server, method)
-        for server, _, method in harness.factory.calls
-        if method in {"initialize", "resources/read"}
-    ]
-    assert observed_call_order == [
+    expected_observed_call_order = [
         ("primary", "initialize"),
         ("primary", "resources/read"),
         ("backup", "initialize"),
@@ -2341,6 +2345,19 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         ("primary", "initialize"),
         ("primary", "resources/read"),
     ]
+    observed_call_order = _assert_retry_window_gating_call_order_literals(
+        factory=harness.factory,
+        sequence=sequence,
+        method="resources/read",
+        expected_third_slice=expected_third_slice,
+        expected_observed_call_order=expected_observed_call_order,
+    )
+
+    events = collect_invocation_events_for_requests(
+        harness.client,
+        request_ids=request_ids,
+    )
+    expected_call_order = expected_call_order_from_phase_starts(events)
 
     assert_call_order_subsequence(
         observed_call_order=observed_call_order,

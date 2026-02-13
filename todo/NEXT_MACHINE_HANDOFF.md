@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `f43f85ba9e71d164bda188e55a9b7238a185cbfc`
-- Last commit: `f43f85b 2026-02-13 09:19:32 -0600 Extract unreachable-transition expectation vector constants`
-- Working tree at handoff creation: dirty (`retry-window gating expectation vector constants/helper`)
+- HEAD: `17d84aa105d0e825b03dd9716ea9a252747d63e6`
+- Last commit: `17d84aa 2026-02-13 09:26:34 -0600 Extract retry-window gating diagnostics expectation constants`
+- Working tree at handoff creation: dirty (`retry-window gating call-order literal helper`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated retry-window gating call-order literal assertions with shared helper wiring:
+  - added a shared integration helper that asserts retry-window gating backup-only skip slice, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
+  - migrated both tool/resource retry-window gating call-order tests to helper-driven literal assertions while keeping explicit expected tuple literals at each test call site.
+  - preserved existing diagnostics filter assertions and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated retry-window gating expectation vectors with shared constants/helper wiring:
   - extracted shared module-level constants for primary retry-window gating expected phase/status vectors.
   - added a shared integration helper that asserts per-request primary invocation/connection diagnostics for retry-window gating sequences using explicit method + request-id order.
@@ -157,17 +161,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated retry-window gating call-order literal assertions:
-1. Extract shared helper coverage for retry-window gating call-order literal checks:
-   - factor duplicated `third_slice` and full `observed_call_order` literal assertion scaffolding across tool/resource retry-window gating tests into shared helper wiring.
-   - keep explicit expected tuple literals per method at each test call site for readability.
-2. Preserve existing diagnostics/filter/subsequence semantics:
-   - retain existing invocation + connection diagnostics filter assertions exactly.
-   - keep phase-start/transport subsequence assertions unchanged and explicit.
+Continue `P12/P13` test-structure hardening by reducing duplicated retry-window gating call-order expectation vectors:
+1. Extract shared expected call-order tuple vectors for retry-window gating assertions:
+   - factor duplicated method-specific `expected_third_slice` and `expected_observed_call_order` tuple lists into shared module-level constants.
+   - keep constants explicit and adjacent to helper usage for easy auditing.
+2. Preserve existing helper/filter/subsequence semantics:
+   - keep helper invocation signatures and diagnostics filter assertions unchanged.
+   - retain phase-start/transport subsequence assertions exactly.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing helper style from unreachable-transition call-order slices for consistency.
+- Reuse the existing retry-window gating call-order helper and constant style from nearby unreachable-transition slices.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist
