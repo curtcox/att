@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `81e7f528d7b697ff9ec6c22435700eeaa0f1f855`
-- Last commit: `81e7f52 2026-02-13 09:43:52 -0600 Extract retry-window gating bootstrap helper`
-- Working tree at handoff creation: dirty (`primary success diagnostics helper extraction`)
+- HEAD: `28ae64ab01ed463cdd8a93ccb2c5b24104c9f471`
+- Last commit: `28ae64a 2026-02-13 09:47:01 -0600 Extract primary success diagnostics helper`
+- Working tree at handoff creation: dirty (`mixed-method request-spec constants extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated mixed-method request-spec scaffolding in call-order tests:
+  - extracted shared mixed-method primary request-spec constants used by repeated-same-server and force-reinitialize call-order tests.
+  - extracted shared force-reinitialize expected-status vectors and rewired loop iteration to zip shared request specs with behavior-specific status expectations.
+  - preserved reinitialize trigger mutations, diagnostics assertions, and call-order literal/subsequence checks unchanged.
 - Reduced duplicated primary success diagnostics assertion wiring in mixed-method call-order tests:
   - added shared helper for primary successful-request diagnostics (`initialize_success` + `invoke_success` phases) with per-request expected status handling.
   - migrated loop-based diagnostics assertions in repeated-same-server and force-reinitialize call-order tests to the helper.
@@ -217,17 +221,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method request-spec scaffolding:
-1. Extract shared request-spec constants/helpers for mixed-method call-order tests:
-   - factor repeated tool/resource request-spec tuples used by repeated-same-server and force-reinitialize call-order tests into shared constants/helpers.
-   - keep per-test behavior-specific expected-status vectors and reinitialize trigger mutations explicit.
+Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method call-order literal vectors:
+1. Extract shared expected observed call-order vectors for mixed-method call-order tests:
+   - factor repeated mixed-method observed call-order literals in repeated-same-server and force-reinitialize tests into shared constants.
+   - keep literal vectors explicit and adjacent to test usage for auditability.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current diagnostics and call-order assertions unchanged.
+   - keep current diagnostics and call-order assertion behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse helper style from the new primary-success diagnostics helper and nearby call-order tests.
+- Reuse helper/constant style from nearby retry-window/unreachable call-order expectation vectors.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

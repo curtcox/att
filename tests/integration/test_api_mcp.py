@@ -198,6 +198,48 @@ PRIMARY_SUCCESS_EXPECTED_PHASES: tuple[str, ...] = (
     "invoke_start",
     "invoke_success",
 )
+MIXED_METHOD_PRIMARY_REQUEST_SPECS: tuple[tuple[str, dict[str, object], str], ...] = (
+    (
+        "/api/v1/mcp/invoke/tool",
+        {
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary"],
+        },
+        "tools/call",
+    ),
+    (
+        "/api/v1/mcp/invoke/tool",
+        {
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary"],
+        },
+        "tools/call",
+    ),
+    (
+        "/api/v1/mcp/invoke/resource",
+        {
+            "uri": "att://projects",
+            "preferred_servers": ["primary"],
+        },
+        "resources/read",
+    ),
+    (
+        "/api/v1/mcp/invoke/resource",
+        {
+            "uri": "att://projects",
+            "preferred_servers": ["primary"],
+        },
+        "resources/read",
+    ),
+)
+FORCE_REINITIALIZE_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
+    (),
+    (),
+    (),
+    (ServerStatus.HEALTHY.value,),
+)
 RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
@@ -2135,44 +2177,8 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
     client = _client_with_manager(manager)
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    request_specs = [
-        (
-            "/api/v1/mcp/invoke/tool",
-            {
-                "tool_name": "att.project.list",
-                "arguments": {},
-                "preferred_servers": ["primary"],
-            },
-            "tools/call",
-        ),
-        (
-            "/api/v1/mcp/invoke/tool",
-            {
-                "tool_name": "att.project.list",
-                "arguments": {},
-                "preferred_servers": ["primary"],
-            },
-            "tools/call",
-        ),
-        (
-            "/api/v1/mcp/invoke/resource",
-            {
-                "uri": "att://projects",
-                "preferred_servers": ["primary"],
-            },
-            "resources/read",
-        ),
-        (
-            "/api/v1/mcp/invoke/resource",
-            {
-                "uri": "att://projects",
-                "preferred_servers": ["primary"],
-            },
-            "resources/read",
-        ),
-    ]
     request_ids: list[str] = []
-    for path, payload, method in request_specs:
+    for path, payload, method in MIXED_METHOD_PRIMARY_REQUEST_SPECS:
         response = client.post(path, json=payload)
         assert response.status_code == 200
         assert response.json()["server"] == "primary"
@@ -2211,49 +2217,14 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
     client = _client_with_manager(manager)
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    request_specs: list[tuple[str, dict[str, object], str, list[str]]] = [
-        (
-            "/api/v1/mcp/invoke/tool",
-            {
-                "tool_name": "att.project.list",
-                "arguments": {},
-                "preferred_servers": ["primary"],
-            },
-            "tools/call",
-            [],
-        ),
-        (
-            "/api/v1/mcp/invoke/tool",
-            {
-                "tool_name": "att.project.list",
-                "arguments": {},
-                "preferred_servers": ["primary"],
-            },
-            "tools/call",
-            [],
-        ),
-        (
-            "/api/v1/mcp/invoke/resource",
-            {
-                "uri": "att://projects",
-                "preferred_servers": ["primary"],
-            },
-            "resources/read",
-            [],
-        ),
-        (
-            "/api/v1/mcp/invoke/resource",
-            {
-                "uri": "att://projects",
-                "preferred_servers": ["primary"],
-            },
-            "resources/read",
-            [ServerStatus.HEALTHY.value],
-        ),
-    ]
-
     request_ids: list[str] = []
-    for index, (path, payload, method, expected_statuses) in enumerate(request_specs):
+    for index, ((path, payload, method), expected_statuses) in enumerate(
+        zip(
+            MIXED_METHOD_PRIMARY_REQUEST_SPECS,
+            FORCE_REINITIALIZE_EXPECTED_STATUSES,
+            strict=True,
+        )
+    ):
         if index == 1:
             primary = manager.get("primary")
             assert primary is not None
