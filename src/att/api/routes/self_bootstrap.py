@@ -51,6 +51,7 @@ async def run_self_bootstrap(
         pr_url=result.pr_url,
         merged=result.merged,
         restart_watchdog_status=result.restart_watchdog_status,
+        restart_watchdog_reason=result.restart_watchdog_reason,
         health_status=result.health_status,
         rollback_performed=result.rollback_performed,
         rollback_succeeded=result.rollback_succeeded,

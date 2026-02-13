@@ -22,8 +22,19 @@ type Sleeper = Callable[[float], Awaitable[None]]
 type PRCreator = Callable[[str, str], Awaitable[str]]
 type PRMerger = Callable[[str, str], Awaitable[bool]]
 type Deployer = Callable[[str, str], Awaitable[bool]]
-type RestartWatchdog = Callable[[str, str], Awaitable[bool]]
 type RollbackExecutor = Callable[[str, str], Awaitable[bool]]
+
+
+@dataclass(slots=True)
+class RestartWatchdogSignal:
+    """Runtime restart watchdog check output."""
+
+    stable: bool
+    reason: str | None = None
+    probe: str = "process"
+
+
+type RestartWatchdog = Callable[[str, str], Awaitable[RestartWatchdogSignal | bool]]
 
 
 @dataclass(slots=True)
@@ -66,6 +77,7 @@ class SelfBootstrapResult:
     rollback_succeeded: bool | None
     success: bool
     workflow_result: WorkflowRunResult
+    restart_watchdog_reason: str | None = None
 
 
 class SelfBootstrapManager:
@@ -104,6 +116,7 @@ class SelfBootstrapManager:
         pr_url: str | None = None
         merged = False
         restart_watchdog_status = "not_run"
+        restart_watchdog_reason: str | None = None
 
         self._git.branch(request.project_path, branch_name, checkout=True)
 
@@ -254,21 +267,22 @@ class SelfBootstrapManager:
                 )
 
         if self._restart_watchdog is not None and deploy_target is not None:
-            restart_stable = await self._poll_restart_watchdog(
+            restart_signal = await self._poll_restart_watchdog(
                 project_id=request.project_id,
                 target=deploy_target,
                 retries=request.restart_watchdog_retries,
                 interval_seconds=request.restart_watchdog_interval_seconds,
             )
-            restart_watchdog_status = "stable" if restart_stable else "unstable"
-            if not restart_stable:
+            restart_watchdog_status = "stable" if restart_signal.stable else "unstable"
+            restart_watchdog_reason = restart_signal.reason
+            if not restart_signal.stable:
                 await self._record_event(
                     project_id=request.project_id,
                     event_type=EventType.ERROR,
                     payload={
                         "phase": "restart_watchdog",
                         "target": deploy_target,
-                        "message": "Runtime failed restart watchdog checks",
+                        "message": restart_signal.reason or "Runtime failed restart watchdog checks",
                     },
                 )
                 rollback_performed, rollback_succeeded = await self._attempt_rollback(
@@ -282,6 +296,7 @@ class SelfBootstrapManager:
                         "target": deploy_target,
                         "healthy": False,
                         "restart_watchdog_status": restart_watchdog_status,
+                        "restart_watchdog_reason": restart_watchdog_reason,
                     },
                 )
                 return SelfBootstrapResult(
@@ -297,6 +312,7 @@ class SelfBootstrapManager:
                     rollback_succeeded=rollback_succeeded,
                     success=False,
                     workflow_result=workflow,
+                    restart_watchdog_reason=restart_watchdog_reason,
                 )
 
         if self._health_checker is not None and request.health_check_target is not None:
@@ -313,6 +329,7 @@ class SelfBootstrapManager:
                     "target": request.health_check_target,
                     "healthy": healthy,
                     "restart_watchdog_status": restart_watchdog_status,
+                    "restart_watchdog_reason": restart_watchdog_reason,
                 },
             )
             if not healthy:
@@ -335,6 +352,7 @@ class SelfBootstrapManager:
                     rollback_succeeded=rollback_succeeded,
                     success=False,
                     workflow_result=workflow,
+                    restart_watchdog_reason=restart_watchdog_reason,
                 )
 
         if deploy_target is not None and not (
@@ -347,6 +365,7 @@ class SelfBootstrapManager:
                     "target": deploy_target,
                     "healthy": True,
                     "restart_watchdog_status": restart_watchdog_status,
+                    "restart_watchdog_reason": restart_watchdog_reason,
                 },
             )
 
@@ -363,6 +382,7 @@ class SelfBootstrapManager:
             rollback_succeeded=rollback_succeeded,
             success=True,
             workflow_result=workflow,
+            restart_watchdog_reason=restart_watchdog_reason,
         )
 
     async def _attempt_rollback(self, *, project_id: str, target: str) -> tuple[bool, bool | None]:
@@ -405,17 +425,31 @@ class SelfBootstrapManager:
         target: str,
         retries: int,
         interval_seconds: int,
-    ) -> bool:
+    ) -> RestartWatchdogSignal:
         attempts = max(1, retries)
+        last_signal = RestartWatchdogSignal(stable=False, reason="Runtime restart watchdog failed")
         for attempt in range(attempts):
             if self._restart_watchdog is None:
-                return True
-            stable = await self._restart_watchdog(project_id, target)
-            if stable:
-                return True
+                return RestartWatchdogSignal(stable=True, reason="watchdog_not_configured")
+            raw_signal = await self._restart_watchdog(project_id, target)
+            signal = self._coerce_restart_watchdog_signal(raw_signal)
+            if signal.stable:
+                return signal
+            last_signal = signal
             if attempt < attempts - 1:
                 await self._sleep(float(interval_seconds))
-        return False
+        return last_signal
+
+    @staticmethod
+    def _coerce_restart_watchdog_signal(
+        signal: RestartWatchdogSignal | bool,
+    ) -> RestartWatchdogSignal:
+        if isinstance(signal, RestartWatchdogSignal):
+            return signal
+        return RestartWatchdogSignal(
+            stable=signal,
+            reason="runtime_healthy" if signal else "runtime_unhealthy",
+        )
 
     async def _poll_ci(
         self,

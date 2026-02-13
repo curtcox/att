@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -21,7 +22,7 @@ from att.core.debug_manager import DebugManager
 from att.core.deploy_manager import DeployStatus
 from att.core.git_manager import GitResult
 from att.core.project_manager import ProjectManager
-from att.core.runtime_manager import RuntimeState
+from att.core.runtime_manager import RuntimeHealthProbe, RuntimeState
 from att.core.test_runner import RunResult, TestResultPayload
 from att.db.store import SQLiteStore
 
@@ -100,6 +101,17 @@ class FakeRuntimeManager:
 
     def status(self) -> RuntimeState:
         return RuntimeState(running=self.running, pid=self.pid)
+
+    def probe_health(self, *, url: str | None = None) -> RuntimeHealthProbe:
+        del url
+        return RuntimeHealthProbe(
+            healthy=self.running,
+            running=self.running,
+            pid=self.pid,
+            probe="process",
+            reason="process_running" if self.running else "process_not_running",
+            checked_at=datetime.now(UTC),
+        )
 
     def logs(self) -> list[str]:
         return list(self._logs)
@@ -290,6 +302,8 @@ def test_runtime_and_deploy_endpoints(tmp_path: Path) -> None:
     status = client.get(f"/api/v1/projects/{project_id}/runtime/status")
     assert status.status_code == 200
     assert status.json()["running"] is True
+    assert status.json()["healthy"] is True
+    assert status.json()["health_probe"] == "process"
 
     logs = client.get(f"/api/v1/projects/{project_id}/runtime/logs")
     assert logs.status_code == 200

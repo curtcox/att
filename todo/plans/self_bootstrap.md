@@ -26,12 +26,13 @@ P04-P13
 - Added health-check retry polling controls (`health_check_retries`, `health_check_interval_seconds`) for watchdog-style validation before rollback.
 - Added restart-watchdog polling controls (`restart_watchdog_retries`, `restart_watchdog_interval_seconds`) to validate runtime stability after deploy.
 - Added rollback-on-restart-watchdog-failure path and surfaced `restart_watchdog_status` in `SelfBootstrapResult` / API response schema.
+- Restart-watchdog flow now accepts typed diagnostics (`RestartWatchdogSignal`) and surfaces `restart_watchdog_reason` in manager and API responses.
 - Wired baseline live adapters in `src/att/api/deps.py`:
   - CI status parsing from `gh run list` output
   - PR creation via `gh pr create`
   - PR merge via `gh pr merge`
   - Deploy execution via `DeployManager.run`
-  - Restart watchdog status via `RuntimeManager.status`
+  - Restart watchdog diagnostics via `RuntimeManager.probe_health`
   - Rollback execution via `RuntimeManager.stop`
 - Added parser helper module `src/att/core/self_bootstrap_integrations.py` with unit tests.
 - Added API route: `POST /api/v1/projects/{project_id}/self-bootstrap/run`.

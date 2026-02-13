@@ -433,8 +433,18 @@ async def _handle_runtime_tool_call(
         return {"running": state.running, "pid": state.pid}
 
     if call.operation == "status":
-        state = runtime_manager.status()
-        return {"running": state.running, "pid": state.pid}
+        probe = runtime_manager.probe_health()
+        return {
+            "running": probe.running,
+            "pid": probe.pid,
+            "returncode": probe.returncode,
+            "healthy": probe.healthy,
+            "health_probe": probe.probe,
+            "health_reason": probe.reason,
+            "health_checked_at": probe.checked_at.isoformat(),
+            "health_http_status": probe.http_status,
+            "health_command": probe.command,
+        }
 
     if call.operation == "logs":
         return {"logs": runtime_manager.logs()}

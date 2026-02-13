@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from att.core.git_manager import GitResult
-from att.core.self_bootstrap_manager import SelfBootstrapManager, SelfBootstrapRequest
+from att.core.self_bootstrap_manager import (
+    RestartWatchdogSignal,
+    SelfBootstrapManager,
+    SelfBootstrapRequest,
+)
 from att.core.test_runner import RunResult
 from att.core.tool_orchestrator import WorkflowRunResult
 from att.db.store import SQLiteStore
@@ -326,6 +330,7 @@ async def test_self_bootstrap_restart_watchdog_retries_and_succeeds(tmp_path: Pa
 
     assert result.success is True
     assert result.restart_watchdog_status == "stable"
+    assert result.restart_watchdog_reason == "runtime_healthy"
     assert result.rollback_performed is False
     assert sleeps == [4.0]
 
@@ -371,6 +376,56 @@ async def test_self_bootstrap_restart_watchdog_failure_triggers_rollback(tmp_pat
 
     assert result.success is False
     assert result.restart_watchdog_status == "unstable"
+    assert result.restart_watchdog_reason == "runtime_unhealthy"
     assert result.health_status == "not_run"
     assert result.rollback_performed is True
     assert result.rollback_succeeded is True
+
+
+@pytest.mark.asyncio
+async def test_self_bootstrap_restart_watchdog_signal_reason_propagates(tmp_path: Path) -> None:
+    async def ci_checker(project_id: str, branch: str) -> str:
+        return "success"
+
+    async def deployer(project_id: str, target: str) -> bool:
+        return True
+
+    async def restart_watchdog(project_id: str, target: str) -> RestartWatchdogSignal:
+        return RestartWatchdogSignal(
+            stable=False,
+            reason="process_not_running",
+            probe="process",
+        )
+
+    async def rollback_executor(project_id: str, target: str) -> bool:
+        return True
+
+    manager = SelfBootstrapManager(
+        git_manager=FakeGitManager(),
+        orchestrator=FakeOrchestrator(committed=True, returncode=0),
+        store=SQLiteStore(tmp_path / "att.db"),
+        ci_checker=ci_checker,
+        deployer=deployer,
+        restart_watchdog=restart_watchdog,
+        rollback_executor=rollback_executor,
+    )
+
+    project_path = tmp_path / "project"
+    project_path.mkdir(parents=True, exist_ok=True)
+    request = SelfBootstrapRequest(
+        project_id="p1",
+        project_path=project_path,
+        file_path="app.py",
+        content="x",
+        commit_message="feat: auto",
+        branch_name="codex/test-branch",
+        deploy_target="att-service",
+        restart_watchdog_retries=1,
+    )
+
+    result = await manager.execute(request)
+
+    assert result.success is False
+    assert result.restart_watchdog_status == "unstable"
+    assert result.restart_watchdog_reason == "process_not_running"
+    assert result.rollback_performed is True

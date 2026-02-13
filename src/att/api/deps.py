@@ -12,7 +12,7 @@ from att.core.git_manager import GitManager
 from att.core.project_manager import ProjectManager
 from att.core.runtime_manager import RuntimeManager
 from att.core.self_bootstrap_integrations import parse_gh_actions_status
-from att.core.self_bootstrap_manager import SelfBootstrapManager
+from att.core.self_bootstrap_manager import RestartWatchdogSignal, SelfBootstrapManager
 from att.core.test_runner import TestResultPayload, TestRunner
 from att.core.tool_orchestrator import ToolOrchestrator
 from att.db.store import SQLiteStore
@@ -132,9 +132,15 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
         status = deploy.run(project.path, config_path)
         return status.running
 
-    async def restart_watchdog(project_id: str, target: str) -> bool:
-        del project_id, target
-        return runtime.status().running
+    async def restart_watchdog(project_id: str, target: str) -> RestartWatchdogSignal:
+        del project_id
+        probe_target = target if target.startswith(("http://", "https://")) else None
+        probe = runtime.probe_health(url=probe_target)
+        return RestartWatchdogSignal(
+            stable=probe.healthy,
+            reason=probe.reason,
+            probe=probe.probe,
+        )
 
     async def rollback_executor(project_id: str, target: str) -> bool:
         del project_id, target

@@ -1,80 +1,83 @@
 # Next Machine Handoff
 
 ## Snapshot
-- Date: 2026-02-12
+- Date: 2026-02-13
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: clean
+- Working tree at handoff creation: dirty (uncommitted runtime health probe + watchdog diagnostics slice)
 - Validation status:
-  - `./.venv313/bin/ruff check .` passes
-  - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`110 passed`)
+  - `git pull` => `Already up to date.`
+  - Handoff toolchain path `./.venv313/bin/...` is not present in this workspace.
+  - Attempts to recreate `.venv313` with `uv venv --python 3.13` failed due restricted DNS/network access for Python downloads.
+  - Fallback syntax validation passed: `python3 -m compileall src tests`.
 
 ## Recent Delivered Work
-- Runtime logs are manager-backed end-to-end:
-  - API: `GET /api/v1/projects/{id}/runtime/logs`
-  - MCP tool: `att.runtime.logs`
-  - MCP resource: `att://project/{id}/logs`
-- `RuntimeManager` now captures subprocess stdout/stderr with bounded in-memory log buffering.
-- `TestRunner` upgraded with:
-  - summary metrics (`passed/failed/skipped/errors/xfailed/xpassed`)
-  - `duration_seconds`
-  - `no_tests_collected`
-  - timeout handling (`timed_out`, return code `124`)
-  - parser helpers for pytest console/json/xml summaries
-- API/MCP test surfaces now accept optional marker/timeout controls and return enriched payloads.
-- Planning docs already updated for these slices:
+- Added typed runtime health probe model and API in `src/att/core/runtime_manager.py`:
+  - `RuntimeHealthProbe`
+  - `RuntimeManager.probe_health(...)`
+  - supports process-state probe plus optional configured HTTP/command probes.
+- Runtime status surfaces now return health diagnostics:
+  - API: `GET /api/v1/projects/{id}/runtime/status`
+  - MCP tool path: `att.runtime.status`
+- Self-bootstrap restart watchdog now consumes runtime probe signals and surfaces diagnostics:
+  - new `RestartWatchdogSignal` support
+  - `restart_watchdog_reason` propagated through `SelfBootstrapResult` and API schema/route.
+- Added/updated tests for healthy/unhealthy/transient probe behavior and watchdog diagnostics in:
+  - `tests/unit/test_runtime_manager.py`
+  - `tests/unit/test_self_bootstrap_manager.py`
+  - `tests/integration/test_api_feature_endpoints.py`
+  - `tests/integration/test_api_self_bootstrap.py`
+- Planning docs updated:
   - `todo/master_plan.md`
   - `todo/plans/runtime_manager.md`
-  - `todo/plans/test_runner.md`
-  - `todo/plans/openapi_routes.md`
-  - `todo/plans/mcp_server.md`
+  - `todo/plans/self_bootstrap.md`
 
 ## Active Next Slice (Recommended)
-Focus next on `P07 runtime_manager` remaining scope (see `todo/plans/runtime_manager.md`):
-1. Add runtime health probing beyond process alive/dead.
-2. Add restart diagnostics/health signals usable by self-bootstrap watchdog flow.
+Focus next on closing remaining `P07 runtime_manager` scope and continuing `P16` hardening:
+1. Implement streaming runtime log delivery semantics for long-running sessions.
+2. Continue release-aware rollback strategy hardening in self-bootstrap (`P16`).
 
 Suggested implementation direction:
-- Extend `RuntimeManager` with explicit health probe API and probe result model.
-- Prefer deterministic local checks first (process state + optional health command/http probe when configured).
-- Wire health signal into:
-  - runtime API route(s) (if exposed)
-  - self-bootstrap restart watchdog adapter in `src/att/api/deps.py`
-- Add unit tests for healthy/unhealthy/transient probe behavior.
-- Update plan docs after each completed step.
+- Add incremental log cursor/offset semantics to runtime log reads (API + MCP).
+- Preserve bounded in-memory buffering while enabling client-side tail/follow patterns.
+- Extend self-bootstrap rollback decisioning with release/version context (not only health outcome).
+- Add tests for log streaming pagination/tail behavior and rollback decision branches.
 
 ## Resume Checklist
 1. Sync and verify environment:
    - `git pull`
-   - `./.venv313/bin/python --version`
-2. Read context docs:
+   - `python3 --version`
+2. Restore test/lint toolchain (blocked in this snapshot):
+   - recreate `.venv313` when network access is available (or provide an existing local 3.13 venv)
+   - install dev deps from `pyproject.toml`
+3. Read context docs:
    - `todo/master_plan.md`
    - `todo/plans/runtime_manager.md`
    - `todo/plans/self_bootstrap.md`
-   - `todo/plans/mcp_server.md`
-3. Implement one slice end-to-end (code + tests + plan updates).
-4. Run validation:
+4. Implement one slice end-to-end (code + tests + plan updates).
+5. Run validation:
    - `./.venv313/bin/ruff format .`
    - `./.venv313/bin/ruff check .`
    - `PYTHONPATH=src ./.venv313/bin/mypy`
    - `PYTHONPATH=src ./.venv313/bin/pytest`
-5. Record new state back into this file and `todo/master_plan.md`.
+6. Record new state back into this file and `todo/master_plan.md`.
 
 ## Key Files for Next Slice
 - `src/att/core/runtime_manager.py`
 - `src/att/api/routes/runtime.py`
-- `src/att/api/deps.py`
+- `src/att/api/routes/mcp_transport.py`
 - `src/att/core/self_bootstrap_manager.py`
+- `src/att/api/deps.py`
 - `tests/unit/test_runtime_manager.py`
 - `tests/unit/test_self_bootstrap_manager.py`
+- `tests/integration/test_api_feature_endpoints.py`
 - `tests/integration/test_api_self_bootstrap.py`
 
 ## Remaining Program-Level Milestones
 From `todo/master_plan.md`:
 - `P12/P13` still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- `P16` still in progress (production-grade health probing and release-aware rollback strategy remain).
+- `P16` still in progress (runtime-health diagnostics integrated; remaining work is release-aware rollback hardening).
 - `P15` and `P17-P25` not started.
 
 ## Working Agreement

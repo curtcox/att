@@ -56,13 +56,16 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Added pytest summary parsers for console, JSON report, and JUnit XML inputs in `src/att/core/test_runner.py`.
 - [x] Wired enriched test-run payloads through API and MCP transport (`/api/v1/projects/{id}/test/run`, `att.test.run`, `att.test.results`) including optional marker and timeout inputs.
 - [x] Added test-runner unit coverage in `tests/unit/test_test_runner.py` and expanded test-tool adapter coverage in `tests/unit/test_test_tools.py`.
+- [x] Added `RuntimeManager.probe_health()` with typed `RuntimeHealthProbe` output and optional configured process+HTTP+command probes.
+- [x] Runtime status surfaces now emit health diagnostics (`healthy`, `health_probe`, `health_reason`, `health_checked_at`) via API (`GET /api/v1/projects/{id}/runtime/status`) and MCP (`att.runtime.status`).
+- [x] Self-bootstrap restart watchdog now consumes runtime probe signals and surfaces restart diagnostics (`restart_watchdog_reason`) through manager results + API response payloads.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
 - [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (110 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P16 is in progress (restart watchdog + baseline deploy/rollback adapters implemented; remaining work is production-grade health probing and release-aware rollback strategy).
+- [ ] P16 is in progress (restart watchdog + runtime-health diagnostics are implemented; remaining work is release-aware rollback strategy hardening).
 - [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 

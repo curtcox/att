@@ -39,12 +39,23 @@ async def runtime_stop(
 @router.get("/status")
 async def runtime_status(
     project_id: str,
+    health_target: str | None = None,
     manager: ProjectManager = Depends(get_project_manager),
     runtime: RuntimeManager = Depends(get_runtime_manager),
-) -> dict[str, bool | int | None]:
+) -> dict[str, bool | int | str | None]:
     await require_project(project_id, manager)
-    state = runtime.status()
-    return {"running": state.running, "pid": state.pid}
+    probe = runtime.probe_health(url=health_target)
+    return {
+        "running": probe.running,
+        "pid": probe.pid,
+        "returncode": probe.returncode,
+        "healthy": probe.healthy,
+        "health_probe": probe.probe,
+        "health_reason": probe.reason,
+        "health_checked_at": probe.checked_at.isoformat(),
+        "health_http_status": probe.http_status,
+        "health_command": probe.command,
+    }
 
 
 @router.get("/logs")

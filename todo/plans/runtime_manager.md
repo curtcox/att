@@ -28,6 +28,12 @@ P03,P04
   - `tests/unit/test_runtime_manager.py`
   - `tests/integration/test_api_feature_endpoints.py`
   - `tests/integration/test_mcp_transport.py`
+- Added typed runtime health probes in `RuntimeManager.probe_health()`:
+  - deterministic process-state probe
+  - optional configured HTTP probe (`health_check_url`)
+  - optional configured command probe (`health_check_command`)
+- Runtime status diagnostics are now surfaced via:
+  - API: `GET /api/v1/projects/{id}/runtime/status`
+  - MCP tool: `att.runtime.status`
 - Remaining scope before completion:
-  - Runtime health probing beyond process alive/dead status.
   - Streaming runtime log delivery semantics for long-running sessions.

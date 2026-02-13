@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import subprocess
 from pathlib import Path
+from urllib import error as urllib_error
 
 from att.core.runtime_manager import RuntimeManager
 
@@ -65,3 +67,86 @@ def test_runtime_manager_log_limit(monkeypatch, tmp_path: Path) -> None:
 
     assert manager.logs() == ["b", "c"]
     assert manager.logs(limit=1) == ["c"]
+
+
+def test_runtime_manager_probe_reports_process_health(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeProcess("ready\n")
+
+    def fake_popen(*args, **kwargs):  # type: ignore[no-untyped-def]
+        del args, kwargs
+        return fake
+
+    monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
+
+    manager = RuntimeManager()
+    manager.start(tmp_path, tmp_path / "workflow.yaml")
+    probe = manager.probe_health()
+
+    assert probe.healthy is True
+    assert probe.probe == "process"
+    assert probe.reason == "process_running"
+    manager.stop()
+
+
+def test_runtime_manager_probe_reports_unhealthy_when_not_running() -> None:
+    manager = RuntimeManager()
+    probe = manager.probe_health()
+
+    assert probe.healthy is False
+    assert probe.probe == "process"
+    assert probe.reason == "process_not_running"
+
+
+def test_runtime_manager_probe_reports_http_failure(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeProcess("ready\n")
+
+    def fake_popen(*args, **kwargs):  # type: ignore[no-untyped-def]
+        del args, kwargs
+        return fake
+
+    def fake_urlopen(url: str, timeout: float):  # type: ignore[no-untyped-def]
+        del timeout
+        raise urllib_error.HTTPError(url, 503, "unavailable", {}, None)
+
+    monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("att.core.runtime_manager.urllib_request.urlopen", fake_urlopen)
+
+    manager = RuntimeManager(health_check_url="http://localhost:8000/health")
+    manager.start(tmp_path, tmp_path / "workflow.yaml")
+    probe = manager.probe_health()
+
+    assert probe.healthy is False
+    assert probe.probe == "http"
+    assert probe.reason == "http_status:503"
+    assert probe.http_status == 503
+    manager.stop()
+
+
+def test_runtime_manager_probe_command_transient_recovery(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeProcess("ready\n")
+    command_returncodes = [1, 0]
+
+    def fake_popen(*args, **kwargs):  # type: ignore[no-untyped-def]
+        del args, kwargs
+        return fake
+
+    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        del args, kwargs
+        return subprocess.CompletedProcess(args=["health-check"], returncode=command_returncodes.pop(0))
+
+    monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("att.core.runtime_manager.subprocess.run", fake_run)
+
+    manager = RuntimeManager(health_check_command=["health-check"])
+    manager.start(tmp_path, tmp_path / "workflow.yaml")
+
+    first = manager.probe_health()
+    second = manager.probe_health()
+
+    assert first.healthy is False
+    assert first.probe == "command"
+    assert first.reason == "command_exit:1"
+    assert second.healthy is True
+    assert second.probe == "command"
+    assert second.reason == "command_ok"
+    manager.stop()

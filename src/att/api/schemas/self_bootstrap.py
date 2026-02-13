@@ -36,6 +36,7 @@ class SelfBootstrapResponseModel(BaseModel):
     pr_url: str | None
     merged: bool
     restart_watchdog_status: str
+    restart_watchdog_reason: str | None = None
     health_status: str
     rollback_performed: bool
     rollback_succeeded: bool | None
