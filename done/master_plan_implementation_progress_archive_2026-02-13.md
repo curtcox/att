@@ -1,0 +1,427 @@
+# Master Plan Implementation Progress Archive (2026-02-13)
+
+Source section: `/Users/curt/me/att/todo/master_plan.md` -> `## Implementation Progress (2026-02-13)`
+
+These entries were moved out of the active master plan because they are completed detail that is not frequently relevant for current execution slices.
+- [x] Extended scripted failure-action `"error"` assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_ACTION_ERROR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `consume_failure_action(... ) == "error"` checks in scripted failure isolation assertions to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended failure-script `["error"]` assertion-vector constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `["error"]` primary `resources/read` failure-script queue vectors in scripted failure isolation assertions to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended failure-script `["ok"]` assertion-vector constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `["ok"]` failure-script queue vectors in scripted failure isolation assertions to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended freshness-state assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_FRESHNESS_UNKNOWN`, `UNIT_TEST_FRESHNESS_ACTIVE_RECENT`, and `UNIT_TEST_FRESHNESS_STALE` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side freshness literals (`"unknown"`, `"active_recent"`, and `"stale"`) in adapter session freshness diagnostics assertions to shared constants while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended resource URI assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROJECTS_URI` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side inline `"att://projects"` checks in resource read result assertions and expected adapter `session.calls` vectors to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended protocol-version assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROTOCOL_VERSION` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side inline `"2025-11-25"` protocol-version checks (initialize response assertion and capability snapshot protocol assertions) to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended event-filter server-argument constant reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_PRIMARY_SERVER` and `UNIT_TEST_BACKUP_SERVER` in remaining assertion-adjacent invocation/connection event filter calls within `test_event_list_filters_and_limits` in `tests/unit/test_mcp_client.py`.
+  - replaced inline `server="primary"` and `server="backup"` filter arguments with shared constants while keeping registration/setup literals, preferred-order inputs, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended isolated `codex` server-name assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_CODEX_SERVER` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining assertion-side inline `"codex"` server literals in stale-reinitialize, auto-initialize, connect-server probe-call vector, and correlation-event checks to the shared constant while keeping registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended adapter filter assertion server-name constant reuse for `c` vectors in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_SERVER_C` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining assertion-side `c` server literals in adapter filter/listing checks (`active_only`, single-server filter, and limit result vectors) to the shared constant while keeping registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended remaining non-adapter `a`/`b` server-name assertion constant reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_SERVER_A` and `UNIT_TEST_SERVER_B` in remaining non-adapter assertion vectors (`choose_server` preference assertions and `initialize_all` name-vector assertion) in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended adapter-session server-name assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_NAT_SERVER`, `UNIT_TEST_SERVER_A`, and `UNIT_TEST_SERVER_B` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side adapter diagnostics/filter server literals (`"nat"`, `"a"`, `"b"`) to shared constants while keeping adapter/session setup behavior, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended adapter/session identity assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_SESSION_ID_FIRST` and `UNIT_TEST_SESSION_ID_SECOND` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side session-id literals (`"session-1"` / `"session-2"`) in adapter refresh/reconnect identity assertions to shared constants while keeping adapter/session setup behavior and transport method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended unit MCP client error-attempt assertion constant reuse for invoke-stage checks:
+  - added local unit-test constant `UNIT_TEST_INVOKE_STAGE` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining repeated assertion-side error-attempt stage literal `"invoke"` checks to the shared constant while keeping error setup payload literals, scripted setup inputs, and transport method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended stable server-name assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_PRIMARY_SERVER`, `UNIT_TEST_BACKUP_SERVER`, `UNIT_TEST_SECONDARY_SERVER`, `UNIT_TEST_RECOVERED_SERVER`, and `UNIT_TEST_DEGRADED_SERVER` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side server literals across failover/call-order/failure-script assertion vectors to shared constants while keeping server-registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended adapter/session call-order assertion tuple constant reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_INITIALIZE_METHOD` in the remaining adapter/session expected-call assertions that still used inline `"initialize"` tuple entries in `tests/unit/test_mcp_client.py`.
+  - completed initialization-notify/method assertion tuple constantization across adapter/session call-order expectations while keeping transport request payload literals and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended stable initialization-notify assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `"notifications/initialized"` literals in invocation/call-order/transport-call expectations to the shared constant while keeping transport request payload literals and transport method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended stable `resources/read` and invocation phase assertion-literal constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_RESOURCES_READ_METHOD`, `UNIT_TEST_INITIALIZE_START_PHASE`, `UNIT_TEST_INITIALIZE_FAILURE_PHASE`, `UNIT_TEST_INITIALIZE_SUCCESS_PHASE`, and `UNIT_TEST_INVOKE_SUCCESS_PHASE` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `resources/read` method literals and repeated invocation phase literals to shared constants across fallback, failure-script isolation, call-order, and event-filter assertions while keeping scripted setup inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Extended cluster failure-script and call-order assertion method-literal reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_INITIALIZE_METHOD` and `UNIT_TEST_TOOLS_CALL_METHOD` across repeated cluster failure-script assertions (`consume_failure_action` + `failure_scripts` key checks) and cluster call-order expectation vectors/filter sets in `tests/unit/test_mcp_client.py`.
+  - kept scripted setup inputs (`set_failure_script(...)`) and method-branch conditionals explicit and unchanged.
+  - preserved retry-window/call-order parity semantics and invocation/connection filter behavior unchanged.
+- [x] Extended stable method/phase assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_INITIALIZE_METHOD`, `UNIT_TEST_TOOLS_CALL_METHOD`, `UNIT_TEST_INVOKE_START_PHASE`, and `UNIT_TEST_INVOKE_FAILURE_PHASE` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side method/phase literals in invocation result, call-order, and invocation-phase stream checks to shared constants while keeping setup payload literals and param matrices explicit and unchanged.
+  - preserved invocation-event/connection-event filter semantics and call-order/subsequence behavior unchanged.
+- [x] Reduced non-timeout error-category assertion literal duplication in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_TRANSPORT_ERROR_CATEGORY`, `UNIT_TEST_RPC_ERROR_CATEGORY`, and `UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated non-timeout category assertion literals to shared constants while keeping timeout/category mapping param matrices and transport exception setup literals explicit and unchanged.
+  - preserved invocation failure-trace semantics and transport error-category propagation assertions unchanged.
+- [x] Extended timeout-category constant reuse into adjacent unit MCP client assertions:
+  - added local unit-test constant `UNIT_TEST_TIMEOUT_ERROR_CATEGORY` in `tests/unit/test_mcp_client.py`.
+  - replaced remaining inline `"network_timeout"` literals in timeout-category assertions with the shared unit-test constant while keeping the timeout exception-to-category param matrix explicit and unchanged.
+  - preserved transport adapter category-mapping semantics and failure-script exhaustion fallback behavior unchanged.
+- [x] Completed timeout-category compatibility alias retirement after neutral adoption:
+  - migrated remaining failover timeout-category assertions to canonical `FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - replaced the remaining inline `"network_timeout"` last-error-category assertion with the canonical timeout constant and removed `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - updated focused constant regression coverage to canonical-only timeout-category semantics and preserved diagnostics-filter/call-order literal/subsequence behavior unchanged.
+- [x] Consolidated timeout-category constant naming across scripted and non-scripted failover diagnostics assertions:
+  - introduced neutral `FAILOVER_TIMEOUT_ERROR_CATEGORY` and migrated timeout-category assertion call sites away from scripted-only naming.
+  - updated focused constant regression coverage to assert neutral timeout-category value plus compatibility-alias equivalence.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Retired degraded-status compatibility alias debt after canonical ownership migration:
+  - removed `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` compatibility alias and retained only canonical `FAILOVER_DEGRADED_EXPECTED_STATUSES` for degraded-status expectations.
+  - updated focused constant regression coverage to assert canonical degraded-status vector semantics without alias coupling.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Canonicalized degraded-status constant ownership after alias adoption in MCP integration diagnostics tests:
+  - made `FAILOVER_DEGRADED_EXPECTED_STATUSES` the literal-defined canonical degraded-status tuple.
+  - kept `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` as a compatibility alias to the canonical constant and updated focused regression coverage to assert canonical-vector and alias-equivalence semantics.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Consolidated degraded-status constant naming across scripted and non-scripted failover diagnostics assertions:
+  - migrated remaining scripted failover `expected_statuses` call sites from `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)` to `list(FAILOVER_DEGRADED_EXPECTED_STATUSES)` for consistent assertion wiring.
+  - kept scripted constant regression coverage and added explicit alias parity assertion (`FAILOVER_DEGRADED_EXPECTED_STATUSES == SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`) to lock semantic equivalence.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Reduced final duplicated degraded-status vectors in non-scripted diagnostics assertions:
+  - introduced neutral constant alias `FAILOVER_DEGRADED_EXPECTED_STATUSES` in `tests/integration/test_api_mcp.py` so generic degraded-status checks no longer depend on scripted-specific naming.
+  - replaced non-scripted event-endpoint and resource failover/recovery `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - eliminated remaining inline degraded-status vectors in `tests/integration/test_api_mcp.py` while preserving diagnostics-filter and call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated degraded-status vectors in remaining scripted failover diagnostics assertions (outside stage-paired and transport-error tests):
+  - replaced scripted failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in initialize/invoke isolation, initialize-script exhaustion fallback, and scripted initialize-precedence tool/resource tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated degraded-status vectors in scripted transport-error failover diagnostics assertions:
+  - replaced scripted transport-error failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in both tool/resource error-action tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated degraded-status vectors in stage-paired timeout convergence diagnostics assertions:
+  - replaced stage-paired tool/resource timeout convergence `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired timeout-stage failover expectation wiring in integration convergence assertions:
+  - added shared helper `_stage_paired_failover_expectations_for_timeout_stage(...)` that maps `timeout_stage` to failover phase/server vectors and failover error-index constants.
+  - migrated both stage-paired retry-window convergence tests (tool/resource) to consume the helper while keeping method-specific timeout-toggle wiring explicit at each test call site.
+  - added focused regression coverage locking helper mapping semantics for both timeout stages and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover invoke-timeout phase/server vectors in integration convergence assertions:
+  - extracted shared constants `STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_PHASES` and `STAGE_PAIRED_INVOKE_TIMEOUT_FAILOVER_EXPECTED_SERVERS` for repeated invoke-timeout failover vector literals in tool/resource retry-window convergence checks.
+  - migrated both stage-paired convergence invoke-timeout branches to consume the constants while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking invoke-timeout failover vector values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover initialize-timeout phase/server vectors in integration convergence assertions:
+  - extracted shared constants `STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_PHASES` and `STAGE_PAIRED_INITIALIZE_TIMEOUT_FAILOVER_EXPECTED_SERVERS` for repeated initialize-timeout failover vector literals in tool/resource retry-window convergence checks.
+  - migrated both stage-paired convergence initialize-timeout branches to consume the constants while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking initialize-timeout failover vector values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover initialize-stage error-index literals in integration convergence assertions:
+  - extracted shared constant `STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX` for repeated `failover_error_index = 1` wiring in tool/resource retry-window convergence failover checks.
+  - migrated both stage-paired convergence initialize-timeout branches to consume the constant while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking initialize-stage error-index constant value and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover invoke-stage error-index literals in integration convergence assertions:
+  - extracted shared constant `STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX` for repeated `failover_error_index = 3` wiring in tool/resource retry-window convergence failover checks.
+  - migrated both stage-paired convergence branches to consume the constant while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking invoke-stage error-index constant value and preserved call-order literal/subsequence behavior unchanged.
+- [x] Expanded scripted failover timeout-category constant adoption in integration invocation-event assertions:
+  - migrated adjacent failover invocation-event assertions still using inline `"network_timeout"` literals to `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - kept diagnostics-filter and call-order assertions explicit while reducing repeated timeout-category literal wiring in stage-paired tool/resource failover scenarios.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence parity behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover timeout-category assertions in integration diagnostics checks:
+  - extracted shared constant `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` for repeated scripted failover `"network_timeout"` invocation-event assertions.
+  - migrated scripted mixed-method tool/resource failover invocation-event assertions to consume the shared timeout-category constant while keeping diagnostics-filter and call-order assertions explicit.
+  - added focused regression coverage locking timeout-category constant value and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover degraded-status vectors in integration diagnostics assertions:
+  - extracted shared tuple constant `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` for repeated single-item degraded status expectations.
+  - migrated scripted mixed-method tool/resource failover connection-event filter assertions to consume the shared constant while keeping diagnostics-filter call sites explicit.
+  - added focused regression coverage locking degraded-status constant values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover filter phase vectors in integration diagnostics assertions:
+  - extracted shared tuple constant `SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES` for repeated 4-step failure filter phase expectations.
+  - migrated scripted mixed-method tool/resource failover invocation-filter assertions to consume the shared constant while keeping diagnostics-filter call sites explicit.
+  - added focused regression coverage locking filter-phase constant values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover phase/server expectation vectors in integration call-order tests:
+  - extracted shared tuple constants for the repeated 8-step failover invocation phase vector and method-specific server-order vectors.
+  - migrated scripted mixed-method failover assertion wiring to use the shared constants while keeping diagnostics filter assertions explicit at test call sites.
+  - added focused regression coverage locking failover constant values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated mixed-method scripted request-id tuple wiring in integration call-order parity tests:
+  - added shared helper `_mixed_method_scripted_request_ids(...)` and migrated scripted mixed-method parity assertion wiring to consume it.
+  - added focused helper regression coverage to lock request-id tuple ordering semantics.
+  - preserved diagnostics filter assertions, observed call-order literal assertions, and phase-start/transport subsequence parity behavior unchanged.
+- [x] P01 `project_skeleton.md` baseline implemented: `pyproject.toml`, `src/` package layout, test directories, config/ui folders, and package entrypoint.
+- [x] P03 `data_models.md` baseline implemented: `Project` + `ATTEvent` models, SQLite migrations, async store with CRUD and event queries.
+- [x] P04-P11 baseline manager interfaces implemented in `src/att/core/` (`project_manager`, `code_manager`, `git_manager`, `runtime_manager`, `test_runner`, `debug_manager`, `deploy_manager`, `tool_orchestrator`).
+- [x] Expanded `ProjectManager` with clone and archive-download operations (`clone`, `download`) including async git clone execution and archive creation.
+- [x] P14 baseline API scaffolding implemented: FastAPI app, project/code/git/runtime/test/debug/deploy routes, health endpoint, WebSocket endpoint, and MCP discovery endpoint.
+- [x] P02 CI workflows implemented: `.github/workflows/pr-quick.yml` and `.github/workflows/main-full.yml`.
+- [x] P12 MCP server baseline expanded: full ATT tool/resource catalog + lookup helpers in `src/att/mcp/server.py`.
+- [x] P13 MCP client baseline expanded: multi-server state model with health checks, exponential backoff, degraded/unreachable states, and transition audit events in `src/att/mcp/client.py`.
+- [x] MCP API routes added for catalog and server management (`/api/v1/mcp/tools`, `/api/v1/mcp/resources`, `/api/v1/mcp/servers`, and health-check endpoints).
+- [x] MCP unit test coverage added in `tests/unit/test_mcp_server.py` and `tests/unit/test_mcp_client.py`.
+- [x] MCP invocation flow added with server failover: `tools/call` and `resources/read` JSON-RPC requests via `src/att/mcp/client.py`.
+- [x] MCP invocation API endpoints added: `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` with 503 handling on all-server failure.
+- [x] MCP management API expanded with server detail/delete and connection events endpoints (`/api/v1/mcp/servers/{name}`, `DELETE /api/v1/mcp/servers/{name}`, `/api/v1/mcp/events`).
+- [x] MCP client/server handshake support added with persistent initialization metadata (`initialized`, `protocol_version`, `last_initialized_at`) and initialization APIs (`POST /api/v1/mcp/servers/{name}/initialize`, `POST /api/v1/mcp/servers/initialize`).
+- [x] MCP invocation path now enforces per-server initialize handshake before `tools/call`/`resources/read` and automatically fails over when initialization fails.
+- [x] Added combined MCP connect flow (health check + initialize) in client manager (`connect_server`, `connect_all`) and API (`POST /api/v1/mcp/servers/{name}/connect`, `POST /api/v1/mcp/servers/connect`).
+- [x] Added explicit per-server MCP capability snapshots captured at initialize time and surfaced via MCP server APIs (`capability_snapshot` with protocol/server/capabilities metadata).
+- [x] Added structured MCP invocation failure diagnostics (`method` + per-server initialize/invoke attempts) and deterministic 503 error detail payloads for invocation APIs.
+- [x] Added MCP initialization freshness metadata (`initialization_expires_at`) and stale reinitialize gating before invocation, with mixed-state recovery sequencing coverage.
+- [x] Added stable MCP transport error categorization (timeout/http-status/invalid-payload/rpc/transport) surfaced in server state (`last_error_category`) and invocation attempt diagnostics (`error_category`).
+- [x] Added MCP invocation lifecycle event auditing with bounded retention and API exposure (`GET /api/v1/mcp/invocation-events`) for ordered initialize/invoke diagnostics.
+- [x] Added cross-stream MCP diagnostics correlation/filtering: connection events now carry `correlation_id` linked to invocation `request_id`, and both event endpoints support deterministic server/method/request/correlation/limit query filters.
+- [x] Added production-facing NAT MCP adapter path in `MCPClientManager` with adapter-first transport resolution, safe dependency wiring fallback, and adapter-focused parity/failover coverage.
+- [x] Added adapter lifecycle controls and observability for MCP external sessions (`invalidate`/`refresh` + non-sensitive `adapter_session` diagnostics) with dedicated API endpoints and conflict handling when controls are unavailable.
+- [x] Added deterministic adapter recovery semantics and operator capability visibility (`adapter_controls_available` on server/list payloads) with refresh-identity and transport-invalidation recreation coverage.
+- [x] Added fleet-level adapter diagnostics aggregation endpoint (`GET /api/v1/mcp/adapter-sessions`) and multi-server partial-refresh failover/correlation resilience coverage.
+- [x] Expanded adapter diagnostics aggregation controls with deterministic query filtering (`server`, `active_only`, `limit`) across manager and API surfaces.
+- [x] Added mixed-state integration coverage validating invalidate-one-server isolation, including unaffected server session identity and capability-snapshot stability.
+- [x] Added manager-sourced adapter session freshness semantics (`unknown`/`active_recent`/`stale`) surfaced in per-server and aggregated MCP diagnostics payloads.
+- [x] Added mixed-state cluster coverage combining refresh + invalidate + timeout failover with deterministic correlation and server-local capability-snapshot retention/replacement assertions.
+- [x] Expanded aggregated adapter diagnostics controls with `freshness` query filtering, preserving manager-sourced deterministic ordering and cross-surface freshness consistency.
+- [x] Added retry-window convergence integration coverage across consecutive failover/recovery cycles, including timeout-stage-specific degraded/unreachable transitions with deterministic correlation streams.
+- [x] Added `MCPClientManager` clock seam (`now_provider`) for deterministic retry-window and freshness-time progression in tests without direct retry-window state mutation.
+- [x] Expanded clock-driven mixed-state MCP coverage by migrating remaining retry-window mutations to injected clock progression and adding capability-snapshot timing retention/replacement assertions under deterministic convergence flows.
+- [x] Added shared MCP test-time clock support and stage-paired timeout convergence coverage (`initialize` vs `invoke`) with explicit stage-specific retry/status/snapshot timing assertions.
+- [x] Extracted reusable MCP NAT test transport scaffolding into `tests/support/mcp_nat_helpers.py` (API fake session and cluster session factory/models) and migrated integration tests to shared helpers.
+- [x] Extended stage-paired retry-window convergence coverage with deterministic diagnostics-filter assertions (`server`, `request_id`, `correlation_id`, `limit`) for both `/api/v1/mcp/events` and `/api/v1/mcp/invocation-events`.
+- [x] Extracted unit MCP NAT session scaffolding into shared support (`FakeNatSession`, `FakeNatSessionFactory`) and migrated unit adapter/control coverage to shared helpers.
+- [x] Extended diagnostics filter parity to `resources/read` failover/recovery paths with deterministic invocation (`server`, `method`, `request_id`, `limit`) and connection (`server`, `correlation_id`, `limit`) assertions.
+- [x] Added stage-paired `resources/read` retry-window convergence coverage (`initialize` vs `invoke` timeout) with deterministic status/retry deltas, server-local capability snapshot timing assertions, and correlated diagnostics-filter checks.
+- [x] Expanded shared cluster NAT helper controls for `resources/read` invoke failures/timeouts (`fail_on_resource_reads`, `fail_on_timeout_resource_reads`) and reused them in convergence coverage.
+- [x] Extracted shared convergence assertion helpers into `tests/support/mcp_convergence_helpers.py` and migrated stage-paired tool/resource convergence tests to shared filter/phase assertions.
+- [x] Added scripted per-server/per-method flapping controls (`set_failure_script`) to `ClusterNatSessionFactory` and mixed tool/resource scripted-flapping integration coverage for deterministic failover/correlation order.
+- [x] Extended scripted-failure realism with initialize-stage script handling and precedence (scripted initialize actions now override set-based initialize timeout toggles when both are configured).
+- [x] Migrated remaining diagnostics-filter integration assertions to shared convergence helpers for deterministic reuse across event/filter scenarios.
+- [x] Added focused unit coverage for scripted NAT helper semantics across `initialize`, `tools/call`, and `resources/read` keys (ordering, unsupported actions, script exhaustion fallback to set-based toggles).
+- [x] Added scripted `error` action convergence coverage for `initialize` and `invoke` failover paths with deterministic `transport_error` classification and correlation-filter assertions.
+- [x] Extended scripted `error` convergence parity to `resources/read` for paired `initialize`/`invoke` failover paths, including deterministic invocation/connection filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`).
+- [x] Added helper-level failure-script isolation coverage for mixed `primary`/`backup` server + method scripts under shared `ClusterNatSessionFactory` state.
+- [x] Extended scripted initialize-precedence parity to `resources/read`: integration coverage now proves scripted `initialize: ok` overrides set-based initialize timeout toggles, preserves deterministic filter behavior, and avoids degraded transition for the overridden request.
+- [x] Added API-level mixed-script isolation regression coverage across sequential `tools/call` + `resources/read` requests, asserting only targeted server/method script queues are consumed while unrelated queues remain intact until exercised.
+- [x] Added API-level mixed initialize+invoke script isolation coverage across `primary` and `backup`, asserting initialize-script queues are consumed independently from method-script queues while deterministic failover/correlation behavior is preserved.
+- [x] Added API-level initialize-script exhaustion regression coverage proving fallback to set-based initialize timeout toggles after script depletion without mutating unrelated invoke method queues.
+- [x] Added helper/API call-order parity coverage for mixed scripted failover:
+  - unit coverage now asserts deterministic `ClusterNatSessionFactory.calls` ordering across mixed `initialize` + `tools/call` + `resources/read` scripted actions with paired `primary`/`backup` failover.
+  - integration coverage now cross-checks `factory.calls` ordering against invocation-event `initialize_start`/`invoke_start` phase order for one mixed scripted `tools/call` + `resources/read` sequence while preserving existing diagnostics-filter assertions.
+- [x] Added initialize-cache call-order parity coverage for repeated invocations:
+  - unit coverage now validates repeated same-server invokes do not emit extra transport `initialize` calls until explicit adapter invalidation, with paired `tools/call` and `resources/read` checks.
+  - unit coverage also asserts invalidation restores one transport `initialize` on next invoke and rotates to a new session id.
+  - integration coverage now validates repeated same-server `tools/call` + `resources/read` requests without invalidation keep transport call order at one `initialize` followed by invoke calls, while invocation-event phase-start streams continue to match via subsequence parity and deterministic diagnostics filters.
+- [x] Added force-reinitialize trigger call-order parity coverage:
+  - unit coverage now validates stale-expiry and non-healthy-status trigger paths each force a transport `initialize` before the next invoke, with paired `tools/call` and `resources/read` assertions.
+  - integration coverage now drives stale-expiry and degraded-status transitions between repeated same-server requests and verifies transport call-order includes the expected additional `initialize` calls.
+  - integration coverage preserves deterministic diagnostics-filter assertions and maintains invocation-phase/transport-call subsequence parity checks across the trigger sequence.
+- [x] Added retry-window gating call-order parity coverage:
+  - unit coverage now validates both degraded and unreachable retry-window-closed servers are skipped without primary transport calls and deterministically re-enter with `initialize` before invoke once retry windows reopen.
+  - unit coverage includes paired `tools/call` and `resources/read` assertions for method parity.
+  - integration coverage now validates timeout -> closed retry window skip -> retry-window reopen sequencing while backup serves requests, including transport call-order subsequence parity with invocation phase starts and deterministic diagnostics-filter assertions per request.
+- [x] Extended retry-window call-order parity to `resources/read` and backup-state matrix paths:
+  - added helper-level `resources/read` matrix coverage distinguishing backup non-retryable degraded vs unreachable states under mixed preferred-server ordering, with deterministic primary re-entry ordering (`initialize` before `resources/read`).
+  - added API-level `resources/read` retry-window regression mirroring timeout -> closed retry-window skip -> retry-window reopen sequencing while backup serves requests.
+  - preserved deterministic diagnostics-filter assertions and invocation-phase/transport-call subsequence parity checks across all requests in the sequence.
+- [x] Added unreachable-transition retry-window parity for `resources/read`:
+  - added helper-level matrix coverage that drives primary `initialize` timeout transitions from degraded -> unreachable under healthy-first candidate ordering, including deterministic backup skip/re-entry behavior across both invoke methods.
+  - added API-level `/api/v1/mcp/invoke/resource` unreachable-transition regression that forces a second primary initialize timeout, verifies closed-window skip while backup serves, and asserts primary re-entry call order (`initialize` then `resources/read`) with invocation-phase subsequence parity.
+  - retained deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) including failed-request request-id recovery from invocation-event deltas.
+- [x] Added unreachable-transition retry-window parity for `tools/call` and extracted failed-request helper reuse:
+  - added API-level `/api/v1/mcp/invoke/tool` unreachable-transition regression mirroring healthy-first ordering constraints (primary initialize timeout -> backup serve -> forced second primary initialize timeout -> unreachable skip -> primary re-entry).
+  - preserved deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) and invocation-phase/transport-call subsequence parity across the full request sequence.
+  - extracted shared invocation-event delta helper for failed-request request-id recovery and applied it to both `tools/call` and `resources/read` unreachable-transition regressions to reduce brittle duplicated parsing.
+- [x] Reduced unreachable-transition sequence duplication and expanded backup reinitialize parity:
+  - extracted shared integration helper scaffolding for unreachable-transition request progression so `tools/call` and `resources/read` API regressions reuse the same first-failover/closed-window/forced-unreachable/skip/re-entry flow while keeping per-request diagnostics assertions explicit in each test.
+  - added helper-level unit coverage asserting degraded backup reinitialize call-order parity (`initialize` before invoke) when primary is forced unreachable under mixed preferred ordering, with paired checks for both `tools/call` and `resources/read`.
+  - preserved clock-driven semantics and transport-order assertions without direct retry-window state mutation.
+- [x] Consolidated retry-window call-order subsequence helpers and extended non-retryable backup matrix:
+  - added shared convergence helpers for collecting invocation events by request id, deriving phase-start call-order tuples, and asserting transport-call subsequence parity.
+  - migrated retry-window gating and unreachable-transition API call-order tests (`tools/call` + `resources/read`) to the shared subsequence helpers to reduce repeated cursor-loop scaffolding.
+  - added helper-level unit matrix coverage pairing primary unreachable with backup degraded/unreachable retry-window-closed states, asserting deterministic no-candidate failure and deterministic backup re-entry ordering (`initialize` before invoke) after retry-window reopen.
+- [x] Completed remaining call-order helper migration and added simultaneous unreachable reopen ordering matrix:
+  - migrated remaining integration call-order parity tests (`scripted call-order`, `repeated same-server initialize-cache`, `force-reinitialize trigger`) to shared subsequence helpers to remove repeated request-id event aggregation/cursor-loop scaffolding.
+  - preserved explicit observed transport-call literals while asserting phase-start/transport subsequence parity through shared helper utilities.
+  - added helper-level matrix coverage for simultaneous `UNREACHABLE` retry-window reopen with preferred-order determinism assertions via invocation `initialize_start` sequencing and successful transport-call ordering semantics.
+- [x] Added API-level simultaneous `UNREACHABLE` retry-window reopen parity across tool/resource invoke paths:
+  - added one parametrized integration regression covering both invoke endpoints and both preferred-order permutations under closed-window no-candidate and simultaneous reopen progression.
+  - assertions now verify deterministic preferred-order candidate attempt sequencing via invocation `initialize_start` phases while preserving transport call-order semantics that only successful initialize/invoke calls are logged.
+  - retained deterministic diagnostics filter parity (`server`, `method`, `request_id`, `correlation_id`, `limit`) and shared phase-start/transport subsequence checks for the reopen request.
+- [x] Reduced duplicated retry-window API scenario scaffolding in integration tests:
+  - added shared retry-window test harness setup helpers for cluster manager/session factory/clock/client creation and server registration.
+  - added shared invoke-construction and progression helpers for retry-window gating and simultaneous unreachable-reopen sequences.
+  - migrated tool/resource gating, tool/resource unreachable-transition, and simultaneous unreachable-reopen tests to shared progression scaffolding while preserving explicit per-request diagnostics assertions and explicit per-test transport call-order literals.
+- [x] Reduced duplicated unreachable-transition primary diagnostics assertions:
+  - added shared integration helper that asserts per-request primary invocation/connection diagnostics across unreachable-transition sequences based on method + request-id order.
+  - migrated both tool and resource unreachable-transition parity tests to helper-driven diagnostics assertions while keeping explicit expected phase/status vectors visible at each call site.
+  - preserved explicit per-test transport call-order literal assertions and existing phase-start/transport subsequence parity checks.
+- [x] Reduced duplicated unreachable-transition call-order literal assertions:
+  - added shared integration helper that asserts unreachable-transition `fifth_slice` and full `observed_call_order` literals per method using explicit expected tuple lists passed from each test.
+  - migrated tool/resource unreachable-transition tests to helper-driven call-order literal assertions while keeping explicit expected tuple lists visible at call sites.
+  - preserved existing diagnostics assertions and phase-start/transport subsequence parity checks.
+- [x] Reduced duplicated retry-window gating call-order expectation vectors:
+  - extracted shared module-level constants for method-specific retry-window gating call-order expectations (`expected_third_slice` and full `expected_observed_call_order` tuples).
+  - migrated both tool/resource retry-window gating call-order tests to consume the shared constants via the shared call-order helper.
+  - preserved helper invocation semantics, diagnostics-filter assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated primary diagnostics helper wiring across retry-window and unreachable-transition paths:
+  - consolidated duplicated primary request-id scoped invocation/connection diagnostics assertions into one shared integration helper.
+  - migrated both tool/resource retry-window gating and tool/resource unreachable-transition call sites to the shared helper while keeping explicit expected phase/status vectors unchanged.
+  - preserved existing call-order helper assertions and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated unreachable-transition call-order expectation vectors:
+  - extracted shared module-level constants for method-specific unreachable-transition call-order expectations (`expected_fifth_slice` and full `expected_observed_call_order` tuples).
+  - migrated both tool/resource unreachable-transition call-order tests to consume these shared constants via the existing unreachable-transition call-order helper.
+  - preserved helper invocation semantics, diagnostics-filter assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated call-order collection scaffolding across retry-window and unreachable-transition call-order helpers:
+  - added a shared method-scoped transport call-order collector for `initialize` + invoke tuple streams with optional starting offset support.
+  - migrated both retry-window gating and unreachable-transition call-order helpers to consume the shared collector while preserving per-slice literal assertions.
+  - preserved diagnostics-filter assertions and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated request-id tuple scaffolding across retry-window and unreachable-transition integration assertions:
+  - added shared helper utilities to derive ordered request-id tuples from retry-window and unreachable-transition sequence dataclasses.
+  - migrated tool/resource retry-window gating and unreachable-transition tests to consume the shared request-id helpers for diagnostics/event filtering inputs.
+  - preserved diagnostics-filter assertions, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated expected-call-order derivation scaffolding across call-order parity integrations:
+  - added shared helper utility that derives expected call-order tuples from request-id scoped invocation events.
+  - migrated retry-window/unreachable-transition and adjacent mixed-method call-order tests to consume this helper instead of repeated event-collection + phase-start derivation scaffolding.
+  - preserved request-id ordering semantics, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated mixed-method observed-call-order collection scaffolding:
+  - added shared helper utility to collect observed transport call-order tuples for mixed-method (`initialize` + `tools/call` + `resources/read`) scenarios.
+  - migrated remaining mixed-method call-order tests to consume the helper while preserving explicit expected observed-order literals.
+  - preserved diagnostics-filter assertions and phase-start/transport subsequence parity checks unchanged.
+- [x] Normalized call-order expectation vector typing/signatures for consistency:
+  - converted method-specific call-order expectation constants to immutable tuple-based vectors.
+  - updated call-order helper signatures to accept `Sequence[tuple[str, str]]` and normalized assertions for sequence-backed expectation constants.
+  - preserved call-order literal semantics, diagnostics-filter assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Normalized primary phase/status expectation vector typing for consistency:
+  - converted primary unreachable-transition and retry-window gating phase/status expectation constants to immutable tuple-based inner vectors.
+  - updated shared primary diagnostics helper typing to accept `Sequence[Sequence[str]]` and normalized assertion-boundary inputs to concrete lists.
+  - preserved diagnostics-filter semantics, call-order literal assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated call-order subsequence assertion wiring:
+  - added shared helper that derives expected call-order from request ids and performs subsequence assertion against observed transport order.
+  - migrated retry-window/unreachable-transition and adjacent call-order tests to the shared helper while preserving explicit observed-call-order literals.
+  - preserved diagnostics-filter semantics and phase-start/transport subsequence behavior unchanged.
+- [x] Reduced duplicated retry-window invoke-builder scaffolding:
+  - added dedicated tool/resource invoke-builder wrapper helpers around shared preferred-server invoke construction.
+  - migrated tool/resource retry-window gating and unreachable-transition tests to wrapper helpers, removing repeated inline invoke-path/payload scaffolding.
+  - preserved request progression semantics, diagnostics assertions, and call-order parity checks unchanged.
+- [x] Reduced duplicated retry-window unreachable-transition bootstrap wiring:
+  - added a shared helper for method-specific unreachable-transition bootstrap (harness setup + primary initialize timeout script + invoke wiring + sequence run).
+  - migrated tool/resource unreachable-transition retry-window tests to this helper while preserving explicit per-method diagnostics and call-order expectation constants.
+  - preserved progression semantics, diagnostics-filter assertions, and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated retry-window gating bootstrap wiring:
+  - added a shared helper for method-specific retry-window gating bootstrap (harness setup + method-specific invoke failure script + invoke wiring + gating sequence run).
+  - migrated tool/resource retry-window gating tests to this helper while preserving explicit per-method diagnostics/call-order vectors.
+  - preserved progression semantics, diagnostics-filter assertions, and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated primary success diagnostics assertion wiring in mixed-method call-order tests:
+  - added shared helper for primary successful-request diagnostics (`initialize_success` + `invoke_success` phases) with per-request expected status handling.
+  - migrated loop-based diagnostics assertions in repeated-same-server and force-reinitialize call-order tests to this helper.
+  - preserved request sequencing, call-order literal assertions, and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated mixed-method request-spec scaffolding in call-order tests:
+  - extracted shared mixed-method primary request-spec constants used by repeated-same-server and force-reinitialize call-order tests.
+  - extracted shared force-reinitialize expected-status vectors and rewired loop iteration to zip shared request specs with behavior-specific status expectations.
+  - preserved reinitialize trigger mutations, diagnostics assertions, and call-order literal/subsequence checks unchanged.
+- [x] Reduced duplicated mixed-method observed call-order literal vectors in call-order tests:
+  - extracted shared expected observed call-order constants for repeated-same-server and force-reinitialize mixed-method call-order tests.
+  - rewired both tests to assert against tuple-backed shared constants while preserving explicit expected-order vectors.
+  - preserved diagnostics-filter assertions and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated mixed-method call-order literal assertion wiring in call-order tests:
+  - added shared helper to collect mixed-method observed transport call order and assert expected literal vectors.
+  - migrated repeated-same-server and force-reinitialize call-order tests to helper-driven literal assertions while preserving explicit expected vectors at call sites.
+  - preserved diagnostics-filter assertions and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated mixed-method request-execution scaffolding in call-order tests:
+  - added shared helper that executes mixed-method request sequences (request post + request-id collection + primary success diagnostics assertions).
+  - added optional per-index pre-request mutation hook and migrated force-reinitialize trigger mutations to this hook while preserving explicit trigger conditions.
+  - migrated repeated-same-server and force-reinitialize tests to helper-driven request execution while preserving explicit request-spec/status vectors and call-order expectations.
+- [x] Reduced duplicated mixed-method primary setup scaffolding in call-order tests:
+  - added shared helper for primary mixed-method harness setup (`ClusterNatSessionFactory` + `MCPClientManager` + `TestClient` + primary server registration).
+  - helper supports optional `now_provider` injection and force-reinitialize coverage now consumes it to preserve deterministic stale-expiry trigger behavior.
+  - migrated repeated-same-server and force-reinitialize tests to helper-driven setup while preserving explicit trigger mutations and call-order expectations.
+- [x] Reduced duplicated mixed-method final parity assertion wiring in call-order tests:
+  - added shared helper for mixed-method phase-start/transport subsequence parity assertions using request-id vectors and observed call-order tuples.
+  - migrated repeated-same-server and force-reinitialize mixed-method call-order tests to helper-driven final parity assertions.
+  - preserved explicit request-id sequencing, expected observed call-order literals, and diagnostics-filter semantics unchanged.
+- [x] Expanded mixed-method parity-helper adoption scope in call-order tests:
+  - migrated remaining scripted mixed-method call-order parity assertion call site to the shared mixed-method parity helper.
+  - removed the last mixed-method direct invocation of `_assert_call_order_subsequence_for_requests(...)` at test call sites.
+  - preserved request-id sequencing semantics, observed call-order collection behavior, and diagnostics-filter expectations unchanged.
+- [x] Reduced duplicated retry-window gating call-order literal assertions:
+  - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
+  - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
+  - preserved existing diagnostics-filter assertions and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated retry-window gating expectation vectors:
+  - extracted shared module-level constants for primary retry-window gating expected phase/status vectors.
+  - added a shared integration helper to assert per-request primary invocation/connection diagnostics for retry-window gating sequences based on explicit method + request-id ordering.
+  - migrated both tool/resource retry-window gating call-order tests to use the shared constants/helper while preserving explicit per-method transport call-order literals and phase-start/transport subsequence parity assertions.
+- [x] Reduced duplicated unreachable-transition expectation vectors:
+  - extracted shared module-level constants for primary unreachable-transition expected phase/status vectors.
+  - migrated tool/resource unreachable-transition diagnostics assertions to consume shared vectors rather than repeated tuple literals.
+  - preserved helper invocation semantics, call-order literal assertions, and phase-start/transport subsequence parity checks.
+- [x] MCP integration coverage expanded for invocation and fallback behavior in `tests/integration/test_api_mcp.py`.
+- [x] P11 orchestration baseline expanded: `ToolOrchestrator` now runs change+test(+optional commit) workflows with event persistence.
+- [x] Added workflow and event APIs: `POST /api/v1/projects/{id}/workflows/change-test` and `GET /api/v1/projects/{id}/events`.
+- [x] Added orchestration coverage in `tests/unit/test_tool_orchestrator.py` and `tests/integration/test_api_workflows_events.py`.
+- [x] P16 self-bootstrap baseline added: `SelfBootstrapManager` coordinates branch/change/test/commit/push, optional CI polling, and optional health-check gating.
+- [x] Added self-bootstrap API endpoint: `POST /api/v1/projects/{id}/self-bootstrap/run`.
+- [x] Added self-bootstrap coverage in `tests/unit/test_self_bootstrap_manager.py` and `tests/integration/test_api_self_bootstrap.py`.
+- [x] Expanded self-bootstrap with PR lifecycle hooks (create + optional auto-merge) and rollback-on-unhealthy deploy behavior.
+- [x] Replaced Git API placeholders with manager-backed Actions/PR operations in `src/att/api/routes/git.py` and `src/att/core/git_manager.py`.
+- [x] Added self-bootstrap watchdog-style health retry controls before rollback (`health_check_retries`, `health_check_interval_seconds`).
+- [x] Wired baseline live self-bootstrap adapters in API deps (CI status from `gh run list`, PR create/merge hooks via `gh` CLI).
+- [x] Added CI status parser helper and unit coverage in `src/att/core/self_bootstrap_integrations.py` and `tests/unit/test_self_bootstrap_integrations.py`.
+- [x] Expanded self-bootstrap with restart-watchdog polling controls (`restart_watchdog_retries`, `restart_watchdog_interval_seconds`) and rollback on unstable post-deploy runtime.
+- [x] Wired baseline deploy/restart/rollback adapters into self-bootstrap deps (`DeployManager.run`, `RuntimeManager.status`, `RuntimeManager.stop`) and surfaced `restart_watchdog_status` in API responses.
+- [x] Expanded MCP transport endpoint at `POST /mcp` with MCP handshake methods (`initialize`, `notifications/initialized`, `ping`) and manager-backed ATT tool/resource handlers aligned to the registered catalog.
+- [x] Added MCP transport integration coverage in `tests/integration/test_mcp_transport.py` for handshake, tool invocation, resource reads, and error cases.
+- [x] Implemented typed MCP project-tool adapter parsing in `src/att/mcp/tools/project_tools.py` and wired transport project operations to this adapter for normalized argument validation/execution.
+- [x] Implemented typed MCP code-tool adapter parsing in `src/att/mcp/tools/code_tools.py` and wired transport code operations to this adapter for normalized argument validation/execution.
+- [x] Implemented typed MCP git-tool adapter parsing in `src/att/mcp/tools/git_tools.py` and wired transport git operations to this adapter for normalized argument validation/execution.
+- [x] Implemented typed MCP runtime/test tool adapter parsing in `src/att/mcp/tools/runtime_tools.py` and `src/att/mcp/tools/test_tools.py`, wired transport runtime/test operations to these adapters for normalized argument validation/execution.
+- [x] Implemented typed MCP debug/deploy tool adapter parsing in `src/att/mcp/tools/debug_tools.py` and `src/att/mcp/tools/deploy_tools.py`, wired transport debug/deploy operations to these adapters for normalized argument validation/execution.
+- [x] Implemented typed MCP resource URI parsing in `src/att/mcp/tools/resource_refs.py` and wired `resources/read` flow to this adapter for normalized resource dispatch.
+- [x] Added project clone/download API coverage in `tests/integration/test_api_projects.py` and unit coverage for clone/download logic in `tests/unit/test_project_manager.py`.
+- [x] Implemented `att.project.download` in MCP transport and added defensive JSON-RPC error wrapping for unexpected tool/resource handler exceptions.
+- [x] Replaced e2e placeholder with real API smoke tests in `tests/e2e/test_placeholder.py` (health endpoint, MCP discovery, and MCP tools surface check).
+- [x] Test scaffolding added under `tests/unit`, `tests/integration`, `tests/property`, and `tests/e2e` for the implemented baseline.
+- [x] API coverage hardening pass completed for current endpoints (`code`, `git`, `runtime`, `test`, `debug`, `deploy`) with integration tests in `tests/integration/test_api_feature_endpoints.py`.
+- [x] Runtime process output capture implemented in `RuntimeManager` via a bounded in-memory log buffer drained from subprocess stdout/stderr.
+- [x] Runtime log reads are now manager-backed across API and MCP surfaces (`GET /api/v1/projects/{id}/runtime/logs`, `att.runtime.logs`, and `att://project/{id}/logs`).
+- [x] Added runtime log coverage in `tests/unit/test_runtime_manager.py` and expanded MCP transport integration assertions in `tests/integration/test_mcp_transport.py`.
+- [x] Expanded `TestRunner` execution output with parsed pytest summary metrics (pass/fail/skip/error counts, duration, no-tests flag) and timeout handling.
+- [x] Added pytest summary parsers for console, JSON report, and JUnit XML inputs in `src/att/core/test_runner.py`.
+- [x] Wired enriched test-run payloads through API and MCP transport (`/api/v1/projects/{id}/test/run`, `att.test.run`, `att.test.results`) including optional marker and timeout inputs.
+- [x] Added test-runner unit coverage in `tests/unit/test_test_runner.py` and expanded test-tool adapter coverage in `tests/unit/test_test_tools.py`.
+- [x] Added `RuntimeManager.probe_health()` with typed `RuntimeHealthProbe` output and optional configured process+HTTP+command probes.
+- [x] Runtime status surfaces now emit health diagnostics (`healthy`, `health_probe`, `health_reason`, `health_checked_at`) via API (`GET /api/v1/projects/{id}/runtime/status`) and MCP (`att.runtime.status`).
+- [x] Self-bootstrap restart watchdog now consumes runtime probe signals and surfaces restart diagnostics (`restart_watchdog_reason`) through manager results + API response payloads.
+- [x] Added cursor-based runtime log streaming reads in manager/API/MCP (`RuntimeManager.read_logs`, `GET /api/v1/projects/{id}/runtime/logs`, `att.runtime.logs`, and `att://project/{id}/logs?cursor=...&limit=...`).
+- [x] Added baseline release-aware rollback metadata in self-bootstrap (`requested_release_id`, `previous_release_id`, `rollback_release_id`) and surfaced resolved rollback target diagnostics in manager/API results.
+- [x] Integrated release metadata source resolution for self-bootstrap rollback defaults via git (`HEAD`/`HEAD^`) and surfaced `release_metadata_source` in API responses.
+- [x] Added rollback policy gating/validation outcomes in self-bootstrap (`rollback_policy_status`, `rollback_policy_reason`, `rollback_target_valid`) with deny-before-execute behavior for invalid targets.
+- [x] Added self-bootstrap release-source adapter abstraction (`ReleaseSourceContext`, `ReleaseSourceAdapter`) with fallback-chain resolution and backward-compatible legacy provider support.
+- [x] Expanded self-bootstrap rollback policy matrix with failure-class/deployment-context controls (`rollback_on_*_failure`, `deployment_context`) and result diagnostics (`rollback_failure_class`, `rollback_deployment_context`).
+- [x] Wired runtime-log release metadata adapter + git fallback in API deps for release source-of-truth resolution beyond commit history only.
+- [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
+- [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
+- [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (235 tests).
+- [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
+- [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
+- [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).
+- [ ] P15 and P17-P25 not started (planned phases remain unchanged).
+- [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
+
