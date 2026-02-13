@@ -19,6 +19,9 @@ class SelfBootstrapRequestModel(BaseModel):
     create_pr: bool = True
     auto_merge_on_ci_success: bool = True
     deploy_target: str | None = None
+    requested_release_id: str | None = None
+    previous_release_id: str | None = None
+    rollback_release_id: str | None = None
     health_check_target: str | None = None
     health_check_retries: int = 1
     health_check_interval_seconds: int = 5
@@ -40,6 +43,8 @@ class SelfBootstrapResponseModel(BaseModel):
     health_status: str
     rollback_performed: bool
     rollback_succeeded: bool | None
+    deployed_release_id: str | None = None
+    rollback_target_release_id: str | None = None
     success: bool
     test_returncode: int
     event_ids: list[str] = Field(default_factory=list)

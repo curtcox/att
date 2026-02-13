@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 from uuid import uuid4
 
 from att.core.git_manager import GitManager
@@ -22,7 +23,9 @@ type Sleeper = Callable[[float], Awaitable[None]]
 type PRCreator = Callable[[str, str], Awaitable[str]]
 type PRMerger = Callable[[str, str], Awaitable[bool]]
 type Deployer = Callable[[str, str], Awaitable[bool]]
-type RollbackExecutor = Callable[[str, str], Awaitable[bool]]
+type RollbackExecutorLegacy = Callable[[str, str], Awaitable[bool]]
+type RollbackExecutorWithRelease = Callable[[str, str, str | None], Awaitable[bool]]
+type RollbackExecutor = RollbackExecutorLegacy | RollbackExecutorWithRelease
 
 
 @dataclass(slots=True)
@@ -54,6 +57,9 @@ class SelfBootstrapRequest:
     create_pr: bool = True
     auto_merge_on_ci_success: bool = True
     deploy_target: str | None = None
+    requested_release_id: str | None = None
+    previous_release_id: str | None = None
+    rollback_release_id: str | None = None
     health_check_target: str | None = None
     health_check_retries: int = 1
     health_check_interval_seconds: int = 5
@@ -78,6 +84,8 @@ class SelfBootstrapResult:
     success: bool
     workflow_result: WorkflowRunResult
     restart_watchdog_reason: str | None = None
+    deployed_release_id: str | None = None
+    rollback_target_release_id: str | None = None
 
 
 class SelfBootstrapManager:
@@ -193,6 +201,8 @@ class SelfBootstrapManager:
                     rollback_succeeded=None,
                     success=False,
                     workflow_result=workflow,
+                    deployed_release_id=deployed_release_id,
+                    rollback_target_release_id=rollback_target_release_id,
                 )
 
         if request.auto_merge_on_ci_success and pr_url is not None and self._pr_merger is not None:
@@ -228,12 +238,17 @@ class SelfBootstrapManager:
         rollback_performed = False
         rollback_succeeded: bool | None = None
         deploy_target = request.deploy_target or request.health_check_target
+        deployed_release_id = request.requested_release_id
+        rollback_target_release_id = self._resolve_rollback_release_id(request)
 
         if self._deployer is not None and deploy_target is not None:
             await self._record_event(
                 project_id=request.project_id,
                 event_type=EventType.DEPLOY_STARTED,
-                payload={"target": deploy_target},
+                payload={
+                    "target": deploy_target,
+                    "release_id": deployed_release_id,
+                },
             )
             deployed = await self._deployer(request.project_id, deploy_target)
             if not deployed:
@@ -243,13 +258,18 @@ class SelfBootstrapManager:
                     payload={
                         "phase": "deploy",
                         "target": deploy_target,
+                        "release_id": deployed_release_id,
                         "message": "Deploy failed",
                     },
                 )
                 await self._record_event(
                     project_id=request.project_id,
                     event_type=EventType.DEPLOY_COMPLETED,
-                    payload={"target": deploy_target, "healthy": False},
+                    payload={
+                        "target": deploy_target,
+                        "healthy": False,
+                        "release_id": deployed_release_id,
+                    },
                 )
                 return SelfBootstrapResult(
                     branch_name=branch_name,
@@ -282,12 +302,14 @@ class SelfBootstrapManager:
                     payload={
                         "phase": "restart_watchdog",
                         "target": deploy_target,
+                        "release_id": deployed_release_id,
                         "message": restart_signal.reason or "Runtime failed restart watchdog checks",
                     },
                 )
                 rollback_performed, rollback_succeeded = await self._attempt_rollback(
                     project_id=request.project_id,
                     target=deploy_target,
+                    target_release_id=rollback_target_release_id,
                 )
                 await self._record_event(
                     project_id=request.project_id,
@@ -295,8 +317,10 @@ class SelfBootstrapManager:
                     payload={
                         "target": deploy_target,
                         "healthy": False,
+                        "release_id": deployed_release_id,
                         "restart_watchdog_status": restart_watchdog_status,
                         "restart_watchdog_reason": restart_watchdog_reason,
+                        "rollback_target_release_id": rollback_target_release_id,
                     },
                 )
                 return SelfBootstrapResult(
@@ -313,6 +337,8 @@ class SelfBootstrapManager:
                     success=False,
                     workflow_result=workflow,
                     restart_watchdog_reason=restart_watchdog_reason,
+                    deployed_release_id=deployed_release_id,
+                    rollback_target_release_id=rollback_target_release_id,
                 )
 
         if self._health_checker is not None and request.health_check_target is not None:
@@ -328,6 +354,7 @@ class SelfBootstrapManager:
                 payload={
                     "target": request.health_check_target,
                     "healthy": healthy,
+                    "release_id": deployed_release_id,
                     "restart_watchdog_status": restart_watchdog_status,
                     "restart_watchdog_reason": restart_watchdog_reason,
                 },
@@ -337,6 +364,7 @@ class SelfBootstrapManager:
                     rollback_performed, rollback_succeeded = await self._attempt_rollback(
                         project_id=request.project_id,
                         target=deploy_target,
+                        target_release_id=rollback_target_release_id,
                     )
 
                 return SelfBootstrapResult(
@@ -353,6 +381,8 @@ class SelfBootstrapManager:
                     success=False,
                     workflow_result=workflow,
                     restart_watchdog_reason=restart_watchdog_reason,
+                    deployed_release_id=deployed_release_id,
+                    rollback_target_release_id=rollback_target_release_id,
                 )
 
         if deploy_target is not None and not (
@@ -364,6 +394,7 @@ class SelfBootstrapManager:
                 payload={
                     "target": deploy_target,
                     "healthy": True,
+                    "release_id": deployed_release_id,
                     "restart_watchdog_status": restart_watchdog_status,
                     "restart_watchdog_reason": restart_watchdog_reason,
                 },
@@ -383,12 +414,24 @@ class SelfBootstrapManager:
             success=True,
             workflow_result=workflow,
             restart_watchdog_reason=restart_watchdog_reason,
+            deployed_release_id=deployed_release_id,
+            rollback_target_release_id=rollback_target_release_id,
         )
 
-    async def _attempt_rollback(self, *, project_id: str, target: str) -> tuple[bool, bool | None]:
+    async def _attempt_rollback(
+        self,
+        *,
+        project_id: str,
+        target: str,
+        target_release_id: str | None,
+    ) -> tuple[bool, bool | None]:
         if self._rollback_executor is None:
             return False, None
-        rollback_succeeded = await self._rollback_executor(project_id, target)
+        rollback_succeeded = await self._run_rollback_executor(
+            project_id=project_id,
+            target=target,
+            target_release_id=target_release_id,
+        )
         await self._record_event(
             project_id=project_id,
             event_type=EventType.ERROR,
@@ -396,9 +439,48 @@ class SelfBootstrapManager:
                 "phase": "rollback",
                 "target": target,
                 "succeeded": rollback_succeeded,
+                "release_id": target_release_id,
             },
         )
         return True, rollback_succeeded
+
+    @staticmethod
+    def _resolve_rollback_release_id(request: SelfBootstrapRequest) -> str | None:
+        if request.rollback_release_id:
+            return request.rollback_release_id
+        return request.previous_release_id
+
+    async def _run_rollback_executor(
+        self,
+        *,
+        project_id: str,
+        target: str,
+        target_release_id: str | None,
+    ) -> bool:
+        if self._rollback_executor is None:
+            return False
+        if self._rollback_executor_accepts_release_id(self._rollback_executor):
+            executor = cast(RollbackExecutorWithRelease, self._rollback_executor)
+            return await executor(project_id, target, target_release_id)
+        executor = cast(RollbackExecutorLegacy, self._rollback_executor)
+        return await executor(project_id, target)
+
+    @staticmethod
+    def _rollback_executor_accepts_release_id(executor: RollbackExecutor) -> bool:
+        try:
+            signature = inspect.signature(executor)
+        except (TypeError, ValueError):
+            return False
+        positional_params = [
+            parameter
+            for parameter in signature.parameters.values()
+            if parameter.kind
+            in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ]
+        return len(positional_params) >= 3
 
     async def _poll_health(
         self,

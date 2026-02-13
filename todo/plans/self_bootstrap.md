@@ -27,6 +27,13 @@ P04-P13
 - Added restart-watchdog polling controls (`restart_watchdog_retries`, `restart_watchdog_interval_seconds`) to validate runtime stability after deploy.
 - Added rollback-on-restart-watchdog-failure path and surfaced `restart_watchdog_status` in `SelfBootstrapResult` / API response schema.
 - Restart-watchdog flow now accepts typed diagnostics (`RestartWatchdogSignal`) and surfaces `restart_watchdog_reason` in manager and API responses.
+- Added baseline release-aware rollback metadata:
+  - Request fields: `requested_release_id`, `previous_release_id`, `rollback_release_id`
+  - Result/API fields: `deployed_release_id`, `rollback_target_release_id`
+  - Rollback executor now supports release-target-aware invocation with backwards-compatible fallback for legacy two-argument executors.
+- Remaining scope before completion:
+  - Integrate release metadata from concrete deploy/release sources (not request-only metadata).
+  - Harden rollback policy/validation semantics for production deployment flows.
 - Wired baseline live adapters in `src/att/api/deps.py`:
   - CI status parsing from `gh run list` output
   - PR creation via `gh pr create`

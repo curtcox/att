@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from att.api.app import create_app
 from att.api.deps import get_project_manager, get_runtime_manager
+from att.core.runtime_manager import RuntimeLogRead
 from att.core.project_manager import ProjectManager
 from att.db.store import SQLiteStore
 
@@ -18,6 +19,34 @@ class _FakeRuntimeManager:
         if limit is None or limit <= 0:
             return list(self._logs)
         return self._logs[-limit:]
+
+    def read_logs(self, *, cursor: int | None = None, limit: int | None = None) -> RuntimeLogRead:
+        logs = list(self._logs)
+        if cursor is None:
+            if limit is not None and limit > 0:
+                logs = logs[-limit:]
+            start_cursor = len(self._logs) - len(logs)
+            return RuntimeLogRead(
+                logs=logs,
+                cursor=len(self._logs),
+                start_cursor=start_cursor,
+                end_cursor=len(self._logs),
+                truncated=False,
+                has_more=False,
+            )
+        start = max(0, cursor)
+        logs = logs[start:]
+        if limit is not None and limit > 0:
+            logs = logs[:limit]
+        next_cursor = start + len(logs)
+        return RuntimeLogRead(
+            logs=logs,
+            cursor=next_cursor,
+            start_cursor=start,
+            end_cursor=len(self._logs),
+            truncated=False,
+            has_more=next_cursor < len(self._logs),
+        )
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -139,6 +168,7 @@ def test_mcp_transport_tool_call_and_resource_read(tmp_path: Path) -> None:
     )
     assert runtime_logs_tool.status_code == 200
     assert runtime_logs_tool.json()["result"]["logs"] == ["runtime-log-1", "runtime-log-2"]
+    assert runtime_logs_tool.json()["result"]["cursor"] == 2
 
     runtime_logs_resource = client.post(
         "/mcp",
@@ -146,11 +176,12 @@ def test_mcp_transport_tool_call_and_resource_read(tmp_path: Path) -> None:
             "jsonrpc": "2.0",
             "id": "6d",
             "method": "resources/read",
-            "params": {"uri": f"att://project/{project_id}/logs"},
+            "params": {"uri": f"att://project/{project_id}/logs?cursor=1&limit=1"},
         },
     )
     assert runtime_logs_resource.status_code == 200
-    assert runtime_logs_resource.json()["result"]["logs"] == ["runtime-log-1", "runtime-log-2"]
+    assert runtime_logs_resource.json()["result"]["logs"] == ["runtime-log-2"]
+    assert runtime_logs_resource.json()["result"]["cursor"] == 2
 
     listed = client.post(
         "/mcp",

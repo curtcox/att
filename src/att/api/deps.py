@@ -142,8 +142,8 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
             probe=probe.probe,
         )
 
-    async def rollback_executor(project_id: str, target: str) -> bool:
-        del project_id, target
+    async def rollback_executor(project_id: str, target: str, release_id: str | None) -> bool:
+        del project_id, target, release_id
         runtime.stop()
         return True
 

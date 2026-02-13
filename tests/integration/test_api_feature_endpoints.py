@@ -22,7 +22,7 @@ from att.core.debug_manager import DebugManager
 from att.core.deploy_manager import DeployStatus
 from att.core.git_manager import GitResult
 from att.core.project_manager import ProjectManager
-from att.core.runtime_manager import RuntimeHealthProbe, RuntimeState
+from att.core.runtime_manager import RuntimeHealthProbe, RuntimeLogRead, RuntimeState
 from att.core.test_runner import RunResult, TestResultPayload
 from att.db.store import SQLiteStore
 
@@ -115,6 +115,34 @@ class FakeRuntimeManager:
 
     def logs(self) -> list[str]:
         return list(self._logs)
+
+    def read_logs(self, *, cursor: int | None = None, limit: int | None = None) -> RuntimeLogRead:
+        entries = list(self._logs)
+        if cursor is None:
+            if limit is not None and limit > 0:
+                entries = entries[-limit:]
+            start_cursor = 0 if not entries else max(0, len(self._logs) - len(entries))
+            return RuntimeLogRead(
+                logs=entries,
+                cursor=len(self._logs),
+                start_cursor=start_cursor,
+                end_cursor=len(self._logs),
+                truncated=False,
+                has_more=False,
+            )
+        start = max(0, cursor)
+        entries = entries[start:]
+        if limit is not None and limit > 0:
+            entries = entries[:limit]
+        next_cursor = start + len(entries)
+        return RuntimeLogRead(
+            logs=entries,
+            cursor=next_cursor,
+            start_cursor=start,
+            end_cursor=len(self._logs),
+            truncated=False,
+            has_more=next_cursor < len(self._logs),
+        )
 
 
 class FakeTestRunner:
@@ -308,6 +336,16 @@ def test_runtime_and_deploy_endpoints(tmp_path: Path) -> None:
     logs = client.get(f"/api/v1/projects/{project_id}/runtime/logs")
     assert logs.status_code == 200
     assert logs.json()["logs"] == [f"started:{config_path.name}"]
+    assert logs.json()["cursor"] == 1
+    assert logs.json()["has_more"] is False
+
+    logs_from_cursor = client.get(
+        f"/api/v1/projects/{project_id}/runtime/logs",
+        params={"cursor": 1, "limit": 10},
+    )
+    assert logs_from_cursor.status_code == 200
+    assert logs_from_cursor.json()["logs"] == []
+    assert logs_from_cursor.json()["cursor"] == 1
 
     stop = client.post(f"/api/v1/projects/{project_id}/runtime/stop")
     assert stop.status_code == 200

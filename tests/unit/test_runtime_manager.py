@@ -150,3 +150,51 @@ def test_runtime_manager_probe_command_transient_recovery(monkeypatch, tmp_path:
     assert second.probe == "command"
     assert second.reason == "command_ok"
     manager.stop()
+
+
+def test_runtime_manager_read_logs_with_cursor(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeProcess("line-1\nline-2\nline-3\n")
+
+    def fake_popen(*args, **kwargs):  # type: ignore[no-untyped-def]
+        del args, kwargs
+        return fake
+
+    monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
+
+    manager = RuntimeManager()
+    manager.start(tmp_path, tmp_path / "workflow.yaml")
+    manager.stop()
+
+    first = manager.read_logs(cursor=0, limit=2)
+    assert first.logs == ["line-1", "line-2"]
+    assert first.cursor == 2
+    assert first.has_more is True
+    assert first.truncated is False
+
+    second = manager.read_logs(cursor=first.cursor, limit=10)
+    assert second.logs == ["line-3"]
+    assert second.cursor == 3
+    assert second.has_more is False
+    assert second.truncated is False
+
+
+def test_runtime_manager_read_logs_marks_truncated_cursor(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeProcess("a\nb\nc\n")
+
+    def fake_popen(*args, **kwargs):  # type: ignore[no-untyped-def]
+        del args, kwargs
+        return fake
+
+    monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
+
+    manager = RuntimeManager(max_log_lines=2)
+    manager.start(tmp_path, tmp_path / "workflow.yaml")
+    manager.stop()
+
+    read = manager.read_logs(cursor=0, limit=10)
+    assert read.logs == ["b", "c"]
+    assert read.cursor == 3
+    assert read.start_cursor == 1
+    assert read.end_cursor == 3
+    assert read.truncated is True
+    assert read.has_more is False

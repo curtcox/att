@@ -35,5 +35,17 @@ P03,P04
 - Runtime status diagnostics are now surfaced via:
   - API: `GET /api/v1/projects/{id}/runtime/status`
   - MCP tool: `att.runtime.status`
+- Added cursor-based runtime log streaming reads:
+  - `RuntimeManager.read_logs(cursor=..., limit=...)` with `cursor`, `truncated`, and `has_more` metadata.
+  - API `GET /api/v1/projects/{id}/runtime/logs` now accepts optional `cursor`/`limit` query params.
+  - MCP surfaces now support incremental logs:
+    - tool `att.runtime.logs` optional `cursor`/`limit`
+    - resource `att://project/{id}/logs?cursor=...&limit=...`
+- Added streaming-coverage updates in:
+  - `tests/unit/test_runtime_manager.py`
+  - `tests/unit/test_runtime_tools.py`
+  - `tests/unit/test_resource_refs.py`
+  - `tests/integration/test_api_feature_endpoints.py`
+  - `tests/integration/test_mcp_transport.py`
 - Remaining scope before completion:
-  - Streaming runtime log delivery semantics for long-running sessions.
+  - Full lint/type/test validation once the project `.venv313` toolchain is available again.

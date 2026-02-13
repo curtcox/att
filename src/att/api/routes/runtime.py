@@ -61,8 +61,18 @@ async def runtime_status(
 @router.get("/logs")
 async def runtime_logs(
     project_id: str,
+    cursor: int | None = None,
+    limit: int | None = None,
     manager: ProjectManager = Depends(get_project_manager),
     runtime: RuntimeManager = Depends(get_runtime_manager),
-) -> dict[str, list[str]]:
+) -> dict[str, list[str] | int | bool]:
     await require_project(project_id, manager)
-    return {"logs": runtime.logs()}
+    log_read = runtime.read_logs(cursor=cursor, limit=limit)
+    return {
+        "logs": log_read.logs,
+        "cursor": log_read.cursor,
+        "start_cursor": log_read.start_cursor,
+        "end_cursor": log_read.end_cursor,
+        "truncated": log_read.truncated,
+        "has_more": log_read.has_more,
+    }

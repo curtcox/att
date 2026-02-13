@@ -25,3 +25,23 @@ def test_parse_runtime_start_requires_config_path() -> None:
 
 def test_parse_runtime_non_runtime_tool_returns_none() -> None:
     assert parse_runtime_tool_call("att.project.list", {}) is None
+
+
+def test_parse_runtime_logs_with_cursor_and_limit() -> None:
+    call = parse_runtime_tool_call(
+        "att.runtime.logs",
+        {"project_id": "p1", "cursor": 3, "limit": 5},
+    )
+    assert call is not None
+    assert call.operation == "logs"
+    assert call.project_id == "p1"
+    assert call.cursor == 3
+    assert call.limit == 5
+
+
+def test_parse_runtime_logs_rejects_negative_cursor() -> None:
+    with pytest.raises(ValueError, match="cursor must be a non-negative integer"):
+        parse_runtime_tool_call(
+            "att.runtime.logs",
+            {"project_id": "p1", "cursor": -1},
+        )

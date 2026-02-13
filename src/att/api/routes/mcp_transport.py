@@ -447,7 +447,15 @@ async def _handle_runtime_tool_call(
         }
 
     if call.operation == "logs":
-        return {"logs": runtime_manager.logs()}
+        log_read = runtime_manager.read_logs(cursor=call.cursor, limit=call.limit)
+        return {
+            "logs": log_read.logs,
+            "cursor": log_read.cursor,
+            "start_cursor": log_read.start_cursor,
+            "end_cursor": log_read.end_cursor,
+            "truncated": log_read.truncated,
+            "has_more": log_read.has_more,
+        }
 
     return {"error": f"Runtime tool operation not implemented: {call.operation}"}
 
@@ -584,7 +592,18 @@ async def _handle_resource_read(
         return test_results.get(project_id, {"status": "no_results"})
 
     if resource_ref.operation == "logs":
-        return {"logs": runtime_manager.logs()}
+        log_read = runtime_manager.read_logs(
+            cursor=resource_ref.cursor,
+            limit=resource_ref.limit,
+        )
+        return {
+            "logs": log_read.logs,
+            "cursor": log_read.cursor,
+            "start_cursor": log_read.start_cursor,
+            "end_cursor": log_read.end_cursor,
+            "truncated": log_read.truncated,
+            "has_more": log_read.has_more,
+        }
 
     if resource_ref.operation == "ci":
         project = await project_manager.get(project_id)

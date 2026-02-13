@@ -37,6 +37,18 @@ class RuntimeHealthProbe:
     command: str | None = None
 
 
+@dataclass(slots=True)
+class RuntimeLogRead:
+    """Runtime log read payload with cursor metadata."""
+
+    logs: list[str]
+    cursor: int
+    start_cursor: int
+    end_cursor: int
+    truncated: bool
+    has_more: bool
+
+
 class RuntimeManager:
     """Manage one nat process at a time."""
 
@@ -53,6 +65,7 @@ class RuntimeManager:
         self._logs: deque[str] = deque(maxlen=max_log_lines)
         self._logs_lock = threading.Lock()
         self._reader_thread: threading.Thread | None = None
+        self._next_log_cursor = 0
         self._project_path: Path | None = None
         self._health_check_url = health_check_url
         self._health_check_command = tuple(health_check_command) if health_check_command else None
@@ -64,6 +77,7 @@ class RuntimeManager:
 
         with self._logs_lock:
             self._logs.clear()
+            self._next_log_cursor = 0
 
         self._project_path = project_path
         self._process = subprocess.Popen(
@@ -156,11 +170,48 @@ class RuntimeManager:
         )
 
     def logs(self, *, limit: int | None = None) -> list[str]:
+        return self.read_logs(limit=limit).logs
+
+    def read_logs(self, *, cursor: int | None = None, limit: int | None = None) -> RuntimeLogRead:
         with self._logs_lock:
             entries = list(self._logs)
-        if limit is None or limit <= 0:
-            return entries
-        return entries[-limit:]
+            end_cursor = self._next_log_cursor
+
+        first_cursor = end_cursor - len(entries)
+
+        if cursor is None:
+            if limit is None or limit <= 0:
+                logs = entries
+                start_cursor = first_cursor
+            else:
+                logs = entries[-limit:]
+                start_cursor = end_cursor - len(logs)
+            return RuntimeLogRead(
+                logs=logs,
+                cursor=end_cursor,
+                start_cursor=start_cursor,
+                end_cursor=end_cursor,
+                truncated=False,
+                has_more=False,
+            )
+
+        requested_cursor = max(0, cursor)
+        truncated = requested_cursor < first_cursor
+        effective_cursor = min(max(requested_cursor, first_cursor), end_cursor)
+        start_index = effective_cursor - first_cursor
+        logs = entries[start_index:]
+        if limit is not None and limit > 0:
+            logs = logs[:limit]
+        next_cursor = effective_cursor + len(logs)
+
+        return RuntimeLogRead(
+            logs=logs,
+            cursor=next_cursor,
+            start_cursor=effective_cursor,
+            end_cursor=end_cursor,
+            truncated=truncated,
+            has_more=next_cursor < end_cursor,
+        )
 
     def _start_reader(self, process: subprocess.Popen[str]) -> None:
         reader = threading.Thread(
@@ -184,6 +235,7 @@ class RuntimeManager:
             for line in stream:
                 with self._logs_lock:
                     self._logs.append(line.rstrip("\n"))
+                    self._next_log_cursor += 1
         finally:
             stream.close()
 
