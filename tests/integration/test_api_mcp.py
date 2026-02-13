@@ -182,6 +182,16 @@ PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES: tuple[list[str], ...] = (
     [],
     [ServerStatus.HEALTHY.value],
 )
+PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES: tuple[list[str], ...] = (
+    ["initialize_start", "initialize_success", "invoke_start", "invoke_failure"],
+    [],
+    ["initialize_start", "initialize_success", "invoke_start", "invoke_success"],
+)
+PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES: tuple[list[str], ...] = (
+    [ServerStatus.DEGRADED.value],
+    [],
+    [ServerStatus.HEALTHY.value],
+)
 
 
 def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarness:
@@ -331,6 +341,36 @@ def _run_unreachable_transition_sequence(
 
 
 def _assert_primary_unreachable_transition_diagnostics(
+    *,
+    client: TestClient,
+    method: str,
+    request_ids: Sequence[str],
+    expected_phases: Sequence[list[str]],
+    expected_statuses: Sequence[list[str]],
+) -> None:
+    assert len(request_ids) == len(expected_phases) == len(expected_statuses)
+    for request_id, phases, statuses in zip(
+        request_ids,
+        expected_phases,
+        expected_statuses,
+        strict=True,
+    ):
+        assert_invocation_event_filters(
+            client,
+            request_id=request_id,
+            server="primary",
+            method=method,
+            expected_phases=phases,
+        )
+        assert_connection_event_filters(
+            client,
+            request_id=request_id,
+            server="primary",
+            expected_statuses=statuses,
+        )
+
+
+def _assert_primary_retry_window_gating_diagnostics(
     *,
     client: TestClient,
     method: str,
@@ -2125,58 +2165,21 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         third_preferred=["primary", "backup"],
     )
 
-    assert_invocation_event_filters(
-        harness.client,
-        request_id=sequence.request_id_1,
-        server="primary",
+    request_ids = (
+        sequence.request_id_1,
+        sequence.request_id_2,
+        sequence.request_id_3,
+    )
+    _assert_primary_retry_window_gating_diagnostics(
+        client=harness.client,
         method="tools/call",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-        ],
-    )
-    assert_connection_event_filters(
-        harness.client,
-        request_id=sequence.request_id_1,
-        server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
-    )
-    assert_invocation_event_filters(
-        harness.client,
-        request_id=sequence.request_id_2,
-        server="primary",
-        method="tools/call",
-        expected_phases=[],
-    )
-    assert_connection_event_filters(
-        harness.client,
-        request_id=sequence.request_id_2,
-        server="primary",
-        expected_statuses=[],
+        request_ids=request_ids,
+        expected_phases=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES,
+        expected_statuses=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES,
     )
     second_slice = harness.factory.calls[sequence.calls_after_first : sequence.calls_before_third]
     assert second_slice
     assert all(server == "backup" for server, _, _ in second_slice)
-    assert_invocation_event_filters(
-        harness.client,
-        request_id=sequence.request_id_3,
-        server="primary",
-        method="tools/call",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_success",
-        ],
-    )
-    assert_connection_event_filters(
-        harness.client,
-        request_id=sequence.request_id_3,
-        server="primary",
-        expected_statuses=[ServerStatus.HEALTHY.value],
-    )
     third_slice = [
         (server, method)
         for server, _, method in harness.factory.calls[sequence.calls_before_third :]
@@ -2189,7 +2192,7 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
 
     events = collect_invocation_events_for_requests(
         harness.client,
-        request_ids=(sequence.request_id_1, sequence.request_id_2, sequence.request_id_3),
+        request_ids=request_ids,
     )
     expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [
@@ -2294,58 +2297,21 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
         third_preferred=["backup", "primary"],
     )
 
-    assert_invocation_event_filters(
-        harness.client,
-        request_id=sequence.request_id_1,
-        server="primary",
+    request_ids = (
+        sequence.request_id_1,
+        sequence.request_id_2,
+        sequence.request_id_3,
+    )
+    _assert_primary_retry_window_gating_diagnostics(
+        client=harness.client,
         method="resources/read",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-        ],
-    )
-    assert_connection_event_filters(
-        harness.client,
-        request_id=sequence.request_id_1,
-        server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
-    )
-    assert_invocation_event_filters(
-        harness.client,
-        request_id=sequence.request_id_2,
-        server="primary",
-        method="resources/read",
-        expected_phases=[],
-    )
-    assert_connection_event_filters(
-        harness.client,
-        request_id=sequence.request_id_2,
-        server="primary",
-        expected_statuses=[],
+        request_ids=request_ids,
+        expected_phases=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_PHASES,
+        expected_statuses=PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES,
     )
     second_slice = harness.factory.calls[sequence.calls_after_first : sequence.calls_before_third]
     assert second_slice
     assert all(server == "backup" for server, _, _ in second_slice)
-    assert_invocation_event_filters(
-        harness.client,
-        request_id=sequence.request_id_3,
-        server="primary",
-        method="resources/read",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_success",
-        ],
-    )
-    assert_connection_event_filters(
-        harness.client,
-        request_id=sequence.request_id_3,
-        server="primary",
-        expected_statuses=[ServerStatus.HEALTHY.value],
-    )
     third_slice = [
         (server, method)
         for server, _, method in harness.factory.calls[sequence.calls_before_third :]
@@ -2358,7 +2324,7 @@ def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary(
 
     events = collect_invocation_events_for_requests(
         harness.client,
-        request_ids=(sequence.request_id_1, sequence.request_id_2, sequence.request_id_3),
+        request_ids=request_ids,
     )
     expected_call_order = expected_call_order_from_phase_starts(events)
     observed_call_order = [

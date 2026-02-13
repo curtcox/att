@@ -114,6 +114,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared integration helper that asserts unreachable-transition `fifth_slice` and full `observed_call_order` literals per method using explicit expected tuple lists passed from each test.
   - migrated tool/resource unreachable-transition tests to helper-driven call-order literal assertions while keeping explicit expected tuple lists visible at call sites.
   - preserved existing diagnostics assertions and phase-start/transport subsequence parity checks.
+- [x] Reduced duplicated retry-window gating expectation vectors:
+  - extracted shared module-level constants for primary retry-window gating expected phase/status vectors.
+  - added a shared integration helper to assert per-request primary invocation/connection diagnostics for retry-window gating sequences based on explicit method + request-id ordering.
+  - migrated both tool/resource retry-window gating call-order tests to use the shared constants/helper while preserving explicit per-method transport call-order literals and phase-start/transport subsequence parity assertions.
 - [x] Reduced duplicated unreachable-transition expectation vectors:
   - extracted shared module-level constants for primary unreachable-transition expected phase/status vectors.
   - migrated tool/resource unreachable-transition diagnostics assertions to consume shared vectors rather than repeated tuple literals.
