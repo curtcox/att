@@ -218,6 +218,32 @@ RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]]
     ("primary", "initialize"),
     ("primary", "resources/read"),
 ]
+UNREACHABLE_TRANSITION_TOOL_EXPECTED_FIFTH_SLICE: list[tuple[str, str]] = [
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+]
+UNREACHABLE_TRANSITION_TOOL_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+    ("backup", "initialize"),
+    ("backup", "tools/call"),
+    ("backup", "tools/call"),
+    ("backup", "initialize"),
+    ("backup", "tools/call"),
+    ("primary", "initialize"),
+    ("primary", "tools/call"),
+]
+UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_FIFTH_SLICE: list[tuple[str, str]] = [
+    ("primary", "initialize"),
+    ("primary", "resources/read"),
+]
+UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+    ("backup", "initialize"),
+    ("backup", "resources/read"),
+    ("backup", "resources/read"),
+    ("backup", "initialize"),
+    ("backup", "resources/read"),
+    ("primary", "initialize"),
+    ("primary", "resources/read"),
+]
 
 
 def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarness:
@@ -2253,25 +2279,12 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         expected_phases=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES,
         expected_statuses=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES,
     )
-    expected_fifth_slice = [
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-    ]
-    expected_observed_call_order = [
-        ("backup", "initialize"),
-        ("backup", "tools/call"),
-        ("backup", "tools/call"),
-        ("backup", "initialize"),
-        ("backup", "tools/call"),
-        ("primary", "initialize"),
-        ("primary", "tools/call"),
-    ]
     observed_call_order = _assert_unreachable_transition_call_order_literals(
         factory=harness.factory,
         sequence=sequence,
         method="tools/call",
-        expected_fifth_slice=expected_fifth_slice,
-        expected_observed_call_order=expected_observed_call_order,
+        expected_fifth_slice=UNREACHABLE_TRANSITION_TOOL_EXPECTED_FIFTH_SLICE,
+        expected_observed_call_order=UNREACHABLE_TRANSITION_TOOL_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
     events = collect_invocation_events_for_requests(
@@ -2366,25 +2379,12 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         expected_phases=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES,
         expected_statuses=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES,
     )
-    expected_fifth_slice = [
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-    ]
-    expected_observed_call_order = [
-        ("backup", "initialize"),
-        ("backup", "resources/read"),
-        ("backup", "resources/read"),
-        ("backup", "initialize"),
-        ("backup", "resources/read"),
-        ("primary", "initialize"),
-        ("primary", "resources/read"),
-    ]
     observed_call_order = _assert_unreachable_transition_call_order_literals(
         factory=harness.factory,
         sequence=sequence,
         method="resources/read",
-        expected_fifth_slice=expected_fifth_slice,
-        expected_observed_call_order=expected_observed_call_order,
+        expected_fifth_slice=UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_FIFTH_SLICE,
+        expected_observed_call_order=UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
     events = collect_invocation_events_for_requests(
