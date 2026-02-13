@@ -1376,6 +1376,56 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("trigger", ["stale_expiry", "degraded_status"])
+async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
+    method: str,
+    trigger: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+    )
+    manager.register("primary", "http://primary.local")
+
+    async def invoke_once() -> object:
+        if method == "resources/read":
+            return await manager.read_resource("att://projects", preferred=["primary"])
+        return await manager.invoke_tool("att.project.list", preferred=["primary"])
+
+    first = await invoke_once()
+    assert first.server == "primary"
+    assert first.method == method
+
+    primary = manager.get("primary")
+    assert primary is not None
+    assert primary.initialized is True
+    if trigger == "stale_expiry":
+        primary.initialization_expires_at = clock.current - timedelta(seconds=1)
+    else:
+        primary.status = ServerStatus.DEGRADED
+        primary.next_retry_at = None
+
+    second = await invoke_once()
+    assert second.server == "primary"
+    assert second.method == method
+
+    call_order = [
+        (server, call_method)
+        for server, _, call_method in factory.calls
+        if call_method in {"initialize", method}
+    ]
+    assert call_order == [
+        ("primary", "initialize"),
+        ("primary", method),
+        ("primary", "initialize"),
+        ("primary", method),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

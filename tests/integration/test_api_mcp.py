@@ -1730,6 +1730,137 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         cursor += 1
 
 
+def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    request_specs: list[tuple[str, dict[str, object], str, list[str]]] = [
+        (
+            "/api/v1/mcp/invoke/tool",
+            {
+                "tool_name": "att.project.list",
+                "arguments": {},
+                "preferred_servers": ["primary"],
+            },
+            "tools/call",
+            [],
+        ),
+        (
+            "/api/v1/mcp/invoke/tool",
+            {
+                "tool_name": "att.project.list",
+                "arguments": {},
+                "preferred_servers": ["primary"],
+            },
+            "tools/call",
+            [],
+        ),
+        (
+            "/api/v1/mcp/invoke/resource",
+            {
+                "uri": "att://projects",
+                "preferred_servers": ["primary"],
+            },
+            "resources/read",
+            [],
+        ),
+        (
+            "/api/v1/mcp/invoke/resource",
+            {
+                "uri": "att://projects",
+                "preferred_servers": ["primary"],
+            },
+            "resources/read",
+            [ServerStatus.HEALTHY.value],
+        ),
+    ]
+
+    request_ids: list[str] = []
+    for index, (path, payload, method, expected_statuses) in enumerate(request_specs):
+        if index == 1:
+            primary = manager.get("primary")
+            assert primary is not None
+            primary.initialization_expires_at = clock.current - timedelta(seconds=1)
+        if index == 3:
+            primary = manager.get("primary")
+            assert primary is not None
+            primary.status = ServerStatus.DEGRADED
+            primary.next_retry_at = None
+
+        response = client.post(path, json=payload)
+        assert response.status_code == 200
+        assert response.json()["server"] == "primary"
+        request_id = response.json()["request_id"]
+        request_ids.append(request_id)
+        assert_invocation_event_filters(
+            client,
+            request_id=request_id,
+            server="primary",
+            method=method,
+            expected_phases=[
+                "initialize_start",
+                "initialize_success",
+                "invoke_start",
+                "invoke_success",
+            ],
+        )
+        assert_connection_event_filters(
+            client,
+            request_id=request_id,
+            server="primary",
+            expected_statuses=expected_statuses,
+        )
+
+    events: list[dict[str, object]] = []
+    for request_id in request_ids:
+        response = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={"request_id": request_id},
+        )
+        assert response.status_code == 200
+        events.extend(response.json()["items"])
+
+    phase_to_method = {
+        "initialize_start": "initialize",
+        "invoke_start": None,
+    }
+    expected_call_order = [
+        (item["server"], phase_to_method[item["phase"]] or item["method"])
+        for item in events
+        if item["phase"] in {"initialize_start", "invoke_start"}
+    ]
+
+    observed_call_order = [
+        (server, method)
+        for server, _, method in factory.calls
+        if method in {"initialize", "tools/call", "resources/read"}
+    ]
+    assert observed_call_order == [
+        ("primary", "initialize"),
+        ("primary", "tools/call"),
+        ("primary", "initialize"),
+        ("primary", "tools/call"),
+        ("primary", "resources/read"),
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+    ]
+
+    cursor = 0
+    for call in observed_call_order:
+        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
+            cursor += 1
+        assert cursor < len(expected_call_order), (
+            f"missing call-order tuple in phase stream: {call}"
+        )
+        cursor += 1
+
+
 def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() -> None:
     factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
