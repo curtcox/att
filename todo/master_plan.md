@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended repeated server-name list assertion vector constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_SERVER_A_B_VECTOR` and `UNIT_TEST_SERVER_C_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side server-name list expectations (`[UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B]` and `[UNIT_TEST_SERVER_C]`) to shared vectors across initialize-all and adapter session diagnostics assertions while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended repeated phase-list assertion vector constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_INITIALIZE_START_FAILURE_PHASES` and `UNIT_TEST_INVOKE_START_SUCCESS_PHASES` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side phase-list expectations (`[UNIT_TEST_INITIALIZE_START_PHASE, UNIT_TEST_INITIALIZE_FAILURE_PHASE]` and `[UNIT_TEST_INVOKE_START_PHASE, UNIT_TEST_INVOKE_SUCCESS_PHASE]`) to shared constants in timeout-phase and invocation-event filter assertions while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.

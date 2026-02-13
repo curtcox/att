@@ -69,6 +69,8 @@ UNIT_TEST_FAILURE_ACTION_ERROR = "error"
 UNIT_TEST_FAILURE_ACTION_OK = "ok"
 UNIT_TEST_FAILURE_ACTION_TIMEOUT = "timeout"
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
+UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
+UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
 
 
 @pytest.mark.asyncio
@@ -676,7 +678,7 @@ async def test_initialize_all_returns_all_servers() -> None:
 
     results = await manager.initialize_all()
 
-    assert [server.name for server in results] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B]
+    assert [server.name for server in results] == list(UNIT_TEST_SERVER_A_B_VECTOR)
     assert all(server.initialized for server in results)
 
 
@@ -949,7 +951,7 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     manager.register("a", "http://a.local")
 
     before = manager.list_adapter_sessions()
-    assert [item.server for item in before] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B]
+    assert [item.server for item in before] == list(UNIT_TEST_SERVER_A_B_VECTOR)
     assert all(item.active is False for item in before)
 
     await manager.invoke_tool("att.project.list", preferred=["b"])
@@ -979,11 +981,11 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C]
 
     only_c = manager.list_adapter_sessions(server_name="c")
-    assert [item.server for item in only_c] == [UNIT_TEST_SERVER_C]
+    assert [item.server for item in only_c] == list(UNIT_TEST_SERVER_C_VECTOR)
     assert only_c[0].active is True
 
     limited = manager.list_adapter_sessions(limit=1)
-    assert [item.server for item in limited] == [UNIT_TEST_SERVER_C]
+    assert [item.server for item in limited] == list(UNIT_TEST_SERVER_C_VECTOR)
 
 
 @pytest.mark.asyncio
