@@ -1,17 +1,17 @@
 # Next Machine Handoff
 
 ## Snapshot
-- Date: 2026-02-13
+- Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `917b6564d424612751a149ea1a0259398d875996`
-- Last commit: `917b656 2026-02-13 14:58:55 -0600 Add guardrail test for handoff file size`
-- Working tree at handoff creation: clean
+- HEAD: `099f4859800bfe0f2a913d446cfba2b62894a298`
+- Last commit: `099f485 2026-02-13 15:08:13 -0600 - Add process-trial guardrails and handoff snapshot script`
+- Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`236 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`237 passed`)
 
 ## Recent Delivered Work
 - See done for older completed slices:

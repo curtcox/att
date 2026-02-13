@@ -93,10 +93,7 @@ awk \
     print "- Working tree at handoff creation: " worktree_state
     next
   }
-  if (
-    pytest_passed != "" &&
-    $0 ~ /`PYTHONPATH=src \.\/\.venv313\/bin\/pytest` passes/
-  ) {
+  if (pytest_passed != "" && $0 ~ /`PYTHONPATH=src \.\/\.venv313\/bin\/pytest` passes/) {
     print "  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`" pytest_passed " passed`)"
     next
   }
