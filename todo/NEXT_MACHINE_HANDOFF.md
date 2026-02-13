@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `7cf876edc94f190389682f71c3a71666b80a8adb`
-- Last commit: `7cf876e 2026-02-13 14:39:40 -0600 Reuse server constant in timeout-toggle unit setup`
-- Working tree at handoff creation: dirty (`unit invocation-filter server constant reuse`)
+- HEAD: `97b89636c379d0e765f1d4d814326a1a940143be`
+- Last commit: `97b8963 2026-02-13 14:42:11 -0600 Reuse server constant in unit invocation filter`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
