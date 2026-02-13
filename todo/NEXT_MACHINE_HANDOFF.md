@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit re-entry slice collection helper reuse`)
+- Working tree at handoff creation: dirty (`unit collect+assert re-entry slice helper reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended repeated collect+assert re-entry slice helper reuse in unit MCP client coverage:
+  - added local unit-test helpers `_assert_unit_test_collected_primary_reentry_slice(...)` and `_assert_unit_test_collected_backup_reentry_slice(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated patterns that collected re-entry slices and immediately asserted expected primary/backup vectors to helper-driven calls across retry-window/unreachable tests while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended repeated re-entry slice collection helper reuse in unit MCP client coverage:
   - added local unit-test helper `_unit_test_collect_reentry_call_order_slice(...)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated list-comprehension scaffolding that collected `initialize`+`method` re-entry slices from `factory.calls[start:]` to helper-driven collection across retry-window/unreachable and simultaneous-reopen call-order assertions while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
@@ -453,9 +457,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable helper reuse for repeated collect+assert re-entry slice patterns in unit MCP client coverage:
-1. Reuse a shared unit-test helper that combines collection + expected-slice assertion in `tests/unit/test_mcp_client.py`:
-   - target repeated patterns that collect re-entry slices from `factory.calls[start:]` and immediately assert primary/backup expected vectors in retry-window/unreachable tests.
+Continue `P12/P13` test-structure hardening by extending stable helper reuse for collected reopen-slice expected vector assertions in unit MCP client coverage:
+1. Reuse a shared unit-test helper for collected reopen-slice expected vectors in `tests/unit/test_mcp_client.py`:
+   - target the remaining explicit reopen-slice expectation assertion in the simultaneous-unreachable reopen ordering test (`[(expected_second, UNIT_TEST_INITIALIZE_METHOD), (expected_second, method)]`) where helper reuse is meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
