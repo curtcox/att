@@ -221,6 +221,12 @@ class ClusterNatSession:
 
     async def read_resource(self, uri: object) -> ModelPayload:
         self.factory.calls.append((self.server_name, self.session_id, "resources/read"))
+        if self.server_name in self.factory.fail_on_timeout_resource_reads:
+            msg = f"{self.server_name} timed out"
+            raise httpx.ReadTimeout(msg)
+        if self.server_name in self.factory.fail_on_resource_reads:
+            msg = f"{self.server_name} unavailable"
+            raise RuntimeError(msg)
         return ModelPayload(
             {
                 "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
@@ -234,6 +240,8 @@ class ClusterNatSessionFactory:
         self.fail_on_timeout_initialize: set[str] = set()
         self.fail_on_tool_calls: set[str] = set()
         self.fail_on_timeout_tool_calls: set[str] = set()
+        self.fail_on_resource_reads: set[str] = set()
+        self.fail_on_timeout_resource_reads: set[str] = set()
         self.created_by_server: dict[str, int] = {}
         self.closed_by_server: dict[str, int] = {}
 

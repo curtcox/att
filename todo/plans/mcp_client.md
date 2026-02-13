@@ -149,3 +149,8 @@ P11
 - Extended diagnostics filter parity for `resources/read` failover/recovery:
   - added integration coverage asserting `/api/v1/mcp/invocation-events` filters (`server`, `method`, `request_id`, `limit`) for correlated `resources/read` failover and recovery requests.
   - added matching `/api/v1/mcp/events` filter assertions (`server`, `correlation_id`, `limit`) for the same request-correlation flows.
+- Expanded shared cluster NAT helper failure controls for resources reads:
+  - `ClusterNatSessionFactory` now supports `fail_on_resource_reads` and `fail_on_timeout_resource_reads` to model invoke-stage `resources/read` failures without ad-hoc test-local scaffolding.
+- Added stage-paired `resources/read` convergence matrix:
+  - integration coverage now runs paired `initialize`-timeout and `invoke`-timeout paths for `/api/v1/mcp/invoke/resource` under controlled clock progression.
+  - assertions capture stage-specific retry/unreachable semantics, server-local capability snapshot retention/replacement timing, and correlated event-filter determinism.
