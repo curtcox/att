@@ -456,6 +456,17 @@ def _collect_method_call_order(
     ]
 
 
+def _collect_mixed_method_call_order(
+    *,
+    factory: ClusterNatSessionFactory,
+) -> list[tuple[str, str]]:
+    return [
+        (server, method)
+        for server, _, method in factory.calls
+        if method in {"initialize", "tools/call", "resources/read"}
+    ]
+
+
 def _expected_call_order_for_requests(
     *,
     client: TestClient,
@@ -2017,11 +2028,7 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
         request_ids=(tool_request_id, resource_request_id),
     )
 
-    observed_call_order = [
-        (server, method)
-        for server, _, method in factory.calls
-        if method in {"initialize", "tools/call", "resources/read"}
-    ]
+    observed_call_order = _collect_mixed_method_call_order(factory=factory)
     assert_call_order_subsequence(
         observed_call_order=observed_call_order,
         expected_call_order=expected_call_order,
@@ -2103,11 +2110,7 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         request_ids=request_ids,
     )
 
-    observed_call_order = [
-        (server, method)
-        for server, _, method in factory.calls
-        if method in {"initialize", "tools/call", "resources/read"}
-    ]
+    observed_call_order = _collect_mixed_method_call_order(factory=factory)
     assert observed_call_order == [
         ("primary", "initialize"),
         ("primary", "tools/call"),
@@ -2214,11 +2217,7 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
         request_ids=request_ids,
     )
 
-    observed_call_order = [
-        (server, method)
-        for server, _, method in factory.calls
-        if method in {"initialize", "tools/call", "resources/read"}
-    ]
+    observed_call_order = _collect_mixed_method_call_order(factory=factory)
     assert observed_call_order == [
         ("primary", "initialize"),
         ("primary", "tools/call"),

@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `beb69a24e514ee418bddbe19d717fecd2bc0690a`
-- Last commit: `beb69a2 2026-02-13 09:33:45 -0600 Extract retry-window and unreachable request-id helpers`
-- Working tree at handoff creation: dirty (`expected-call-order derivation helper extraction`)
+- HEAD: `9bbfdea127cc679258565f31ce05195f4dbfc043`
+- Last commit: `9bbfdea 2026-02-13 09:34:59 -0600 Extract expected call-order derivation helper`
+- Working tree at handoff creation: dirty (`mixed-method observed-call-order collector helper`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated mixed-method observed-call-order collection scaffolding with shared helper wiring:
+  - added shared helper utility to collect observed transport call-order tuples for mixed-method scenarios (`initialize` + `tools/call` + `resources/read`).
+  - migrated remaining mixed-method call-order tests to consume this helper while preserving explicit expected observed-order literals.
+  - preserved diagnostics filter assertions and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated expected-call-order derivation scaffolding with shared helper wiring:
   - added shared helper utility that derives expected call-order tuples directly from request-id scoped invocation events.
   - migrated retry-window/unreachable-transition and adjacent call-order tests to consume the helper instead of repeating event-collection + phase-start derivation scaffolding.
@@ -185,17 +189,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method observed-call-order collection scaffolding:
-1. Extract shared mixed-method observed-call-order collector helper:
-   - factor repeated transport-call collection comprehensions using method set `{\"initialize\", \"tools/call\", \"resources/read\"}` into one helper utility for mixed-method call-order tests.
-   - keep explicit per-test expected observed-order literals unchanged.
+Continue `P12/P13` test-structure hardening by normalizing call-order expectation vector typing/signatures:
+1. Normalize call-order expectation constants and helper signatures:
+   - convert new method-specific call-order expectation constants to immutable tuple-based vectors for consistency with module-level expectation constants.
+   - relax call-order helper signatures to accept `Sequence[tuple[str, str]]` where appropriate so constants remain immutable without call-site casts.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current diagnostics and call-order literal helper signatures unchanged.
+   - keep current diagnostics and call-order literal assertions unchanged.
    - retain phase-start/transport subsequence assertions exactly.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing helper style from nearby call-order collection helpers.
+- Reuse existing constant/helper style from nearby expectation-vector slices.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist
