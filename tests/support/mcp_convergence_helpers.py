@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 
@@ -59,3 +61,19 @@ def assert_connection_event_filters(
     limited = client.get("/api/v1/mcp/events", params={**params, "limit": 1})
     assert limited.status_code == 200
     assert [item["to_status"] for item in limited.json()["items"]] == expected_statuses[-1:]
+
+
+def extract_request_id_from_invocation_event_delta(
+    client: TestClient,
+    *,
+    previous_count: int,
+    expected_phases: list[str] | None = None,
+) -> str:
+    response = client.get("/api/v1/mcp/invocation-events")
+    assert response.status_code == 200
+    events: list[dict[str, Any]] = response.json()["items"][previous_count:]
+    if expected_phases is not None:
+        assert [str(item["phase"]) for item in events] == expected_phases
+    request_ids = {str(item["request_id"]) for item in events}
+    assert len(request_ids) == 1
+    return request_ids.pop()

@@ -3,17 +3,21 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `b865ac7006fbe4176ac95f65131f5b34472dd56d`
-- Last commit: `b865ac7 2026-02-13 08:40:24 -0600 Add MCP retry-window call-order parity tests`
-- Working tree at handoff creation: dirty (`unreachable-transition retry-window parity tests + plan doc updates`)
+- HEAD: `57fb4c3fdbe7f8db453f324f12fc9df22c573f1f`
+- Last commit: `57fb4c3 2026-02-13 09:24:43 -0600 Add MCP unreachable-transition retry-window parity tests`
+- Working tree at handoff creation: dirty (`tools/call` unreachable-transition parity tests + helper/plan updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`210 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`211 passed`)
 
 ## Recent Delivered Work
+- Added unreachable-transition retry-window parity for `tools/call` with shared failed-request request-id recovery:
+  - added API-level `/api/v1/mcp/invoke/tool` unreachable-transition regression that mirrors healthy-first ordering constraints (primary initialize timeout -> backup serve -> forced second primary initialize timeout -> unreachable skip -> primary re-entry).
+  - assertions preserve deterministic diagnostics filter behavior (`server`, `method`, `request_id`, `correlation_id`, `limit`) and transport/invocation call-order subsequence parity across the full request sequence.
+  - extracted shared invocation-event delta helper for failed-request request-id recovery and applied it to both `tools/call` and `resources/read` unreachable-transition regressions.
 - Added unreachable-transition retry-window parity coverage for `resources/read` under healthy-first candidate ordering:
   - helper-level matrix now drives deterministic primary `initialize` timeout transitions from degraded -> unreachable across both invoke methods while preserving backup skip/re-entry ordering.
   - API-level `/api/v1/mcp/invoke/resource` regression now forces a second primary initialize timeout via controlled backup retry-window state, verifies closed-window skip while backup serves requests, and asserts deterministic primary re-entry call order (`initialize` then `resources/read`).
@@ -117,14 +121,13 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening by mirroring unreachable-transition parity on the `tools/call` API path:
-1. Add API-level unreachable-transition call-order regression for `tools/call`:
-   - reuse the same healthy-first ordering constraints as the delivered `resources/read` scenario (primary initialize timeout -> backup serve -> forced second primary initialize timeout -> unreachable skip -> re-entry).
-   - preserve deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) including failed-request request-id recovery from invocation-event deltas.
-   - cross-check transport call-order against invocation `initialize_start`/`invoke_start` subsequence parity without assuming one-to-one mapping for failed initialize transport calls.
-2. Reduce duplicated failed-request request-id extraction:
-   - extract a small integration-test helper for capturing newly appended invocation events by count delta and returning the single request id.
-   - apply it to both `tools/call` and `resources/read` unreachable-transition scenarios to keep diagnostics assertions consistent and less brittle.
+Continue `P12/P13` call-order hardening by reducing unreachable-transition scenario duplication and extending helper-level parity:
+1. Extract a shared API test helper for unreachable-transition call-order sequences:
+   - factor the repeated request progression (first failover, closed-window skip, forced second primary initialize timeout, skip while unreachable, primary re-entry) into a compact helper with method-specific payload hooks.
+   - keep per-request diagnostics-filter assertions explicit in callers while reusing request-id/call-order scaffolding.
+2. Extend helper-level parity around backup reinitialize behavior:
+   - add focused unit coverage asserting backup `initialize` call-order when backup is temporarily marked degraded during forced primary-unreachable transitions for both invoke methods.
+   - keep assertions clock-driven and transport-order centric, without direct retry-window state mutation.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
