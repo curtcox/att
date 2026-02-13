@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `7922f0beda7dbcec58357b80729b9e293a951ed1`
-- Last commit: `7922f0b 2026-02-13 14:27:05 -0600 Reuse re-entry call-order collector in unit retry test`
-- Working tree at handoff creation: dirty (`unit mixed-method call-order collector helper reuse`)
+- HEAD: `87235298142e64ac5df937a99d7b2a372a332fe3`
+- Last commit: `8723529 2026-02-13 14:30:11 -0600 Extract mixed-method unit call-order collector helper`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
