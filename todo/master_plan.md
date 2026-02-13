@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended protocol-version assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROTOCOL_VERSION` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side inline `"2025-11-25"` protocol-version checks (initialize response assertion and capability snapshot protocol assertions) to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended event-filter server-argument constant reuse in unit MCP client coverage:
   - reused `UNIT_TEST_PRIMARY_SERVER` and `UNIT_TEST_BACKUP_SERVER` in remaining assertion-adjacent invocation/connection event filter calls within `test_event_list_filters_and_limits` in `tests/unit/test_mcp_client.py`.
   - replaced inline `server="primary"` and `server="backup"` filter arguments with shared constants while keeping registration/setup literals, preferred-order inputs, transport request payload literals, and method-branch conditionals explicit and unchanged.

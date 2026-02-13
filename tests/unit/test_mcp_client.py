@@ -50,6 +50,7 @@ UNIT_TEST_INVOKE_FAILURE_PHASE = "invoke_failure"
 UNIT_TEST_INVOKE_SUCCESS_PHASE = "invoke_success"
 UNIT_TEST_SESSION_ID_FIRST = "session-1"
 UNIT_TEST_SESSION_ID_SECOND = "session-2"
+UNIT_TEST_PROTOCOL_VERSION = "2025-11-25"
 
 
 @pytest.mark.asyncio
@@ -572,10 +573,10 @@ async def test_initialize_server_updates_state_on_success() -> None:
     assert initialized is not None
     assert initialized.status is ServerStatus.HEALTHY
     assert initialized.initialized is True
-    assert initialized.protocol_version == "2025-11-25"
+    assert initialized.protocol_version == UNIT_TEST_PROTOCOL_VERSION
     assert initialized.last_initialized_at is not None
     assert initialized.capability_snapshot is not None
-    assert initialized.capability_snapshot.protocol_version == "2025-11-25"
+    assert initialized.capability_snapshot.protocol_version == UNIT_TEST_PROTOCOL_VERSION
     assert initialized.capability_snapshot.server_info == {
         "name": "codex",
         "version": "1.0.0",
@@ -788,7 +789,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         },
     )
     assert isinstance(initialize["result"], dict)
-    assert initialize["result"]["protocolVersion"] == "2025-11-25"
+    assert initialize["result"]["protocolVersion"] == UNIT_TEST_PROTOCOL_VERSION
 
     initialized = await adapter(
         server,
