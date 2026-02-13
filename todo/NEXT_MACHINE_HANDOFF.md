@@ -5,15 +5,43 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`mixed-method parity helper adoption expansion`)
+- Working tree at handoff creation: dirty (`stage-paired initialize-stage error-index constant extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`226 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`232 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated stage-paired failover initialize-stage error-index literals:
+  - extracted shared constant `STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX` for repeated `failover_error_index = 1` assignments in tool/resource retry-window convergence failover assertions.
+  - migrated both stage-paired convergence initialize-timeout branches to consume the constant while keeping diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
+  - added focused regression coverage locking the initialize-stage constant value and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
+- Reduced duplicated stage-paired failover invoke-stage error-index literals:
+  - extracted shared constant `STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX` for repeated `failover_error_index = 3` assignments in tool/resource retry-window convergence failover assertions.
+  - migrated both stage-paired convergence test branches to consume the constant while keeping diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
+  - added focused regression coverage locking the constant value and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
+- Expanded scripted failover timeout-category constant adoption in adjacent invocation-event assertions:
+  - migrated remaining adjacent failover invocation-event `error_category` assertions still using inline `"network_timeout"` literals to `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - adoption now covers mixed-state failover and stage-paired tool/resource retry-window convergence failover assertions while keeping diagnostics-filter and call-order assertions explicit.
+  - preserved invocation/connection filter semantics, call-order literal expectations, and phase-start/transport subsequence parity behavior unchanged.
+- Reduced duplicated scripted mixed-method failover timeout-category assertions:
+  - extracted shared constant `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` for repeated `"network_timeout"` assertions in scripted mixed-method failover invocation-event checks.
+  - migrated scripted mixed-method tool/resource failover invocation-event assertions to consume the shared timeout-category constant while keeping diagnostics-filter and call-order assertions explicit at test call sites.
+  - added focused regression coverage locking the timeout-category constant value and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
+- Reduced duplicated scripted mixed-method failover degraded-status vectors:
+  - extracted shared tuple constant `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` for repeated single-item degraded status expectations in scripted mixed-method connection-event filters.
+  - migrated scripted mixed-method tool/resource failover connection-event filter assertions to consume the shared constant while keeping diagnostics-filter assertions explicit at each test call site.
+  - added focused regression coverage locking the shared degraded-status vector and preserved invocation/connection filter semantics plus call-order/subsequence parity behavior unchanged.
+- Reduced duplicated scripted mixed-method failover filter phase vectors:
+  - extracted shared tuple constant `SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES` for repeated 4-step failure filter phase assertions.
+  - migrated scripted mixed-method tool/resource failover filter assertions to consume the shared constant while keeping diagnostics-filter calls explicit at test call sites.
+  - added focused regression coverage locking the shared filter-phase vector and preserved invocation/connection filter semantics, call-order literals, and subsequence parity behavior unchanged.
+- Reduced duplicated scripted mixed-method failover phase/server expectation vectors:
+  - extracted shared tuple constants for the repeated 8-step failover invocation phase vector and method-specific server-order vectors.
+  - migrated scripted mixed-method failover assertions to consume the shared constants while keeping all diagnostics filter assertions explicit at test call sites.
+  - added focused regression coverage locking constant vector values and preserved call-order literal + phase-start/transport subsequence semantics unchanged.
 - Reduced duplicated mixed-method scripted request-id tuple wiring in call-order parity tests:
   - added shared helper `_mixed_method_scripted_request_ids(...)` for scripted mixed-method parity request-id tuple assembly.
   - added focused helper regression `test_mixed_method_scripted_request_ids_helper_preserves_order` and migrated scripted call-order parity assertion wiring to use the helper.
@@ -249,10 +277,10 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated scripted failover phase/server vectors:
-1. Extract shared scripted failover phase/server expectation constants:
-   - factor repeated 8-step failover phase vectors and matching server-order vectors in scripted mixed-method failover assertions into shared tuple constants.
-   - keep all diagnostics filter assertions and call-order literal assertions explicit at each test call site for auditability.
+Continue `P12/P13` test-structure hardening by reducing duplicated stage-paired failover initialize-timeout phase/server vectors:
+1. Extract shared initialize-timeout failover vectors:
+   - factor repeated stage-paired initialize-timeout `failover_phases` and `failover_servers` list literals in tool/resource retry-window convergence failover assertions into shared constants.
+   - keep diagnostics filter, timeout-category, and call-order assertions explicit at each test call site.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current invocation-event and connection-event filter behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.

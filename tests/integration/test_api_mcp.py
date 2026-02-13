@@ -262,6 +262,46 @@ MIXED_METHOD_FORCE_REINITIALIZE_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, s
     ("primary", "initialize"),
     ("primary", "resources/read"),
 )
+SCRIPTED_MIXED_METHOD_FAILOVER_EXPECTED_PHASES: tuple[str, ...] = (
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_failure",
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_success",
+)
+SCRIPTED_TOOL_FAILOVER_EXPECTED_SERVERS: tuple[str, ...] = (
+    "primary",
+    "primary",
+    "primary",
+    "primary",
+    "backup",
+    "backup",
+    "backup",
+    "backup",
+)
+SCRIPTED_RESOURCE_FAILOVER_EXPECTED_SERVERS: tuple[str, ...] = (
+    "backup",
+    "backup",
+    "backup",
+    "backup",
+    "primary",
+    "primary",
+    "primary",
+    "primary",
+)
+SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES: tuple[str, ...] = (
+    "initialize_start",
+    "initialize_success",
+    "invoke_start",
+    "invoke_failure",
+)
+SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES: tuple[str, ...] = (ServerStatus.DEGRADED.value,)
+SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY = "network_timeout"
+STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX = 1
+STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX = 3
 RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
@@ -1959,7 +1999,7 @@ def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() 
         "backup",
         "backup",
     ]
-    assert invocation_items[3]["error_category"] == "network_timeout"
+    assert invocation_items[3]["error_category"] == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
 
     correlated = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})
     assert correlated.status_code == 200
@@ -2024,44 +2064,25 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
     )
     assert tool_failover.status_code == 200
     tool_failover_items = tool_failover.json()["items"]
-    assert [item["phase"] for item in tool_failover_items] == [
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_failure",
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_success",
-    ]
-    assert [item["server"] for item in tool_failover_items] == [
-        "primary",
-        "primary",
-        "primary",
-        "primary",
-        "backup",
-        "backup",
-        "backup",
-        "backup",
-    ]
-    assert tool_failover_items[3]["error_category"] == "network_timeout"
+    assert [item["phase"] for item in tool_failover_items] == list(
+        SCRIPTED_MIXED_METHOD_FAILOVER_EXPECTED_PHASES
+    )
+    assert [item["server"] for item in tool_failover_items] == list(
+        SCRIPTED_TOOL_FAILOVER_EXPECTED_SERVERS
+    )
+    assert tool_failover_items[3]["error_category"] == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
     assert_invocation_event_filters(
         client,
         request_id=request_id_tool_1,
         server="primary",
         method="tools/call",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-        ],
+        expected_phases=list(SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES),
     )
     assert_connection_event_filters(
         client,
         request_id=request_id_tool_1,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     clock.advance(seconds=1)
@@ -2083,44 +2104,25 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
     )
     assert resource_failover.status_code == 200
     resource_failover_items = resource_failover.json()["items"]
-    assert [item["phase"] for item in resource_failover_items] == [
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_failure",
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_success",
-    ]
-    assert [item["server"] for item in resource_failover_items] == [
-        "backup",
-        "backup",
-        "backup",
-        "backup",
-        "primary",
-        "primary",
-        "primary",
-        "primary",
-    ]
-    assert resource_failover_items[3]["error_category"] == "network_timeout"
+    assert [item["phase"] for item in resource_failover_items] == list(
+        SCRIPTED_MIXED_METHOD_FAILOVER_EXPECTED_PHASES
+    )
+    assert [item["server"] for item in resource_failover_items] == list(
+        SCRIPTED_RESOURCE_FAILOVER_EXPECTED_SERVERS
+    )
+    assert resource_failover_items[3]["error_category"] == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
     assert_invocation_event_filters(
         client,
         request_id=request_id_resource_1,
         server="backup",
         method="resources/read",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-        ],
+        expected_phases=list(SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES),
     )
     assert_connection_event_filters(
         client,
         request_id=request_id_resource_1,
         server="backup",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     resource_correlation = client.get(
@@ -2193,6 +2195,64 @@ def test_mixed_method_scripted_request_ids_helper_preserves_order() -> None:
     ) == ("tool-request-id", "resource-request-id")
 
 
+def test_scripted_mixed_method_failover_constants_match_expected_vectors() -> None:
+    assert SCRIPTED_MIXED_METHOD_FAILOVER_EXPECTED_PHASES == (
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    )
+    assert SCRIPTED_TOOL_FAILOVER_EXPECTED_SERVERS == (
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    )
+    assert SCRIPTED_RESOURCE_FAILOVER_EXPECTED_SERVERS == (
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+    )
+
+
+def test_scripted_failover_filter_expected_phases_constant_matches_vector() -> None:
+    assert SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES == (
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+    )
+
+
+def test_scripted_failover_degraded_expected_statuses_constant_matches_vector() -> None:
+    assert SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES == (ServerStatus.DEGRADED.value,)
+
+
+def test_scripted_failover_timeout_error_category_constant_matches_value() -> None:
+    assert SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY == "network_timeout"
+
+
+def test_stage_paired_failover_invoke_error_index_constant_matches_value() -> None:
+    assert STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX == 3
+
+
+def test_stage_paired_failover_initialize_error_index_constant_matches_value() -> None:
+    assert STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX == 1
+
+
 def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
     factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
@@ -2225,18 +2285,13 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
         request_id=tool_request_id,
         server="primary",
         method="tools/call",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-        ],
+        expected_phases=list(SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES),
     )
     assert_connection_event_filters(
         client,
         request_id=tool_request_id,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     clock.advance(seconds=1)
@@ -2255,18 +2310,13 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
         request_id=resource_request_id,
         server="backup",
         method="resources/read",
-        expected_phases=[
-            "initialize_start",
-            "initialize_success",
-            "invoke_start",
-            "invoke_failure",
-        ],
+        expected_phases=list(SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES),
     )
     assert_connection_event_filters(
         client,
         request_id=resource_request_id,
         server="backup",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     observed_call_order = _collect_mixed_method_call_order(factory=factory)
@@ -2873,7 +2923,7 @@ def test_mcp_scripted_initialize_precedence_and_failover() -> None:
         "backup",
         "backup",
     ]
-    assert items[1]["error_category"] == "network_timeout"
+    assert items[1]["error_category"] == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
     assert_connection_event_filters(
         client,
         request_id=request_id_2,
@@ -3264,7 +3314,7 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
             "backup",
             "backup",
         ]
-        failover_error_index = 1
+        failover_error_index = STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX
     else:
         factory.fail_on_timeout_tool_calls.add("primary")
         failover_phases = [
@@ -3287,7 +3337,7 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
             "backup",
             "backup",
         ]
-        failover_error_index = 3
+        failover_error_index = STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX
 
     first_failover = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -3309,7 +3359,10 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     first_items = first_events.json()["items"]
     assert [item["phase"] for item in first_items] == failover_phases
     assert [item["server"] for item in first_items] == failover_servers
-    assert first_items[failover_error_index]["error_category"] == "network_timeout"
+    assert (
+        first_items[failover_error_index]["error_category"]
+        == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
+    )
     assert_invocation_event_filters(
         client,
         request_id=request_id_1,
@@ -3407,7 +3460,10 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
     third_items = third_events.json()["items"]
     assert [item["phase"] for item in third_items] == failover_phases
     assert [item["server"] for item in third_items] == failover_servers
-    assert third_items[failover_error_index]["error_category"] == "network_timeout"
+    assert (
+        third_items[failover_error_index]["error_category"]
+        == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
+    )
     assert_invocation_event_filters(
         client,
         request_id=request_id_3,
@@ -3631,7 +3687,7 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
             "backup",
             "backup",
         ]
-        failover_error_index = 1
+        failover_error_index = STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX
     else:
         factory.fail_on_timeout_resource_reads.add("primary")
         failover_phases = [
@@ -3654,7 +3710,7 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
             "backup",
             "backup",
         ]
-        failover_error_index = 3
+        failover_error_index = STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX
 
     first_failover = client.post(
         "/api/v1/mcp/invoke/resource",
@@ -3676,7 +3732,10 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
     first_items = first_events.json()["items"]
     assert [item["phase"] for item in first_items] == failover_phases
     assert [item["server"] for item in first_items] == failover_servers
-    assert first_items[failover_error_index]["error_category"] == "network_timeout"
+    assert (
+        first_items[failover_error_index]["error_category"]
+        == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
+    )
     assert_invocation_event_filters(
         client,
         request_id=request_id_1,
@@ -3776,7 +3835,10 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
     third_items = third_events.json()["items"]
     assert [item["phase"] for item in third_items] == failover_phases
     assert [item["server"] for item in third_items] == failover_servers
-    assert third_items[failover_error_index]["error_category"] == "network_timeout"
+    assert (
+        third_items[failover_error_index]["error_category"]
+        == SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY
+    )
     assert_invocation_event_filters(
         client,
         request_id=request_id_3,

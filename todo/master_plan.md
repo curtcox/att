@@ -6,6 +6,34 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Reduced duplicated stage-paired failover initialize-stage error-index literals in integration convergence assertions:
+  - extracted shared constant `STAGE_PAIRED_FAILOVER_INITIALIZE_ERROR_INDEX` for repeated `failover_error_index = 1` wiring in tool/resource retry-window convergence failover checks.
+  - migrated both stage-paired convergence initialize-timeout branches to consume the constant while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking initialize-stage error-index constant value and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated stage-paired failover invoke-stage error-index literals in integration convergence assertions:
+  - extracted shared constant `STAGE_PAIRED_FAILOVER_INVOKE_ERROR_INDEX` for repeated `failover_error_index = 3` wiring in tool/resource retry-window convergence failover checks.
+  - migrated both stage-paired convergence branches to consume the constant while keeping diagnostics-filter, timeout-category, and call-order assertions explicit.
+  - added focused regression coverage locking invoke-stage error-index constant value and preserved call-order literal/subsequence behavior unchanged.
+- [x] Expanded scripted failover timeout-category constant adoption in integration invocation-event assertions:
+  - migrated adjacent failover invocation-event assertions still using inline `"network_timeout"` literals to `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY`.
+  - kept diagnostics-filter and call-order assertions explicit while reducing repeated timeout-category literal wiring in stage-paired tool/resource failover scenarios.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence parity behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover timeout-category assertions in integration diagnostics checks:
+  - extracted shared constant `SCRIPTED_FAILOVER_TIMEOUT_ERROR_CATEGORY` for repeated scripted failover `"network_timeout"` invocation-event assertions.
+  - migrated scripted mixed-method tool/resource failover invocation-event assertions to consume the shared timeout-category constant while keeping diagnostics-filter and call-order assertions explicit.
+  - added focused regression coverage locking timeout-category constant value and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover degraded-status vectors in integration diagnostics assertions:
+  - extracted shared tuple constant `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` for repeated single-item degraded status expectations.
+  - migrated scripted mixed-method tool/resource failover connection-event filter assertions to consume the shared constant while keeping diagnostics-filter call sites explicit.
+  - added focused regression coverage locking degraded-status constant values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover filter phase vectors in integration diagnostics assertions:
+  - extracted shared tuple constant `SCRIPTED_FAILOVER_FILTER_EXPECTED_PHASES` for repeated 4-step failure filter phase expectations.
+  - migrated scripted mixed-method tool/resource failover invocation-filter assertions to consume the shared constant while keeping diagnostics-filter call sites explicit.
+  - added focused regression coverage locking filter-phase constant values and preserved call-order literal/subsequence behavior unchanged.
+- [x] Reduced duplicated scripted mixed-method failover phase/server expectation vectors in integration call-order tests:
+  - extracted shared tuple constants for the repeated 8-step failover invocation phase vector and method-specific server-order vectors.
+  - migrated scripted mixed-method failover assertion wiring to use the shared constants while keeping diagnostics filter assertions explicit at test call sites.
+  - added focused regression coverage locking failover constant values and preserved call-order literal/subsequence behavior unchanged.
 - [x] Reduced duplicated mixed-method scripted request-id tuple wiring in integration call-order parity tests:
   - added shared helper `_mixed_method_scripted_request_ids(...)` and migrated scripted mixed-method parity assertion wiring to consume it.
   - added focused helper regression coverage to lock request-id tuple ordering semantics.
@@ -261,7 +289,7 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
-- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (226 tests).
+- [x] Validation on 2026-02-13: `ruff format`, `ruff check`, `mypy`, and `pytest` all passing (232 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
 - [ ] P16 is in progress (restart watchdog/runtime health/log streaming + release-aware rollback metadata/policy gates + release-source adapter fallback + failure-class/deployment-context policy matrix are implemented; remaining work is deeper production rollout hardening).
