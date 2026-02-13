@@ -1530,7 +1530,10 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         )
 
     if method_key == "resources/read":
-        first = await manager.read_resource("att://projects", preferred=["primary", "backup"])
+        first = await manager.read_resource(
+            UNIT_TEST_PROJECTS_URI,
+            preferred=["primary", "backup"],
+        )
     else:
         first = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
     assert first.server == UNIT_TEST_PRIMARY_SERVER
@@ -1540,7 +1543,10 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         assert invalidated is True
 
     if method_key == "resources/read":
-        second = await manager.read_resource("att://projects", preferred=["primary", "backup"])
+        second = await manager.read_resource(
+            UNIT_TEST_PROJECTS_URI,
+            preferred=["primary", "backup"],
+        )
     else:
         second = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
     assert second.server == UNIT_TEST_BACKUP_SERVER
@@ -1631,7 +1637,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
 
     async def invoke_once() -> object:
         if method == "resources/read":
-            return await manager.read_resource("att://projects", preferred=["primary"])
+            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
         return await manager.invoke_tool("att.project.list", preferred=["primary"])
 
     first = await invoke_once()
@@ -1685,7 +1691,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
 
     async def invoke_once() -> object:
         if method == "resources/read":
-            return await manager.read_resource("att://projects", preferred=["primary"])
+            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
         return await manager.invoke_tool("att.project.list", preferred=["primary"])
 
     first = await invoke_once()
@@ -1875,7 +1881,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
-            return await manager.read_resource("att://projects", preferred=preferred)
+            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
@@ -1948,7 +1954,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
-            return await manager.read_resource("att://projects", preferred=preferred)
+            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
@@ -2008,7 +2014,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
-            return await manager.read_resource("att://projects", preferred=preferred)
+            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
@@ -2085,7 +2091,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
 
     async def invoke_once() -> object:
         if method == "resources/read":
-            return await manager.read_resource("att://projects", preferred=preferred)
+            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool("att.project.list", preferred=preferred)
 
     calls_before_closed = len(factory.calls)
