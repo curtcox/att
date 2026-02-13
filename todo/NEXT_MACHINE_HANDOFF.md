@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `9bbfdea127cc679258565f31ce05195f4dbfc043`
-- Last commit: `9bbfdea 2026-02-13 09:34:59 -0600 Extract expected call-order derivation helper`
-- Working tree at handoff creation: dirty (`mixed-method observed-call-order collector helper`)
+- HEAD: `bce4aa8fc2bb644fdc703260a582bcfa4ad0028b`
+- Last commit: `bce4aa8 2026-02-13 09:36:06 -0600 Extract mixed-method observed call-order collector`
+- Working tree at handoff creation: dirty (`call-order expectation vector typing/signature normalization`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Normalized call-order expectation vector typing/signatures for consistency:
+  - converted method-specific call-order expectation constants to immutable tuple-based vectors.
+  - updated call-order helper signatures to accept `Sequence[tuple[str, str]]` and normalized assertions to compare list-observed order with sequence-backed expectation constants.
+  - preserved call-order literal semantics, diagnostics filter assertions, and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated mixed-method observed-call-order collection scaffolding with shared helper wiring:
   - added shared helper utility to collect observed transport call-order tuples for mixed-method scenarios (`initialize` + `tools/call` + `resources/read`).
   - migrated remaining mixed-method call-order tests to consume this helper while preserving explicit expected observed-order literals.
@@ -189,17 +193,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by normalizing call-order expectation vector typing/signatures:
-1. Normalize call-order expectation constants and helper signatures:
-   - convert new method-specific call-order expectation constants to immutable tuple-based vectors for consistency with module-level expectation constants.
-   - relax call-order helper signatures to accept `Sequence[tuple[str, str]]` where appropriate so constants remain immutable without call-site casts.
+Continue `P12/P13` test-structure hardening by normalizing primary phase/status expectation vector typing:
+1. Normalize primary phase/status expectation constants + helper signatures:
+   - convert `PRIMARY_*_EXPECTED_PHASES` / `PRIMARY_*_EXPECTED_STATUSES` inner vectors to immutable tuple-based sequences.
+   - relax primary diagnostics helper signature typing to accept `Sequence[Sequence[str]]` to match immutable constant usage without call-site casts.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current diagnostics and call-order literal assertions unchanged.
    - retain phase-start/transport subsequence assertions exactly.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse existing constant/helper style from nearby expectation-vector slices.
+- Reuse existing tuple-based expectation-vector style introduced in nearby call-order constants.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist

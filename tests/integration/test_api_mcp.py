@@ -192,11 +192,11 @@ PRIMARY_RETRY_WINDOW_GATING_EXPECTED_STATUSES: tuple[list[str], ...] = (
     [],
     [ServerStatus.HEALTHY.value],
 )
-RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: list[tuple[str, str]] = [
+RETRY_WINDOW_GATING_TOOL_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
-]
-RETRY_WINDOW_GATING_TOOL_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+)
+RETRY_WINDOW_GATING_TOOL_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
     ("backup", "initialize"),
@@ -204,12 +204,12 @@ RETRY_WINDOW_GATING_TOOL_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
     ("backup", "tools/call"),
     ("primary", "initialize"),
     ("primary", "tools/call"),
-]
-RETRY_WINDOW_GATING_RESOURCE_EXPECTED_THIRD_SLICE: list[tuple[str, str]] = [
+)
+RETRY_WINDOW_GATING_RESOURCE_EXPECTED_THIRD_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "resources/read"),
-]
-RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+)
+RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "resources/read"),
     ("backup", "initialize"),
@@ -217,12 +217,12 @@ RETRY_WINDOW_GATING_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]]
     ("backup", "resources/read"),
     ("primary", "initialize"),
     ("primary", "resources/read"),
-]
-UNREACHABLE_TRANSITION_TOOL_EXPECTED_FIFTH_SLICE: list[tuple[str, str]] = [
+)
+UNREACHABLE_TRANSITION_TOOL_EXPECTED_FIFTH_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
-]
-UNREACHABLE_TRANSITION_TOOL_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+)
+UNREACHABLE_TRANSITION_TOOL_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
     ("backup", "initialize"),
     ("backup", "tools/call"),
     ("backup", "tools/call"),
@@ -230,12 +230,12 @@ UNREACHABLE_TRANSITION_TOOL_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] 
     ("backup", "tools/call"),
     ("primary", "initialize"),
     ("primary", "tools/call"),
-]
-UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_FIFTH_SLICE: list[tuple[str, str]] = [
+)
+UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_FIFTH_SLICE: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "resources/read"),
-]
-UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, str]] = [
+)
+UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
     ("backup", "initialize"),
     ("backup", "resources/read"),
     ("backup", "resources/read"),
@@ -243,7 +243,7 @@ UNREACHABLE_TRANSITION_RESOURCE_EXPECTED_OBSERVED_CALL_ORDER: list[tuple[str, st
     ("backup", "resources/read"),
     ("primary", "initialize"),
     ("primary", "resources/read"),
-]
+)
 
 
 def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarness:
@@ -481,18 +481,18 @@ def _assert_unreachable_transition_call_order_literals(
     factory: ClusterNatSessionFactory,
     sequence: UnreachableTransitionSequence,
     method: str,
-    expected_fifth_slice: list[tuple[str, str]],
-    expected_observed_call_order: list[tuple[str, str]],
+    expected_fifth_slice: Sequence[tuple[str, str]],
+    expected_observed_call_order: Sequence[tuple[str, str]],
 ) -> list[tuple[str, str]]:
     fifth_slice = _collect_method_call_order(
         factory=factory,
         method=method,
         start_index=sequence.calls_before_fifth,
     )
-    assert fifth_slice == expected_fifth_slice
+    assert fifth_slice == list(expected_fifth_slice)
 
     observed_call_order = _collect_method_call_order(factory=factory, method=method)
-    assert observed_call_order == expected_observed_call_order
+    assert observed_call_order == list(expected_observed_call_order)
     return observed_call_order
 
 
@@ -501,8 +501,8 @@ def _assert_retry_window_gating_call_order_literals(
     factory: ClusterNatSessionFactory,
     sequence: RetryWindowGatingSequence,
     method: str,
-    expected_third_slice: list[tuple[str, str]],
-    expected_observed_call_order: list[tuple[str, str]],
+    expected_third_slice: Sequence[tuple[str, str]],
+    expected_observed_call_order: Sequence[tuple[str, str]],
 ) -> list[tuple[str, str]]:
     second_slice = factory.calls[sequence.calls_after_first : sequence.calls_before_third]
     assert second_slice
@@ -513,10 +513,10 @@ def _assert_retry_window_gating_call_order_literals(
         method=method,
         start_index=sequence.calls_before_third,
     )
-    assert third_slice == expected_third_slice
+    assert third_slice == list(expected_third_slice)
 
     observed_call_order = _collect_method_call_order(factory=factory, method=method)
-    assert observed_call_order == expected_observed_call_order
+    assert observed_call_order == list(expected_observed_call_order)
     return observed_call_order
 
 

@@ -142,6 +142,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper utility to collect observed transport call-order tuples for mixed-method (`initialize` + `tools/call` + `resources/read`) scenarios.
   - migrated remaining mixed-method call-order tests to consume the helper while preserving explicit expected observed-order literals.
   - preserved diagnostics-filter assertions and phase-start/transport subsequence parity checks unchanged.
+- [x] Normalized call-order expectation vector typing/signatures for consistency:
+  - converted method-specific call-order expectation constants to immutable tuple-based vectors.
+  - updated call-order helper signatures to accept `Sequence[tuple[str, str]]` and normalized assertions for sequence-backed expectation constants.
+  - preserved call-order literal semantics, diagnostics-filter assertions, and phase-start/transport subsequence parity checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
