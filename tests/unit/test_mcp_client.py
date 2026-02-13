@@ -69,6 +69,10 @@ UNIT_TEST_FRESHNESS_STALE = "stale"
 UNIT_TEST_SESSION_CALL_ENTRY_LABEL = "session"
 UNIT_TEST_TOOL_CALL_ENTRY_LABEL = "tool"
 UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL = "resource"
+UNIT_TEST_ERROR_DOWN = "down"
+UNIT_TEST_ERROR_SLOW = "slow"
+UNIT_TEST_ERROR_HOLD_BACKUP = "hold backup"
+UNIT_TEST_ERROR_HOLD_PRIMARY = "hold primary"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -262,7 +266,7 @@ async def test_should_retry_observes_next_retry_window() -> None:
     manager.record_check_result(
         UNIT_TEST_TERMINAL_SERVER,
         healthy=False,
-        error="down",
+        error=UNIT_TEST_ERROR_DOWN,
         checked_at=now,
     )
 
@@ -275,7 +279,9 @@ async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
     clock = MCPTestClock()
     manager = MCPClientManager(now_provider=clock)
     manager.register("terminal", "http://terminal.local")
-    manager.record_check_result(UNIT_TEST_TERMINAL_SERVER, healthy=False, error="down")
+    manager.record_check_result(
+        UNIT_TEST_TERMINAL_SERVER, healthy=False, error=UNIT_TEST_ERROR_DOWN
+    )
 
     assert manager.should_retry(UNIT_TEST_TERMINAL_SERVER) is False
     clock.advance(seconds=1)
@@ -287,13 +293,13 @@ def test_choose_server_prefers_healthy_then_degraded() -> None:
     manager.register("a", "http://a.local")
     manager.register("b", "http://b.local")
 
-    manager.record_check_result(UNIT_TEST_SERVER_A, healthy=False, error="slow")
+    manager.record_check_result(UNIT_TEST_SERVER_A, healthy=False, error=UNIT_TEST_ERROR_SLOW)
 
     selected = manager.choose_server()
     assert selected is not None
     assert selected.name == UNIT_TEST_SERVER_B
 
-    manager.record_check_result(UNIT_TEST_SERVER_B, healthy=False, error="down")
+    manager.record_check_result(UNIT_TEST_SERVER_B, healthy=False, error=UNIT_TEST_ERROR_DOWN)
     fallback = manager.choose_server(preferred=["a", "b"])
     assert fallback is not None
     assert fallback.name == UNIT_TEST_SERVER_A
@@ -566,7 +572,9 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     recovered.status = ServerStatus.HEALTHY
     recovered.initialized = False
 
-    manager.record_check_result(UNIT_TEST_DEGRADED_SERVER, healthy=False, error="down")
+    manager.record_check_result(
+        UNIT_TEST_DEGRADED_SERVER, healthy=False, error=UNIT_TEST_ERROR_DOWN
+    )
     clock.advance(seconds=2)
 
     result = await manager.invoke_tool(
@@ -892,7 +900,7 @@ async def test_connect_server_skips_initialize_when_unreachable() -> None:
     transport_calls: list[str] = []
 
     async def probe(server: ExternalServer) -> tuple[bool, str | None]:
-        return False, "down"
+        return False, UNIT_TEST_ERROR_DOWN
 
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         transport_calls.append(str(request.get("method", "")))
@@ -1316,7 +1324,9 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     recovered.status = ServerStatus.HEALTHY
     recovered.initialized = False
 
-    manager.record_check_result(UNIT_TEST_DEGRADED_SERVER, healthy=False, error="down")
+    manager.record_check_result(
+        UNIT_TEST_DEGRADED_SERVER, healthy=False, error=UNIT_TEST_ERROR_DOWN
+    )
     clock.advance(seconds=2)
 
     result = await manager.invoke_tool(
@@ -1782,7 +1792,11 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     assert all(server == UNIT_TEST_BACKUP_SERVER for server, _, _ in second_slice)
 
     clock.advance(seconds=1)
-    manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+    manager.record_check_result(
+        UNIT_TEST_BACKUP_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_HOLD_BACKUP,
+    )
 
     calls_before_third = len(factory.calls)
     third = await invoke_once()
@@ -1837,7 +1851,11 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
 
     clock.advance(seconds=1)
     for _ in range(backup_failures):
-        manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+        manager.record_check_result(
+            UNIT_TEST_BACKUP_SERVER,
+            healthy=False,
+            error=UNIT_TEST_ERROR_HOLD_BACKUP,
+        )
     backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert backup is not None
     assert backup.status is expected_backup_status
@@ -1906,7 +1924,11 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
     if primary_failures == 2:
         clock.advance(seconds=1)
-        manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+        manager.record_check_result(
+            UNIT_TEST_BACKUP_SERVER,
+            healthy=False,
+            error=UNIT_TEST_ERROR_HOLD_BACKUP,
+        )
         with pytest.raises(MCPInvocationError):
             await invoke_once(["primary"])
         primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
@@ -1928,7 +1950,11 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     assert primary is not None
     assert primary.status is expected_primary_status
 
-    manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+    manager.record_check_result(
+        UNIT_TEST_BACKUP_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_HOLD_BACKUP,
+    )
 
     calls_before_reentry = len(factory.calls)
     reentry = await invoke_once(["backup", "primary"])
@@ -1971,7 +1997,11 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
-    manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+    manager.record_check_result(
+        UNIT_TEST_BACKUP_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_HOLD_BACKUP,
+    )
     with pytest.raises(MCPInvocationError):
         await invoke_once(["primary"])
 
@@ -2032,7 +2062,11 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 
     clock.advance(seconds=1)
     for _ in range(backup_failures):
-        manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+        manager.record_check_result(
+            UNIT_TEST_BACKUP_SERVER,
+            healthy=False,
+            error=UNIT_TEST_ERROR_HOLD_BACKUP,
+        )
     backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert backup is not None
     assert backup.status is expected_backup_status
@@ -2086,8 +2120,16 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
 
-    manager.record_check_result(UNIT_TEST_PRIMARY_SERVER, healthy=False, error="hold primary")
-    manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="hold backup")
+    manager.record_check_result(
+        UNIT_TEST_PRIMARY_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_HOLD_PRIMARY,
+    )
+    manager.record_check_result(
+        UNIT_TEST_BACKUP_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_HOLD_BACKUP,
+    )
 
     primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     backup = manager.get(UNIT_TEST_BACKUP_SERVER)

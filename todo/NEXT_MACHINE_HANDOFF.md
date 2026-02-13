@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `68cfd7c78f55057807cc3e72b21a8cb891865ba0`
-- Last commit: `68cfd7c 2026-02-13 16:15:51 -0600 - Update mcp tests to use UNIT_TEST_UR`
+- HEAD: `d39ba95e2a9c04cd64da1a78c42d22d1ccb14aa3`
+- Last commit: `d39ba95 2026-02-13 16:19:26 -0600 - Update mcp session call labels`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended health-check error-message constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_ERROR_DOWN`, `UNIT_TEST_ERROR_SLOW`, `UNIT_TEST_ERROR_HOLD_BACKUP`, and `UNIT_TEST_ERROR_HOLD_PRIMARY`.
+  - migrated repeated `record_check_result(..., error=...)` text literals plus the scripted transport helper `return False, "down"` path to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended call-vector label constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_SESSION_CALL_ENTRY_LABEL` and `UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL`.
@@ -152,9 +158,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` where repeated health-check error text literals remain:
-   - target repeated `error=` literals such as `"hold backup"` and `"hold primary"` (and adjacent repeated `"down"` uses where meaningful) by introducing and reusing dedicated `UNIT_TEST_*` constants.
+Continue `P12/P13` test-structure hardening by finishing residual health/error literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for the remaining inline health-check error text:
+   - migrate the remaining `record_check_result(..., error="manual degrade")` literal to a dedicated `UNIT_TEST_ERROR_*` constant (and fold any adjacent single-path health error text into existing constants where this improves consistency without reducing readability).
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

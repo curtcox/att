@@ -9,6 +9,12 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Extended health-check error-message constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_ERROR_DOWN`, `UNIT_TEST_ERROR_SLOW`, `UNIT_TEST_ERROR_HOLD_BACKUP`, and `UNIT_TEST_ERROR_HOLD_PRIMARY`.
+  - migrated repeated `record_check_result(..., error=...)` text literals plus the scripted transport helper `return False, "down"` path to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Extended call-vector label constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_SESSION_CALL_ENTRY_LABEL` and `UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL`.
   - migrated remaining inline tuple-label literals (`"session"` and `"resource"`) in session-call assertion vectors to constant-driven form in `tests/unit/test_mcp_client.py`.
