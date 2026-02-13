@@ -17,6 +17,7 @@ from att.mcp.client import (
     ServerStatus,
 )
 from tests.support.mcp_helpers import MCPTestClock
+from tests.support.mcp_nat_helpers import FakeNatSession, FakeNatSessionFactory
 
 
 @pytest.mark.asyncio
@@ -717,94 +718,9 @@ async def test_connect_server_skips_initialize_when_unreachable() -> None:
     assert transport_calls == []
 
 
-class _ModelPayload:
-    def __init__(self, payload: dict[str, Any]) -> None:
-        self._payload = payload
-
-    def model_dump(self, *, mode: str = "python", exclude_none: bool = False) -> dict[str, Any]:
-        del mode, exclude_none
-        return self._payload
-
-
-class _FakeNatSession:
-    def __init__(self, *, session_id: str = "session-0") -> None:
-        self.session_id = session_id
-        self.initialized = False
-        self.calls: list[tuple[str, str]] = []
-        self.fail_with: Exception | None = None
-
-    async def initialize(self) -> _ModelPayload:
-        self.calls.append(("session", "initialize"))
-        self.initialized = True
-        return _ModelPayload(
-            {
-                "protocolVersion": "2025-11-25",
-                "serverInfo": {"name": "nat"},
-                "capabilities": {"tools": {}, "resources": {}},
-            }
-        )
-
-    async def send_notification(
-        self,
-        notification: object,
-        related_request_id: str | int | None = None,
-    ) -> None:
-        del notification, related_request_id
-        self.calls.append(("session", "notifications/initialized"))
-
-    async def call_tool(
-        self,
-        name: str,
-        arguments: dict[str, Any] | None = None,
-        read_timeout_seconds: timedelta | None = None,
-        progress_callback: object | None = None,
-        *,
-        meta: dict[str, Any] | None = None,
-    ) -> _ModelPayload:
-        del read_timeout_seconds, progress_callback, meta
-        self.calls.append(("tool", name))
-        if self.fail_with is not None:
-            raise self.fail_with
-        return _ModelPayload(
-            {
-                "content": [{"type": "text", "text": "ok"}],
-                "structuredContent": {
-                    "arguments": arguments or {},
-                    "session_id": self.session_id,
-                },
-                "isError": False,
-            }
-        )
-
-    async def read_resource(self, uri: object) -> _ModelPayload:
-        self.calls.append(("resource", str(uri)))
-        return _ModelPayload(
-            {
-                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
-            }
-        )
-
-
-class _FakeNatSessionFactory:
-    def __init__(self) -> None:
-        self.created = 0
-        self.closed = 0
-        self.sessions: list[_FakeNatSession] = []
-
-    @asynccontextmanager
-    async def __call__(self, _: str) -> Any:
-        session = _FakeNatSession(session_id=f"session-{self.created + 1}")
-        self.created += 1
-        self.sessions.append(session)
-        try:
-            yield session
-        finally:
-            self.closed += 1
-
-
 @pytest.mark.asyncio
 async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
-    session = _FakeNatSession()
+    session = FakeNatSession()
 
     @asynccontextmanager
     async def session_context(_: str) -> Any:
@@ -869,7 +785,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
 
 @pytest.mark.asyncio
 async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> None:
-    session = _FakeNatSession()
+    session = FakeNatSession()
 
     @asynccontextmanager
     async def session_context(_: str) -> Any:
@@ -909,7 +825,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
 
 @pytest.mark.asyncio
 async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -946,7 +862,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
 
 @pytest.mark.asyncio
 async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> None:
-    manager = MCPClientManager(transport_adapter=_FakeNatSession())  # type: ignore[arg-type]
+    manager = MCPClientManager(transport_adapter=FakeNatSession())  # type: ignore[arg-type]
     manager.register("nat", "http://nat.local")
 
     assert manager.supports_adapter_session_controls() is False
@@ -957,7 +873,7 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
 
 @pytest.mark.asyncio
 async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -980,7 +896,7 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
 
 @pytest.mark.asyncio
 async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -1004,7 +920,7 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
 
 @pytest.mark.asyncio
 async def test_manager_adapter_session_freshness_semantics() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=300,
@@ -1037,7 +953,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
 
 @pytest.mark.asyncio
 async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=60,
@@ -1063,7 +979,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
 
 @pytest.mark.asyncio
 async def test_refresh_adapter_session_recreates_underlying_session_identity() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
@@ -1089,7 +1005,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
 
 @pytest.mark.asyncio
 async def test_transport_disconnect_invalidation_recreates_session_on_next_invoke() -> None:
-    factory = _FakeNatSessionFactory()
+    factory = FakeNatSessionFactory()
 
     @asynccontextmanager
     async def session_context(endpoint: str) -> Any:
@@ -1143,7 +1059,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
     failure: Exception,
     category: str,
 ) -> None:
-    session = _FakeNatSession()
+    session = FakeNatSession()
     session.fail_with = failure
 
     @asynccontextmanager
@@ -1168,7 +1084,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
 
 @pytest.mark.asyncio
 async def test_adapter_transport_fallback_across_mixed_states() -> None:
-    sessions: dict[str, _FakeNatSession] = {}
+    sessions: dict[str, FakeNatSession] = {}
     clock = MCPTestClock()
 
     @asynccontextmanager
@@ -1179,7 +1095,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
             key = "recovered"
         else:
             key = "degraded"
-        session = sessions.setdefault(key, _FakeNatSession())
+        session = sessions.setdefault(key, FakeNatSession())
         if key == "primary":
             session.fail_with = RuntimeError("primary unavailable")
         yield session

@@ -632,6 +632,130 @@ def test_mcp_event_endpoints_support_filters_limits_and_correlation() -> None:
     assert limited_connection_items[0]["server"] == "github"
 
 
+def test_mcp_resource_failover_recovery_filters_and_correlation() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=2,
+    )
+    client = _client_with_manager(manager)
+
+    def _assert_invocation_filters(request_id: str, expected_primary_phases: list[str]) -> None:
+        filtered = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={
+                "server": "primary",
+                "method": "resources/read",
+                "request_id": request_id,
+            },
+        )
+        assert filtered.status_code == 200
+        assert [item["phase"] for item in filtered.json()["items"]] == expected_primary_phases
+
+        limited = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={
+                "server": "primary",
+                "method": "resources/read",
+                "request_id": request_id,
+                "limit": 1,
+            },
+        )
+        assert limited.status_code == 200
+        assert [item["phase"] for item in limited.json()["items"]] == expected_primary_phases[-1:]
+
+    def _assert_connection_filters(request_id: str, expected_statuses: list[str]) -> None:
+        filtered = client.get(
+            "/api/v1/mcp/events",
+            params={"server": "primary", "correlation_id": request_id},
+        )
+        assert filtered.status_code == 200
+        assert [item["to_status"] for item in filtered.json()["items"]] == expected_statuses
+
+        limited = client.get(
+            "/api/v1/mcp/events",
+            params={"server": "primary", "correlation_id": request_id, "limit": 1},
+        )
+        assert limited.status_code == 200
+        assert [item["to_status"] for item in limited.json()["items"]] == expected_statuses[-1:]
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    warm_backup = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert warm_backup.status_code == 200
+    assert warm_backup.json()["server"] == "backup"
+    assert warm_backup.json()["method"] == "resources/read"
+
+    factory.fail_on_timeout_initialize.add("primary")
+    first_failover = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first_failover.status_code == 200
+    assert first_failover.json()["server"] == "backup"
+    assert first_failover.json()["method"] == "resources/read"
+    request_id_1 = first_failover.json()["request_id"]
+
+    _assert_invocation_filters(
+        request_id_1,
+        expected_primary_phases=["initialize_start", "initialize_failure"],
+    )
+    _assert_connection_filters(request_id_1, expected_statuses=[ServerStatus.DEGRADED.value])
+
+    during_window = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert during_window.status_code == 200
+    assert during_window.json()["server"] == "backup"
+    request_id_2 = during_window.json()["request_id"]
+
+    _assert_invocation_filters(request_id_2, expected_primary_phases=[])
+    _assert_connection_filters(request_id_2, expected_statuses=[])
+
+    factory.fail_on_timeout_initialize.remove("primary")
+    clock.advance(seconds=1)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    recovery = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert recovery.status_code == 200
+    assert recovery.json()["server"] == "primary"
+    assert recovery.json()["method"] == "resources/read"
+    request_id_3 = recovery.json()["request_id"]
+
+    _assert_invocation_filters(
+        request_id_3,
+        expected_primary_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    _assert_connection_filters(request_id_3, expected_statuses=[ServerStatus.HEALTHY.value])
+
+
 def test_mcp_invoke_uses_adapter_transport_when_configured() -> None:
     adapter = FallbackTransport()
     manager = MCPClientManager(

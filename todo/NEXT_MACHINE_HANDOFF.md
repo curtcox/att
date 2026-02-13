@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (shared NAT test helper extraction + stage-paired diagnostics filter assertions + plan doc updates)
+- Working tree at handoff creation: dirty (unit NAT helper extraction + `resources/read` diagnostics parity + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`170 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`171 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -41,15 +41,21 @@
   - for each timeout stage, added explicit deterministic assertions for `/api/v1/mcp/invocation-events` filtering by `server` + `request_id` + `limit`.
   - for each timeout stage, added explicit deterministic assertions for `/api/v1/mcp/events` filtering by `server` + `correlation_id` + `limit`.
   - kept server-local capability snapshot timing assertions and preferred-order failover/recovery determinism intact.
+- Reduced remaining duplicated NAT unit transport scaffolding:
+  - added shared `FakeNatSession` and `FakeNatSessionFactory` to `tests/support/mcp_nat_helpers.py`.
+  - migrated `tests/unit/test_mcp_client.py` NAT adapter/session-control coverage to shared helpers and removed duplicated test-local helper classes.
+- Extended diagnostics filter parity to `resources/read` failover/recovery:
+  - added integration coverage asserting `/api/v1/mcp/invocation-events` filters (`server`, `method`, `request_id`, `limit`) for correlated `resources/read` failover and recovery requests.
+  - added matching `/api/v1/mcp/events` filter assertions (`server`, `correlation_id`, `limit`) for the same request-correlation flows.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` with external transport realism and diagnostics parity:
-1. Reduce remaining duplicated NAT test scaffolding in unit MCP coverage:
-   - extract `_FakeNatSession` / `_FakeNatSessionFactory` from `tests/unit/test_mcp_client.py` into `tests/support` to align with shared helper usage.
-   - keep unit behavior unchanged while shrinking test-local transport setup.
-2. Extend diagnostics filter parity to `resources/read` failover paths:
-   - add deterministic integration assertions for invocation-event filtering with `server`, `method`, `request_id`, and `limit` under `resources/read` failover/recovery.
-   - assert matching connection-event filtering with `server`, `correlation_id`, and `limit` for the same correlated requests.
+Continue `P12/P13` with external transport realism and cross-method convergence:
+1. Extend stage-paired convergence to `resources/read` timeout stages:
+   - add paired integration coverage for `resources/read` with explicit `initialize`-timeout vs `invoke`-timeout behavior under controlled clock progression.
+   - preserve stage-specific status/retry deltas and server-local capability snapshot timing assertions.
+2. Expand shared NAT helper controls to support `resources/read` invoke-time failures:
+   - add explicit cluster helper controls for resource-read failures/timeouts in `tests/support/mcp_nat_helpers.py`.
+   - reuse those controls in new convergence tests without changing production behavior.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

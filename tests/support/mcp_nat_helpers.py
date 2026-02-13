@@ -80,6 +80,82 @@ class APIFakeNatSessionFactory:
             self.closed += 1
 
 
+class FakeNatSession:
+    def __init__(self, *, session_id: str = "session-0") -> None:
+        self.session_id = session_id
+        self.initialized = False
+        self.calls: list[tuple[str, str]] = []
+        self.fail_with: Exception | None = None
+
+    async def initialize(self) -> ModelPayload:
+        self.calls.append(("session", "initialize"))
+        self.initialized = True
+        return ModelPayload(
+            {
+                "protocolVersion": "2025-11-25",
+                "serverInfo": {"name": "nat"},
+                "capabilities": {"tools": {}, "resources": {}},
+            }
+        )
+
+    async def send_notification(
+        self,
+        notification: object,
+        related_request_id: str | int | None = None,
+    ) -> None:
+        del notification, related_request_id
+        self.calls.append(("session", "notifications/initialized"))
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        read_timeout_seconds: timedelta | None = None,
+        progress_callback: object | None = None,
+        *,
+        meta: dict[str, Any] | None = None,
+    ) -> ModelPayload:
+        del read_timeout_seconds, progress_callback, meta
+        self.calls.append(("tool", name))
+        if self.fail_with is not None:
+            raise self.fail_with
+        return ModelPayload(
+            {
+                "content": [{"type": "text", "text": "ok"}],
+                "structuredContent": {
+                    "arguments": arguments or {},
+                    "session_id": self.session_id,
+                },
+                "isError": False,
+            }
+        )
+
+    async def read_resource(self, uri: object) -> ModelPayload:
+        self.calls.append(("resource", str(uri)))
+        return ModelPayload(
+            {
+                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
+            }
+        )
+
+
+class FakeNatSessionFactory:
+    def __init__(self) -> None:
+        self.created = 0
+        self.closed = 0
+        self.sessions: list[FakeNatSession] = []
+
+    @asynccontextmanager
+    async def __call__(self, _: str) -> Any:
+        session = FakeNatSession(session_id=f"session-{self.created + 1}")
+        self.created += 1
+        self.sessions.append(session)
+        try:
+            yield session
+        finally:
+            self.closed += 1
+
+
 class ClusterNatSession:
     def __init__(
         self,

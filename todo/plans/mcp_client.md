@@ -143,3 +143,9 @@ P11
 - Extended stage-paired convergence diagnostics filter assertions:
   - for each timeout stage, convergence coverage now validates deterministic filtering on `/api/v1/mcp/invocation-events` with `server` + `request_id` + `limit`.
   - for each timeout stage, convergence coverage now validates deterministic filtering on `/api/v1/mcp/events` with `server` + `correlation_id` + `limit`.
+- Extracted shared unit NAT transport scaffolding:
+  - added reusable `FakeNatSession` and `FakeNatSessionFactory` to `tests/support/mcp_nat_helpers.py`.
+  - migrated `tests/unit/test_mcp_client.py` adapter/control coverage to shared NAT helpers and removed duplicated test-local session factory/session model classes.
+- Extended diagnostics filter parity for `resources/read` failover/recovery:
+  - added integration coverage asserting `/api/v1/mcp/invocation-events` filters (`server`, `method`, `request_id`, `limit`) for correlated `resources/read` failover and recovery requests.
+  - added matching `/api/v1/mcp/events` filter assertions (`server`, `correlation_id`, `limit`) for the same request-correlation flows.
