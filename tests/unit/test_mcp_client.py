@@ -205,7 +205,7 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     manager.register("codex", "http://codex.local")
 
     await manager.health_check_server("codex")
-    server = manager.get("codex")
+    server = manager.get(UNIT_TEST_CODEX_SERVER)
     assert server is not None
     assert server.status is ServerStatus.DEGRADED
     assert server.retry_count == 1
@@ -213,7 +213,7 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     clock.advance(seconds=1)
 
     await manager.health_check_server("codex")
-    server = manager.get("codex")
+    server = manager.get(UNIT_TEST_CODEX_SERVER)
     assert server is not None
     assert server.status is ServerStatus.UNREACHABLE
     assert server.retry_count == 2
@@ -235,13 +235,13 @@ async def test_health_check_recovery_resets_backoff() -> None:
     manager.register("github", "http://github.local")
 
     await manager.health_check_server("github")
-    degraded = manager.get("github")
+    degraded = manager.get(UNIT_TEST_GITHUB_SERVER)
     assert degraded is not None
     assert degraded.status is ServerStatus.DEGRADED
     assert degraded.next_retry_at is not None
 
     manager.record_check_result("github", healthy=True)
-    recovered = manager.get("github")
+    recovered = manager.get(UNIT_TEST_GITHUB_SERVER)
     assert recovered is not None
     assert recovered.status is ServerStatus.HEALTHY
     assert recovered.retry_count == 0
@@ -470,7 +470,7 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
         UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
         UNIT_TEST_TOOLS_CALL_METHOD,
     ]
-    server = manager.get("codex")
+    server = manager.get(UNIT_TEST_CODEX_SERVER)
     assert server is not None
     assert server.initialization_expires_at is not None
 
@@ -503,7 +503,7 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
     assert len(error.attempts) == 2
     assert error.attempts[1].stage == UNIT_TEST_INVOKE_STAGE
     assert error.attempts[1].error_category == UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY
-    server = manager.get("codex")
+    server = manager.get(UNIT_TEST_CODEX_SERVER)
     assert server is not None
     assert server.last_error_category == UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY
 
@@ -836,7 +836,7 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
         UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
         UNIT_TEST_TOOLS_CALL_METHOD,
     ]
-    server = manager.get("codex")
+    server = manager.get(UNIT_TEST_CODEX_SERVER)
     assert server is not None
     assert server.initialized is True
 
