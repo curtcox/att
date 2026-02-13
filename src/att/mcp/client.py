@@ -133,6 +133,16 @@ class AdapterSessionDiagnostics:
     last_activity_at: datetime | None
 
 
+@dataclass(slots=True)
+class AdapterSessionStatus:
+    """Aggregated adapter session status for one registered server."""
+
+    server: str
+    active: bool
+    initialized: bool
+    last_activity_at: datetime | None
+
+
 class MCPInvocationError(RuntimeError):
     """Raised when invocation fails across all available servers."""
 
@@ -827,6 +837,24 @@ class MCPClientManager:
         if adapter is None:
             return None
         return adapter.session_diagnostics(name)
+
+    def list_adapter_sessions(self) -> list[AdapterSessionStatus]:
+        """List adapter session status across all registered servers."""
+        adapter = self._adapter_with_session_controls()
+        if adapter is None:
+            return []
+        statuses: list[AdapterSessionStatus] = []
+        for server in self.list_servers():
+            diagnostics = adapter.session_diagnostics(server.name)
+            statuses.append(
+                AdapterSessionStatus(
+                    server=server.name,
+                    active=diagnostics.active,
+                    initialized=diagnostics.initialized,
+                    last_activity_at=diagnostics.last_activity_at,
+                )
+            )
+        return statuses
 
     async def invalidate_adapter_session(self, name: str) -> bool:
         """Invalidate adapter session for one server when supported."""

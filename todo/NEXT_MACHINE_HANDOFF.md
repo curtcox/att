@@ -5,37 +5,37 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (session identity/recovery semantics + adapter capability visibility slice + plan doc updates)
+- Working tree at handoff creation: dirty (adapter session aggregation endpoint + partial-cluster resilience slice + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`156 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`160 passed`)
 
 ## Recent Delivered Work
-- Added deterministic session identity/recovery coverage:
-  - forced refresh now verified to produce a new underlying adapter session identity (not reusing prior session object).
-  - transport-level disconnect/timeout invalidation now verified to recreate session state on subsequent invocation.
-- Added operator visibility for adapter control capability:
-  - `MCPServerResponse` now includes `adapter_controls_available`.
-  - `MCPServersResponse` now includes top-level `adapter_controls_available`.
-  - allows clients/operators to gate lifecycle controls without trial-and-error `409` probes.
-- Expanded tests:
-  - unit tests for refresh identity replacement and post-disconnect auto-recreation semantics.
-  - integration tests for session-id change across refresh and capability-visibility flags under both NAT-control and non-NAT-control paths.
+- Added lightweight aggregated adapter diagnostics endpoint:
+  - new route `GET /api/v1/mcp/adapter-sessions`.
+  - manager now exposes `list_adapter_sessions()` as the single aggregation source.
+  - endpoint returns sorted per-server adapter session status (`server`, `active`, `initialized`, `last_activity_at`) plus `adapter_controls_available`.
+- Added targeted partial-cluster resilience coverage:
+  - multi-server test now refreshes one server in a cluster, then forces partial failure to validate deterministic preferred-order fallback behavior.
+  - same test verifies cross-stream correlation remains deterministic via `correlation_id` linkage to invocation `request_id`.
+- Expanded adapter aggregation tests:
+  - integration coverage for aggregated endpoint under both NAT-controls-available and non-NAT-control adapters.
+  - unit coverage for manager aggregated adapter status ordering and active-session transitions.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Add a lightweight adapter diagnostics endpoint for fleet-level operations:
-   - e.g. aggregated per-server adapter-session status without requiring per-server `GET` loops.
-2. Add targeted resilience coverage for partial cluster operations:
-   - invalidate/refresh one server in a multi-server pool and verify failover ordering + event correlation remains deterministic.
+1. Expand adapter diagnostics with optional filtering/limits and lightweight health semantics:
+   - add route query controls where useful (e.g., active-only) while keeping deterministic ordering.
+2. Add deeper mixed-state cluster coverage:
+   - include explicit invalidate-one-server scenario ensuring unaffected server session identity/capability snapshots remain stable through subsequent invokes.
 
 Suggested implementation direction:
-- Keep manager as single aggregation point; avoid exposing adapter internals in routes.
-- Add manager reader method(s) for summarized adapter diagnostics and map through one new route/schema.
-- Extend existing fallback tests rather than creating new transport scaffolding.
+- Keep manager as aggregation/source-of-truth and route logic thin.
+- Reuse existing fake NAT session factories and extend with server-specific identity assertions to avoid new transport scaffolding.
+- Preserve current event/filter semantics and correlation determinism.
 
 ## Resume Checklist
 1. Sync and verify environment:

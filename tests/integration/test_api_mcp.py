@@ -186,6 +186,96 @@ class _APIFakeNatSessionFactory:
             self.closed += 1
 
 
+class _ClusterNatSession:
+    def __init__(
+        self,
+        *,
+        server_name: str,
+        session_id: str,
+        factory: _ClusterNatSessionFactory,
+    ) -> None:
+        self.server_name = server_name
+        self.session_id = session_id
+        self.factory = factory
+
+    async def initialize(self) -> _ModelPayload:
+        self.factory.calls.append((self.server_name, self.session_id, "initialize"))
+        return _ModelPayload(
+            {
+                "protocolVersion": "2025-11-25",
+                "serverInfo": {"name": self.server_name},
+                "capabilities": {"tools": {}, "resources": {}},
+            }
+        )
+
+    async def send_notification(
+        self,
+        notification: object,
+        related_request_id: str | int | None = None,
+    ) -> None:
+        del notification, related_request_id
+        self.factory.calls.append((self.server_name, self.session_id, "notifications/initialized"))
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        read_timeout_seconds: timedelta | None = None,
+        progress_callback: object | None = None,
+        *,
+        meta: dict[str, Any] | None = None,
+    ) -> _ModelPayload:
+        del read_timeout_seconds, progress_callback, meta
+        self.factory.calls.append((self.server_name, self.session_id, "tools/call"))
+        if self.server_name in self.factory.fail_on_tool_calls:
+            msg = f"{self.server_name} unavailable"
+            raise RuntimeError(msg)
+        return _ModelPayload(
+            {
+                "content": [{"type": "text", "text": "ok"}],
+                "structuredContent": {
+                    "session_id": self.session_id,
+                    "server": self.server_name,
+                    "tool": name,
+                    "arguments": arguments or {},
+                },
+                "isError": False,
+            }
+        )
+
+    async def read_resource(self, uri: object) -> _ModelPayload:
+        self.factory.calls.append((self.server_name, self.session_id, "resources/read"))
+        return _ModelPayload(
+            {
+                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
+            }
+        )
+
+
+class _ClusterNatSessionFactory:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, str]] = []
+        self.fail_on_tool_calls: set[str] = set()
+        self.created_by_server: dict[str, int] = {}
+        self.closed_by_server: dict[str, int] = {}
+
+    @asynccontextmanager
+    async def __call__(self, endpoint: str) -> Any:
+        host = endpoint.split("//", maxsplit=1)[1].split("/", maxsplit=1)[0]
+        server_name = host.split(".", maxsplit=1)[0]
+        next_index = self.created_by_server.get(server_name, 0) + 1
+        self.created_by_server[server_name] = next_index
+        session_id = f"{server_name}-session-{next_index}"
+        try:
+            yield _ClusterNatSession(
+                server_name=server_name,
+                session_id=session_id,
+                factory=self,
+            )
+        finally:
+            self.closed_by_server[server_name] = self.closed_by_server.get(server_name, 0) + 1
+
+
 def _client_with_manager(manager: MCPClientManager) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_mcp_client_manager] = lambda: manager
@@ -827,3 +917,128 @@ def test_mcp_adapter_session_lifecycle_conflict_without_nat_controls() -> None:
     refresh = client.post("/api/v1/mcp/servers/nat/adapter/refresh")
     assert refresh.status_code == 409
     assert "not available" in refresh.json()["detail"]
+
+
+def test_mcp_adapter_sessions_endpoint_aggregates_status() -> None:
+    factory = _APIFakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "a", "url": "http://a.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "b", "url": "http://b.local"})
+
+    before = client.get("/api/v1/mcp/adapter-sessions")
+    assert before.status_code == 200
+    assert before.json()["adapter_controls_available"] is True
+    assert [item["server"] for item in before.json()["items"]] == ["a", "b"]
+    assert all(item["active"] is False for item in before.json()["items"])
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={"tool_name": "att.project.list", "arguments": {}, "preferred_servers": ["a"]},
+    )
+    assert invoke.status_code == 200
+
+    after = client.get("/api/v1/mcp/adapter-sessions")
+    assert after.status_code == 200
+    by_name = {item["server"]: item for item in after.json()["items"]}
+    assert by_name["a"]["active"] is True
+    assert by_name["a"]["initialized"] is True
+    assert by_name["a"]["last_activity_at"] is not None
+    assert by_name["b"]["active"] is False
+
+
+def test_mcp_adapter_sessions_endpoint_without_nat_controls() -> None:
+    manager = MCPClientManager(transport_adapter=FallbackTransport())
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "a", "url": "http://a.local"})
+    response = client.get("/api/v1/mcp/adapter-sessions")
+    assert response.status_code == 200
+    assert response.json()["adapter_controls_available"] is False
+    assert response.json()["items"] == []
+
+
+def test_mcp_partial_cluster_refresh_failover_order_and_correlation() -> None:
+    factory = _ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "primary", "url": "http://primary.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "backup", "url": "http://backup.local"},
+    )
+
+    first = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first.status_code == 200
+    assert first.json()["server"] == "primary"
+
+    refresh = client.post("/api/v1/mcp/servers/primary/adapter/refresh")
+    assert refresh.status_code == 200
+    assert refresh.json()["initialized"] is True
+
+    factory.fail_on_tool_calls.add("primary")
+    second = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert second.status_code == 200
+    assert second.json()["server"] == "backup"
+    request_id = second.json()["request_id"]
+
+    invocation_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id},
+    )
+    assert invocation_events.status_code == 200
+    items = invocation_events.json()["items"]
+    assert [item["phase"] for item in items] == [
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in items] == [
+        "primary",
+        "primary",
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    ]
+
+    correlated_events = client.get(
+        "/api/v1/mcp/events",
+        params={"correlation_id": request_id},
+    )
+    assert correlated_events.status_code == 200
+    correlated_items = correlated_events.json()["items"]
+    assert len(correlated_items) == 1
+    assert correlated_items[0]["server"] == "primary"
+    assert correlated_items[0]["to_status"] == ServerStatus.DEGRADED.value
+    assert correlated_items[0]["correlation_id"] == request_id

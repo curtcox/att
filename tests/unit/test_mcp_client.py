@@ -931,6 +931,30 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
     assert manager.supports_adapter_session_controls() is False
     assert manager.adapter_session_diagnostics("nat") is None
     assert await manager.invalidate_adapter_session("nat") is False
+    assert manager.list_adapter_sessions() == []
+
+
+@pytest.mark.asyncio
+async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
+    factory = _FakeNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    manager.register("b", "http://b.local")
+    manager.register("a", "http://a.local")
+
+    before = manager.list_adapter_sessions()
+    assert [item.server for item in before] == ["a", "b"]
+    assert all(item.active is False for item in before)
+
+    await manager.invoke_tool("att.project.list", preferred=["b"])
+
+    after = manager.list_adapter_sessions()
+    by_name = {item.server: item for item in after}
+    assert by_name["b"].active is True
+    assert by_name["b"].initialized is True
+    assert by_name["b"].last_activity_at is not None
+    assert by_name["a"].active is False
 
 
 @pytest.mark.asyncio

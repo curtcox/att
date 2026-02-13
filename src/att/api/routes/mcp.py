@@ -10,6 +10,8 @@ from att.api.deps import get_mcp_client_manager
 from att.api.schemas.mcp import (
     InvokeToolRequest,
     MCPAdapterSessionResponse,
+    MCPAdapterSessionsResponse,
+    MCPAdapterSessionStatusResponse,
     MCPCapabilitySnapshotResponse,
     MCPConnectionEventResponse,
     MCPConnectionEventsResponse,
@@ -208,6 +210,24 @@ async def connect_mcp_servers(
     return MCPServersResponse(
         items=[_as_response(server, manager) for server in await manager.connect_all()],
         adapter_controls_available=manager.supports_adapter_session_controls(),
+    )
+
+
+@router.get("/adapter-sessions", response_model=MCPAdapterSessionsResponse)
+async def mcp_adapter_sessions(
+    manager: MCPClientManager = Depends(get_mcp_client_manager),
+) -> MCPAdapterSessionsResponse:
+    return MCPAdapterSessionsResponse(
+        adapter_controls_available=manager.supports_adapter_session_controls(),
+        items=[
+            MCPAdapterSessionStatusResponse(
+                server=item.server,
+                active=item.active,
+                initialized=item.initialized,
+                last_activity_at=item.last_activity_at,
+            )
+            for item in manager.list_adapter_sessions()
+        ],
     )
 
 

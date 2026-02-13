@@ -91,3 +91,7 @@ P11
   - refresh now validated to recreate underlying adapter session identity (new session instance) rather than reusing stale state.
   - transport-triggered invalidation (e.g., timeout/disconnect category) now validated to recreate session on next invocation.
   - MCP server/list payloads now expose `adapter_controls_available` so clients can gate lifecycle operations without probing for `409`.
+- Added aggregated adapter diagnostics and partial-cluster resilience coverage:
+  - manager now exposes aggregated adapter session status across registered servers (`list_adapter_sessions`).
+  - new API endpoint `GET /api/v1/mcp/adapter-sessions` returns fleet-level per-server adapter diagnostics plus control-capability status.
+  - integration coverage validates deterministic fallback ordering and correlation linkage when refreshing one server in a mixed cluster and then inducing partial failure.

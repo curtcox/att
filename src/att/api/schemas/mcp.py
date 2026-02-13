@@ -34,6 +34,22 @@ class MCPAdapterSessionResponse(BaseModel):
     last_activity_at: datetime | None
 
 
+class MCPAdapterSessionStatusResponse(BaseModel):
+    """Aggregated adapter session status item."""
+
+    server: str
+    active: bool
+    initialized: bool
+    last_activity_at: datetime | None
+
+
+class MCPAdapterSessionsResponse(BaseModel):
+    """Collection of adapter session statuses."""
+
+    adapter_controls_available: bool
+    items: list[MCPAdapterSessionStatusResponse]
+
+
 class MCPServerResponse(BaseModel):
     """MCP server status payload."""
 
