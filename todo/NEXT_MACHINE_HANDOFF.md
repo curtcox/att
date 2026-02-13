@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `40e37352c75a868fe6d90c6a7a656b5cc5b002e7`
-- Last commit: `40e3735 2026-02-13 16:13:31 -0600 - Update tests to use UNIT_TEST_TOOL`
+- HEAD: `68cfd7c78f55057807cc3e72b21a8cb891865ba0`
+- Last commit: `68cfd7c 2026-02-13 16:15:51 -0600 - Update mcp tests to use UNIT_TEST_UR`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended call-vector label constant reuse in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_SESSION_CALL_ENTRY_LABEL` and `UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL`.
+  - migrated remaining inline tuple-label literals (`"session"` and `"resource"`) in session-call assertion vectors to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended full projects-URI constant reuse across resource paths in unit MCP client coverage:
   - migrated remaining inline `"att://projects"` literals in transport payload setup/assertions and resource-helper paths to `UNIT_TEST_PROJECTS_URI` in `tests/unit/test_mcp_client.py` (the literal now appears only in constant definition).
@@ -147,8 +153,8 @@
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
-1. Reuse shared URI constants in `tests/unit/test_mcp_client.py` where inline URI literals remain in adjacent response/payload scaffolding:
-   - target remaining inline `"att://projects"` literals in transport `result`/`params` fixtures and assertion vectors by reusing `UNIT_TEST_PROJECTS_URI`.
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` where repeated health-check error text literals remain:
+   - target repeated `error=` literals such as `"hold backup"` and `"hold primary"` (and adjacent repeated `"down"` uses where meaningful) by introducing and reusing dedicated `UNIT_TEST_*` constants.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
