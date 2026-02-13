@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended adapter filter assertion server-name constant reuse for `c` vectors in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_SERVER_C` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining assertion-side `c` server literals in adapter filter/listing checks (`active_only`, single-server filter, and limit result vectors) to the shared constant while keeping registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended remaining non-adapter `a`/`b` server-name assertion constant reuse in unit MCP client coverage:
   - reused `UNIT_TEST_SERVER_A` and `UNIT_TEST_SERVER_B` in remaining non-adapter assertion vectors (`choose_server` preference assertions and `initialize_all` name-vector assertion) in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.

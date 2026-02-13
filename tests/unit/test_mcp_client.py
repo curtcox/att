@@ -39,6 +39,7 @@ UNIT_TEST_DEGRADED_SERVER = "degraded"
 UNIT_TEST_NAT_SERVER = "nat"
 UNIT_TEST_SERVER_A = "a"
 UNIT_TEST_SERVER_B = "b"
+UNIT_TEST_SERVER_C = "c"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -955,14 +956,14 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     await manager.invoke_tool("att.project.list", preferred=["c"])
 
     active_only = manager.list_adapter_sessions(active_only=True)
-    assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, "c"]
+    assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C]
 
     only_c = manager.list_adapter_sessions(server_name="c")
-    assert [item.server for item in only_c] == ["c"]
+    assert [item.server for item in only_c] == [UNIT_TEST_SERVER_C]
     assert only_c[0].active is True
 
     limited = manager.list_adapter_sessions(limit=1)
-    assert [item.server for item in limited] == ["c"]
+    assert [item.server for item in limited] == [UNIT_TEST_SERVER_C]
 
 
 @pytest.mark.asyncio

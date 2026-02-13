@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit non-adapter a-b server-name assertion constant reuse`)
+- Working tree at handoff creation: dirty (`unit adapter filter c server-name assertion constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended adapter filter assertion server-name constant reuse for `c` vectors in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_SERVER_C` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining assertion-side `c` server literals in adapter filter/listing checks (`active_only`, single-server filter, and limit result vectors) to the shared constant while keeping registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended remaining non-adapter `a`/`b` server-name assertion constant reuse in unit MCP client coverage:
   - reused `UNIT_TEST_SERVER_A` and `UNIT_TEST_SERVER_B` in remaining non-adapter assertion vectors (`choose_server` preference assertions and `initialize_all` name-vector assertion) in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
@@ -373,9 +377,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending remaining stable server-name assertion constant reuse in adapter filter assertions:
-1. Reuse local server-name constants for remaining assertion-side `c` vectors in `tests/unit/test_mcp_client.py`:
-   - add a local `UNIT_TEST_SERVER_C` constant and migrate remaining assertion-side `c` literals in adapter filter/listing checks (for example active-only and single-server filter vectors) where reuse is meaningful.
+Continue `P12/P13` test-structure hardening by extending remaining stable assertion-literal constant reuse in unit MCP client server literals outside adapter filters:
+1. Reuse existing server-name constants for remaining assertion-side server literals in `tests/unit/test_mcp_client.py`:
+   - target any remaining assertion literals still using inline server strings (for example isolated assertions like `"codex"` or adjacent repeated server-name checks) where reuse is meaningful.
    - keep registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
