@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `ab8c2bd56a7a061e631901877e632d4b488a0876`
-- Last commit: `ab8c2bd 2026-02-13 14:34:21 -0600 Replace unit failure-script method literals with constants`
-- Working tree at handoff creation: dirty (`unit set_failure_script server-name constant reuse`)
+- HEAD: `f21e925c66cc69c572dca8ec1523ebe97f220e8d`
+- Last commit: `f21e925 2026-02-13 14:37:23 -0600 Reuse server constant in unit failure-script setup`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
