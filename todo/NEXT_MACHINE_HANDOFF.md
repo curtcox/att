@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`scripted failover degraded-status constant reuse`)
+- Working tree at handoff creation: dirty (`degraded-status canonical ownership`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,18 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Canonicalized degraded-status constant ownership after alias adoption:
+  - made `FAILOVER_DEGRADED_EXPECTED_STATUSES` the literal-defined canonical degraded-status tuple.
+  - kept `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` as a compatibility alias to the neutral constant and updated focused constant regression coverage to assert canonical-vector and alias-equivalence semantics.
+  - preserved invocation/connection filter behavior and call-order/subsequence parity semantics unchanged.
+- Consolidated degraded-status constant naming across scripted and non-scripted failover diagnostics assertions:
+  - migrated remaining scripted failover `expected_statuses` call sites from `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)` to `list(FAILOVER_DEGRADED_EXPECTED_STATUSES)` for consistent assertion wiring.
+  - kept scripted constant regression coverage and added explicit alias parity assertion (`FAILOVER_DEGRADED_EXPECTED_STATUSES == SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`) to lock semantic equivalence.
+  - preserved invocation/connection filter semantics and call-order/subsequence parity behavior unchanged.
+- Reduced final duplicated degraded-status vectors in non-scripted diagnostics assertions:
+  - introduced neutral constant alias `FAILOVER_DEGRADED_EXPECTED_STATUSES` in `tests/integration/test_api_mcp.py` to decouple generic degraded-status assertions from scripted-only naming.
+  - replaced non-scripted `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in event-endpoint filter coverage and resource failover/recovery diagnostics coverage with `list(FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - eliminated remaining inline degraded-status vectors in `tests/integration/test_api_mcp.py` while preserving invocation/connection filter semantics and call-order/subsequence parity behavior.
 - Reduced duplicated degraded-status vectors in remaining scripted failover diagnostics assertions (outside stage-paired and transport-error tests):
   - replaced scripted failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in initialize/invoke isolation, initialize-script exhaustion fallback, and scripted initialize-precedence tool/resource tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
   - intentionally left non-scripted degraded-status vectors unchanged in this slice to preserve handoff scope boundaries.
@@ -301,11 +313,14 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing the final duplicated degraded-status vectors in non-scripted diagnostics assertions:
-1. Dedupe the two remaining non-scripted degraded-status vectors in integration diagnostics tests:
-   - replace remaining `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in `test_mcp_event_endpoints_support_filters_limits_and_correlation` and `test_mcp_resource_failover_recovery_filters_and_correlation`.
-   - prefer shared constant reuse; if current scripted naming is too specific, introduce a neutral alias constant in `tests/integration/test_api_mcp.py` and reuse it at both call sites.
-2. Preserve existing helper/filter/subsequence semantics:
+Continue `P12/P13` test-structure hardening by retiring compatibility alias debt around degraded-status constants:
+1. Remove scripted compatibility alias if no longer needed:
+   - replace the remaining compatibility-only reference points of `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` with the canonical `FAILOVER_DEGRADED_EXPECTED_STATUSES`.
+   - remove `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` constant if it becomes unused after this migration.
+2. Preserve regression and semantics:
+   - keep focused constant regression coverage explicit for the canonical constant.
+   - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+3. Preserve existing helper/filter/subsequence semantics:
    - keep current invocation-event and connection-event filter behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.
 

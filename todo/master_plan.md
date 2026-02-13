@@ -6,6 +6,18 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Canonicalized degraded-status constant ownership after alias adoption in MCP integration diagnostics tests:
+  - made `FAILOVER_DEGRADED_EXPECTED_STATUSES` the literal-defined canonical degraded-status tuple.
+  - kept `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` as a compatibility alias to the canonical constant and updated focused regression coverage to assert canonical-vector and alias-equivalence semantics.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Consolidated degraded-status constant naming across scripted and non-scripted failover diagnostics assertions:
+  - migrated remaining scripted failover `expected_statuses` call sites from `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)` to `list(FAILOVER_DEGRADED_EXPECTED_STATUSES)` for consistent assertion wiring.
+  - kept scripted constant regression coverage and added explicit alias parity assertion (`FAILOVER_DEGRADED_EXPECTED_STATUSES == SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`) to lock semantic equivalence.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
+- [x] Reduced final duplicated degraded-status vectors in non-scripted diagnostics assertions:
+  - introduced neutral constant alias `FAILOVER_DEGRADED_EXPECTED_STATUSES` in `tests/integration/test_api_mcp.py` so generic degraded-status checks no longer depend on scripted-specific naming.
+  - replaced non-scripted event-endpoint and resource failover/recovery `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - eliminated remaining inline degraded-status vectors in `tests/integration/test_api_mcp.py` while preserving diagnostics-filter and call-order literal/subsequence behavior unchanged.
 - [x] Reduced duplicated degraded-status vectors in remaining scripted failover diagnostics assertions (outside stage-paired and transport-error tests):
   - replaced scripted failover `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in initialize/invoke isolation, initialize-script exhaustion fallback, and scripted initialize-precedence tool/resource tests with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
   - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
