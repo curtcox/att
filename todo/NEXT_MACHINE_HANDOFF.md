@@ -17,6 +17,11 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
+- Added automated handoff-size guardrail test coverage:
+  - added new unit test `/Users/curt/me/att/tests/unit/test_docs_guardrails.py` with `test_next_machine_handoff_size_guardrail`.
+  - guardrail enforces `todo/NEXT_MACHINE_HANDOFF.md` max size of `250` lines and fails with explicit archive guidance (`done/`) when exceeded.
+  - preserves runtime/product behavior unchanged while adding CI-visible alerting for handoff growth.
+
 - Extended invocation-filter server-name constant reuse in unit MCP client coverage:
   - migrated the remaining diagnostics filter argument literal `list_invocation_events(server="primary", ...)` to `UNIT_TEST_PRIMARY_SERVER` in `tests/unit/test_mcp_client.py`.
   - preserved diagnostics filter scope (`server`, `method`, `request_id`), request sequencing, timeout-toggle setup flow, and method-branch conditionals unchanged.
