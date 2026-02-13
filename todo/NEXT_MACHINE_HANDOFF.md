@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `091fa80701f908121a9c1d9f79ec040201fc8ace`
-- Last commit: `091fa80 2026-02-13 15:36:55 -0600 - Update unit tests to use server IDs`
+- HEAD: `b4ec7a612474455eda951aa2b607cf75facda3df`
+- Last commit: `b4ec7a6 2026-02-13 15:39:50 -0600 - Refactor unit test server lookups`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended `record_check_result(...)` server-name constant reuse in unit MCP client coverage:
+  - migrated remaining inline `record_check_result(...)` server-name arguments with existing constants (`"primary"`, `"backup"`, `"degraded"`, `"github"`, `"a"`, `"b"`) to `UNIT_TEST_*` constants in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended remaining state-inspection server-name constant reuse in unit MCP client coverage:
   - migrated remaining inline `manager.get("primary")`, `manager.get("backup")`, and `manager.get("recovered")` call arguments to `UNIT_TEST_PRIMARY_SERVER`, `UNIT_TEST_BACKUP_SERVER`, and `UNIT_TEST_RECOVERED_SERVER` in `tests/unit/test_mcp_client.py`.
@@ -108,7 +113,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
 1. Reuse existing server-name constants in `tests/unit/test_mcp_client.py` where inline server literals remain in adapter control calls:
-   - target remaining inline `record_check_result(...)` server-name arguments where constants already exist (`"primary"`, `"backup"`, `"degraded"`, `"github"`, `"a"`, `"b"`).
+   - target the remaining inline `record_check_result("terminal", ...)` server-name argument by adding and reusing a dedicated local constant (`UNIT_TEST_TERMINAL_SERVER`).
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
