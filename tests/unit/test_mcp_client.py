@@ -57,6 +57,7 @@ UNIT_TEST_FRESHNESS_ACTIVE_RECENT = "active_recent"
 UNIT_TEST_FRESHNESS_STALE = "stale"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
+UNIT_TEST_FAILURE_ACTION_ERROR = "error"
 
 
 @pytest.mark.asyncio
@@ -1272,7 +1273,7 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
 
     assert (
         factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
-        == "error"
+        == UNIT_TEST_FAILURE_ACTION_ERROR
     )
     assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
         UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
@@ -1289,7 +1290,7 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
 
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-        == "error"
+        == UNIT_TEST_FAILURE_ACTION_ERROR
     )
     assert (
         factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD) == "ok"
