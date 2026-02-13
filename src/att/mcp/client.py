@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import AsyncIterator
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Literal, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 from uuid import uuid4
 
 import httpx
@@ -159,6 +161,286 @@ class MCPTransport(Protocol):
         """Send request to one server and return JSON object response."""
 
 
+class NATMCPSession(Protocol):
+    """Minimal MCP SDK session surface used by NAT adapter transport."""
+
+    async def initialize(self) -> Any:
+        """Run MCP initialize handshake."""
+
+    async def send_notification(
+        self,
+        notification: Any,
+        related_request_id: str | int | None = None,
+    ) -> None:
+        """Send one MCP notification."""
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        read_timeout_seconds: timedelta | None = None,
+        progress_callback: Any | None = None,
+        *,
+        meta: dict[str, Any] | None = None,
+    ) -> Any:
+        """Call one tool via MCP SDK."""
+
+    async def read_resource(self, uri: Any) -> Any:
+        """Read one resource via MCP SDK."""
+
+
+class NATMCPSessionFactory(Protocol):
+    """Factory for endpoint-bound NAT MCP session contexts."""
+
+    def __call__(self, endpoint: str) -> AbstractAsyncContextManager[NATMCPSession]:
+        """Return async context manager for one endpoint session."""
+
+
+@dataclass(slots=True)
+class _NATSessionState:
+    """Cached MCP SDK session state for one external server."""
+
+    exit_stack: AsyncExitStack
+    session: NATMCPSession
+    initialized: bool = False
+
+
+class NATMCPTransportAdapter:
+    """MCP transport adapter backed by the NAT/MCP Python SDK."""
+
+    def __init__(
+        self,
+        *,
+        session_factory: NATMCPSessionFactory | None = None,
+        request_timeout_seconds: float = 10.0,
+    ) -> None:
+        self._session_factory = session_factory or self._default_session_factory
+        self._request_timeout_seconds = request_timeout_seconds
+        self._sessions: dict[str, _NATSessionState] = {}
+
+    async def __call__(self, server: ExternalServer, request: JSONObject) -> JSONObject:
+        """Dispatch one JSON-RPC request through a stateful NAT session."""
+        method = request.get("method")
+        if not isinstance(method, str):
+            msg = "Invalid JSON-RPC request method"
+            raise MCPTransportError(msg, category="invalid_payload")
+
+        request_id = request.get("id")
+        if request_id is None:
+            msg = "Missing JSON-RPC request id"
+            raise MCPTransportError(msg, category="invalid_payload")
+
+        try:
+            state = await self._session_state(server)
+            return await self._dispatch(state, request, method, request_id)
+        except MCPTransportError as exc:
+            if exc.category in {"network_timeout", "http_status", "transport_error"}:
+                await self._invalidate(server.name)
+            raise
+        except Exception as exc:  # noqa: BLE001
+            if self._is_mcp_rpc_error(exc):
+                return self._jsonrpc_response(
+                    request_id=request_id,
+                    payload={"message": str(exc)},
+                    field="error",
+                )
+            mapped = self._map_exception(exc)
+            if mapped.category in {"network_timeout", "http_status", "transport_error"}:
+                await self._invalidate(server.name)
+            raise mapped from exc
+
+    async def _dispatch(
+        self,
+        state: _NATSessionState,
+        request: JSONObject,
+        method: str,
+        request_id: JSONValue,
+    ) -> JSONObject:
+        if method == "initialize":
+            result = await state.session.initialize()
+            state.initialized = True
+            return self._jsonrpc_response(
+                request_id=request_id,
+                payload=self._to_json_object(result),
+                field="result",
+            )
+
+        if method == "notifications/initialized":
+            await self._ensure_initialized(state)
+            await self._send_initialized_notification(state.session)
+            return self._jsonrpc_response(request_id=request_id, payload={}, field="result")
+
+        if method == "tools/call":
+            await self._ensure_initialized(state)
+            params = self._request_params(request)
+            tool_name = params.get("name")
+            if not isinstance(tool_name, str):
+                msg = "Invalid tools/call payload: expected string tool name"
+                raise MCPTransportError(msg, category="invalid_payload")
+            arguments = params.get("arguments")
+            if arguments is None:
+                tool_args: dict[str, Any] | None = {}
+            elif isinstance(arguments, dict):
+                tool_args = cast(dict[str, Any], arguments)
+            else:
+                msg = "Invalid tools/call payload: expected object arguments"
+                raise MCPTransportError(msg, category="invalid_payload")
+            result = await state.session.call_tool(tool_name, tool_args)
+            return self._jsonrpc_response(
+                request_id=request_id,
+                payload=self._to_json_object(result),
+                field="result",
+            )
+
+        if method == "resources/read":
+            await self._ensure_initialized(state)
+            params = self._request_params(request)
+            uri = params.get("uri")
+            if not isinstance(uri, str):
+                msg = "Invalid resources/read payload: expected string uri"
+                raise MCPTransportError(msg, category="invalid_payload")
+            from pydantic import AnyUrl
+
+            result = await state.session.read_resource(AnyUrl(uri))
+            return self._jsonrpc_response(
+                request_id=request_id,
+                payload=self._to_json_object(result),
+                field="result",
+            )
+
+        msg = f"Unsupported MCP method: {method}"
+        raise MCPTransportError(msg, category="invalid_payload")
+
+    async def _ensure_initialized(self, state: _NATSessionState) -> None:
+        if state.initialized:
+            return
+        await state.session.initialize()
+        state.initialized = True
+
+    async def _send_initialized_notification(self, session: NATMCPSession) -> None:
+        from mcp import types as mcp_types
+
+        notification = mcp_types.InitializedNotification(
+            method="notifications/initialized",
+            params=None,
+        )
+        await session.send_notification(notification)
+
+    def _request_params(self, request: JSONObject) -> JSONObject:
+        params = request.get("params")
+        if params is None:
+            return {}
+        if not isinstance(params, dict):
+            msg = "Invalid JSON-RPC params payload"
+            raise MCPTransportError(msg, category="invalid_payload")
+        if not all(isinstance(key, str) for key in params):
+            msg = "Invalid JSON-RPC params keys"
+            raise MCPTransportError(msg, category="invalid_payload")
+        return params
+
+    async def _session_state(self, server: ExternalServer) -> _NATSessionState:
+        existing = self._sessions.get(server.name)
+        if existing is not None:
+            return existing
+
+        endpoint = self._mcp_endpoint(server.url)
+        exit_stack = AsyncExitStack()
+        session_context = self._session_factory(endpoint)
+        session = await exit_stack.enter_async_context(session_context)
+        created = _NATSessionState(exit_stack=exit_stack, session=session, initialized=False)
+        self._sessions[server.name] = created
+        return created
+
+    async def _invalidate(self, server_name: str) -> None:
+        state = self._sessions.pop(server_name, None)
+        if state is not None:
+            await state.exit_stack.aclose()
+
+    def _default_session_factory(
+        self,
+        endpoint: str,
+    ) -> AbstractAsyncContextManager[NATMCPSession]:
+        return self._streamable_http_session(endpoint)
+
+    @asynccontextmanager
+    async def _streamable_http_session(self, endpoint: str) -> AsyncIterator[NATMCPSession]:
+        from mcp.client.session import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
+
+        timeout = timedelta(seconds=self._request_timeout_seconds)
+        async with streamablehttp_client(url=endpoint, timeout=timeout) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                yield cast(NATMCPSession, session)
+
+    @staticmethod
+    def _mcp_endpoint(base_url: str) -> str:
+        trimmed = base_url.rstrip("/")
+        if trimmed.endswith("/mcp"):
+            return trimmed
+        return f"{trimmed}/mcp"
+
+    @staticmethod
+    def _jsonrpc_response(
+        *,
+        request_id: JSONValue,
+        payload: JSONValue,
+        field: Literal["result", "error"],
+    ) -> JSONObject:
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            field: payload,
+        }
+
+    @staticmethod
+    def _to_json_object(value: Any) -> JSONObject:
+        if hasattr(value, "model_dump"):
+            payload = value.model_dump(mode="json", exclude_none=True)
+        else:
+            payload = value
+        if not isinstance(payload, dict):
+            msg = "Invalid MCP SDK response payload"
+            raise MCPTransportError(msg, category="invalid_payload")
+        if not all(isinstance(key, str) for key in payload):
+            msg = "Invalid MCP SDK response keys"
+            raise MCPTransportError(msg, category="invalid_payload")
+        return cast(JSONObject, payload)
+
+    @staticmethod
+    def _is_mcp_rpc_error(exc: Exception) -> bool:
+        try:
+            from mcp.shared.exceptions import McpError
+
+            return isinstance(exc, McpError)
+        except Exception:  # noqa: BLE001
+            return False
+
+    @staticmethod
+    def _map_exception(exc: Exception) -> MCPTransportError:
+        if isinstance(exc, MCPTransportError):
+            return exc
+        if isinstance(exc, httpx.TimeoutException):
+            return MCPTransportError(str(exc), category="network_timeout")
+        if isinstance(exc, httpx.HTTPStatusError):
+            status_code = exc.response.status_code
+            return MCPTransportError(f"http status {status_code}", category="http_status")
+        if isinstance(exc, httpx.HTTPError):
+            return MCPTransportError(str(exc), category="transport_error")
+        if isinstance(exc, ValueError | TypeError):
+            return MCPTransportError(str(exc), category="invalid_payload")
+        return MCPTransportError(str(exc), category="transport_error")
+
+
+def create_nat_mcp_transport_adapter() -> MCPTransport | None:
+    """Create NAT MCP transport adapter when MCP SDK is available."""
+    try:
+        import mcp.client.session  # noqa: F401
+        import mcp.client.streamable_http  # noqa: F401
+    except Exception:  # noqa: BLE001
+        return None
+    return NATMCPTransportAdapter()
+
+
 class MCPClientManager:
     """Track external MCP server availability and retry policy."""
 
@@ -167,6 +449,7 @@ class MCPClientManager:
         *,
         probe: HealthProbe | None = None,
         transport: MCPTransport | None = None,
+        transport_adapter: MCPTransport | None = None,
         max_backoff_seconds: int = 8,
         unreachable_after: int = 3,
         max_initialization_age_seconds: int | None = 300,
@@ -179,6 +462,7 @@ class MCPClientManager:
         )
         self._probe = probe
         self._transport = transport
+        self._transport_adapter = transport_adapter
         self._max_backoff_seconds = max_backoff_seconds
         self._unreachable_after = unreachable_after
         self._max_initialization_age_seconds = max_initialization_age_seconds
@@ -304,7 +588,7 @@ class MCPClientManager:
         if server.initialized and not force:
             return server
 
-        transport = self._transport or self._default_transport
+        transport = self._resolve_transport()
         request_id = str(uuid4())
         initialize_request = self._build_request(
             "initialize",
@@ -517,7 +801,7 @@ class MCPClientManager:
 
         request_id = str(uuid4())
         request = self._build_request(method, request_id=request_id, params=params)
-        transport = self._transport or self._default_transport
+        transport = self._resolve_transport()
         errors: list[str] = []
 
         for server in candidates:
@@ -793,6 +1077,9 @@ class MCPClientManager:
                 error_category=error_category,
             )
         )
+
+    def _resolve_transport(self) -> MCPTransport:
+        return self._transport_adapter or self._transport or self._default_transport
 
     @staticmethod
     async def _default_probe(server: ExternalServer) -> tuple[bool, str | None]:

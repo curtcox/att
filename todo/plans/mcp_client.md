@@ -75,3 +75,8 @@ P11
   - manager readers now support deterministic filter/limit queries for both streams (`server`, `method`, `request_id`, `correlation_id`, `limit`).
   - API diagnostics endpoints now expose query controls for focused retrieval without route-level post-filtering.
   - unit/integration coverage verifies correlation consistency and filter/limit semantics.
+- Added NAT MCP transport adapter path with fallback-safe dependency wiring:
+  - introduced `NATMCPTransportAdapter` for streamable-HTTP session-backed MCP request dispatch (`initialize`, `notifications/initialized`, `tools/call`, `resources/read`).
+  - `MCPClientManager` now supports adapter-first transport resolution (`transport_adapter` then legacy/custom transport then default HTTP transport).
+  - added `create_nat_mcp_transport_adapter()` for optional SDK-backed adapter construction in API deps without breaking local/test fallback behavior.
+  - expanded unit/integration tests for adapter happy path, timeout/http-status/malformed category parity, and mixed-state failover sequencing when adapter calls fail.

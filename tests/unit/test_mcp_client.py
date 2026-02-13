@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
+import httpx
 import pytest
 
 from att.mcp.client import (
@@ -10,6 +13,7 @@ from att.mcp.client import (
     MCPClientManager,
     MCPInvocationError,
     MCPTransportError,
+    NATMCPTransportAdapter,
     ServerStatus,
 )
 
@@ -690,6 +694,241 @@ async def test_connect_server_skips_initialize_when_unreachable() -> None:
     assert connected.status is ServerStatus.UNREACHABLE
     assert connected.initialized is False
     assert transport_calls == []
+
+
+class _ModelPayload:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self._payload = payload
+
+    def model_dump(self, *, mode: str = "python", exclude_none: bool = False) -> dict[str, Any]:
+        del mode, exclude_none
+        return self._payload
+
+
+class _FakeNatSession:
+    def __init__(self) -> None:
+        self.initialized = False
+        self.calls: list[tuple[str, str]] = []
+        self.fail_with: Exception | None = None
+
+    async def initialize(self) -> _ModelPayload:
+        self.calls.append(("session", "initialize"))
+        self.initialized = True
+        return _ModelPayload(
+            {
+                "protocolVersion": "2025-11-25",
+                "serverInfo": {"name": "nat"},
+                "capabilities": {"tools": {}, "resources": {}},
+            }
+        )
+
+    async def send_notification(
+        self,
+        notification: object,
+        related_request_id: str | int | None = None,
+    ) -> None:
+        del notification, related_request_id
+        self.calls.append(("session", "notifications/initialized"))
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        read_timeout_seconds: timedelta | None = None,
+        progress_callback: object | None = None,
+        *,
+        meta: dict[str, Any] | None = None,
+    ) -> _ModelPayload:
+        del read_timeout_seconds, progress_callback, meta
+        self.calls.append(("tool", name))
+        if self.fail_with is not None:
+            raise self.fail_with
+        return _ModelPayload(
+            {
+                "content": [{"type": "text", "text": "ok"}],
+                "structuredContent": {"arguments": arguments or {}},
+                "isError": False,
+            }
+        )
+
+    async def read_resource(self, uri: object) -> _ModelPayload:
+        self.calls.append(("resource", str(uri)))
+        return _ModelPayload(
+            {
+                "contents": [{"uri": str(uri), "mimeType": "text/plain", "text": "data"}],
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
+    session = _FakeNatSession()
+
+    @asynccontextmanager
+    async def session_context(_: str) -> Any:
+        yield session
+
+    adapter = NATMCPTransportAdapter(session_factory=session_context)
+    server = ExternalServer(name="nat", url="http://nat.local")
+
+    initialize = await adapter(
+        server,
+        {
+            "jsonrpc": "2.0",
+            "id": "init-1",
+            "method": "initialize",
+            "params": {},
+        },
+    )
+    assert isinstance(initialize["result"], dict)
+    assert initialize["result"]["protocolVersion"] == "2025-11-25"
+
+    initialized = await adapter(
+        server,
+        {
+            "jsonrpc": "2.0",
+            "id": "init-notify",
+            "method": "notifications/initialized",
+            "params": {},
+        },
+    )
+    assert initialized["result"] == {}
+
+    tool_call = await adapter(
+        server,
+        {
+            "jsonrpc": "2.0",
+            "id": "tool-1",
+            "method": "tools/call",
+            "params": {"name": "att.project.list", "arguments": {"limit": 1}},
+        },
+    )
+    assert isinstance(tool_call["result"], dict)
+    assert tool_call["result"]["isError"] is False
+
+    resource_read = await adapter(
+        server,
+        {
+            "jsonrpc": "2.0",
+            "id": "resource-1",
+            "method": "resources/read",
+            "params": {"uri": "att://projects"},
+        },
+    )
+    assert isinstance(resource_read["result"], dict)
+    assert resource_read["result"]["contents"][0]["uri"] == "att://projects"
+    assert session.calls == [
+        ("session", "initialize"),
+        ("session", "notifications/initialized"),
+        ("tool", "att.project.list"),
+        ("resource", "att://projects"),
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "category"),
+    [
+        (httpx.ReadTimeout("timed out"), "network_timeout"),
+        (
+            httpx.HTTPStatusError(
+                "bad status",
+                request=httpx.Request("POST", "http://nat.local/mcp"),
+                response=httpx.Response(
+                    503,
+                    request=httpx.Request("POST", "http://nat.local/mcp"),
+                ),
+            ),
+            "http_status",
+        ),
+        (ValueError("bad payload"), "invalid_payload"),
+    ],
+)
+async def test_nat_transport_adapter_category_mapping_parity(
+    failure: Exception,
+    category: str,
+) -> None:
+    session = _FakeNatSession()
+    session.fail_with = failure
+
+    @asynccontextmanager
+    async def session_context(_: str) -> Any:
+        yield session
+
+    adapter = NATMCPTransportAdapter(session_factory=session_context)
+    server = ExternalServer(name="nat", url="http://nat.local")
+
+    with pytest.raises(MCPTransportError) as exc_info:
+        await adapter(
+            server,
+            {
+                "jsonrpc": "2.0",
+                "id": "tool-1",
+                "method": "tools/call",
+                "params": {"name": "att.project.list", "arguments": {}},
+            },
+        )
+    assert exc_info.value.category == category
+
+
+@pytest.mark.asyncio
+async def test_adapter_transport_fallback_across_mixed_states() -> None:
+    sessions: dict[str, _FakeNatSession] = {}
+
+    @asynccontextmanager
+    async def session_context(endpoint: str) -> Any:
+        if "primary.local" in endpoint:
+            key = "primary"
+        elif "recovered.local" in endpoint:
+            key = "recovered"
+        else:
+            key = "degraded"
+        session = sessions.setdefault(key, _FakeNatSession())
+        if key == "primary":
+            session.fail_with = RuntimeError("primary unavailable")
+        yield session
+
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=session_context),
+        max_initialization_age_seconds=None,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("recovered", "http://recovered.local")
+    manager.register("degraded", "http://degraded.local")
+
+    primary = manager.get("primary")
+    assert primary is not None
+    primary.status = ServerStatus.HEALTHY
+    primary.initialized = True
+    primary.last_initialized_at = datetime.now(UTC)
+    primary.initialization_expires_at = datetime.now(UTC) + timedelta(seconds=60)
+
+    recovered = manager.get("recovered")
+    assert recovered is not None
+    recovered.status = ServerStatus.HEALTHY
+    recovered.initialized = False
+
+    manager.record_check_result("degraded", healthy=False, error="down")
+    degraded = manager.get("degraded")
+    assert degraded is not None
+    degraded.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+
+    result = await manager.invoke_tool(
+        "att.project.list",
+        preferred=["primary", "recovered", "degraded"],
+    )
+
+    assert result.server == "recovered"
+    assert sessions["primary"].calls == [
+        ("session", "initialize"),
+        ("tool", "att.project.list"),
+    ]
+    assert sessions["recovered"].calls == [
+        ("session", "initialize"),
+        ("session", "notifications/initialized"),
+        ("tool", "att.project.list"),
+    ]
+    assert "degraded" not in sessions
 
 
 @pytest.mark.asyncio

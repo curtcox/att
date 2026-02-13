@@ -103,6 +103,13 @@ class CategorizedTransport:
         return {"jsonrpc": "2.0", "id": str(request.get("id", ""))}
 
 
+class ShouldNotBeCalledTransport:
+    async def __call__(self, server: ExternalServer, request: JSONObject) -> JSONObject:
+        del server, request
+        msg = "legacy transport path should not be used when adapter is configured"
+        raise AssertionError(msg)
+
+
 def _client_with_manager(manager: MCPClientManager) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_mcp_client_manager] = lambda: manager
@@ -616,3 +623,35 @@ def test_mcp_event_endpoints_support_filters_limits_and_correlation() -> None:
     limited_connection_items = limited_connection.json()["items"]
     assert len(limited_connection_items) == 1
     assert limited_connection_items[0]["server"] == "github"
+
+
+def test_mcp_invoke_uses_adapter_transport_when_configured() -> None:
+    adapter = FallbackTransport()
+    manager = MCPClientManager(
+        probe=StaticProbe(healthy=True),
+        transport=ShouldNotBeCalledTransport(),
+        transport_adapter=adapter,
+    )
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "codex", "url": "http://codex.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "github", "url": "http://github.local"},
+    )
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {"limit": 2},
+            "preferred_servers": ["codex", "github"],
+        },
+    )
+    assert invoke.status_code == 200
+    assert invoke.json()["server"] == "github"
+    assert adapter.calls[0] == ("codex", "initialize")
+    assert adapter.calls[-1] == ("github", "tools/call")

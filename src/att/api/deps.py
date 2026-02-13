@@ -23,7 +23,7 @@ from att.core.self_bootstrap_manager import (
 from att.core.test_runner import TestResultPayload, TestRunner
 from att.core.tool_orchestrator import ToolOrchestrator
 from att.db.store import SQLiteStore
-from att.mcp.client import MCPClientManager
+from att.mcp.client import MCPClientManager, create_nat_mcp_transport_adapter
 
 APP_DB_PATH = Path(".att/att.db")
 _RUNTIME_MANAGER = RuntimeManager()
@@ -32,7 +32,9 @@ _GIT_MANAGER = GitManager()
 _TEST_RUNNER = TestRunner()
 _DEBUG_MANAGER = DebugManager()
 _DEPLOY_MANAGER = DeployManager(_RUNTIME_MANAGER)
-_MCP_CLIENT_MANAGER = MCPClientManager()
+_MCP_CLIENT_MANAGER = MCPClientManager(
+    transport_adapter=create_nat_mcp_transport_adapter(),
+)
 _TEST_RESULTS: dict[str, TestResultPayload] = {}
 _DEBUG_LOGS: dict[str, list[str]] = {}
 _RELEASE_LOG_FIELD_PATTERN = re.compile(
