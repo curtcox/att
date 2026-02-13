@@ -5,15 +5,19 @@
 - Branch: `main`
 - HEAD: `b865ac7006fbe4176ac95f65131f5b34472dd56d`
 - Last commit: `b865ac7 2026-02-13 08:40:24 -0600 Add MCP retry-window call-order parity tests`
-- Working tree at handoff creation: dirty (`resources/read` retry-window parity coverage + plan doc updates)
+- Working tree at handoff creation: dirty (`unreachable-transition retry-window parity tests + plan doc updates`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`205 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`210 passed`)
 
 ## Recent Delivered Work
+- Added unreachable-transition retry-window parity coverage for `resources/read` under healthy-first candidate ordering:
+  - helper-level matrix now drives deterministic primary `initialize` timeout transitions from degraded -> unreachable across both invoke methods while preserving backup skip/re-entry ordering.
+  - API-level `/api/v1/mcp/invoke/resource` regression now forces a second primary initialize timeout via controlled backup retry-window state, verifies closed-window skip while backup serves requests, and asserts deterministic primary re-entry call order (`initialize` then `resources/read`).
+  - diagnostics assertions now include deterministic failed-request request-id recovery from invocation-event delta slicing so invocation/connection filter checks remain request-correlated even for expected 503 transitions.
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
   - `MCPClientManager` now accepts optional `now_provider` and uses it for retry-window checks, initialization freshness gating, invocation event timestamps, and adapter freshness classification.
   - default behavior remains unchanged (`datetime.now(UTC)` when `now_provider` is not supplied).
@@ -113,14 +117,14 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening with unreachable-transition retry-window parity:
-1. Add API-level unreachable-transition call-order regression for `resources/read`:
-   - drive `primary` through two consecutive timed failures (degraded -> unreachable), then verify retry-window skip behavior while `backup` serves requests.
-   - after retry-window reopen and backup becoming non-retryable, assert deterministic primary re-entry call order (`initialize` then `resources/read`) and subsequence parity with invocation phase starts.
-   - preserve deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) for each request in the sequence.
-2. Extend helper-level unreachable retry-window matrix:
-   - add focused unit assertions for mixed preferred-server ordering that distinguish primary degraded vs unreachable skip/re-entry ordering across both invoke methods.
-   - keep assertions transport-order centric and clock-driven (no direct retry-window state mutation).
+Continue `P12/P13` call-order hardening by mirroring unreachable-transition parity on the `tools/call` API path:
+1. Add API-level unreachable-transition call-order regression for `tools/call`:
+   - reuse the same healthy-first ordering constraints as the delivered `resources/read` scenario (primary initialize timeout -> backup serve -> forced second primary initialize timeout -> unreachable skip -> re-entry).
+   - preserve deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) including failed-request request-id recovery from invocation-event deltas.
+   - cross-check transport call-order against invocation `initialize_start`/`invoke_start` subsequence parity without assuming one-to-one mapping for failed initialize transport calls.
+2. Reduce duplicated failed-request request-id extraction:
+   - extract a small integration-test helper for capturing newly appended invocation events by count delta and returning the single request id.
+   - apply it to both `tools/call` and `resources/read` unreachable-transition scenarios to keep diagnostics assertions consistent and less brittle.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

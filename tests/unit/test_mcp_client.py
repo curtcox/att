@@ -1556,6 +1556,88 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize(
+    ("primary_failures", "expected_primary_status"),
+    [
+        (1, ServerStatus.DEGRADED),
+        (2, ServerStatus.UNREACHABLE),
+    ],
+)
+async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_primary(
+    method: str,
+    primary_failures: int,
+    expected_primary_status: ServerStatus,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=2,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+    factory.set_failure_script("primary", "initialize", ["timeout"] * primary_failures + ["ok"])
+
+    async def invoke_once(preferred: list[str]) -> object:
+        if method == "resources/read":
+            return await manager.read_resource("att://projects", preferred=preferred)
+        return await manager.invoke_tool("att.project.list", preferred=preferred)
+
+    first = await invoke_once(["primary", "backup"])
+    assert first.server == "backup"
+
+    calls_after_first = len(factory.calls)
+    second = await invoke_once(["primary", "backup"])
+    assert second.server == "backup"
+    second_slice = factory.calls[calls_after_first:]
+    assert second_slice
+    assert all(server == "backup" for server, _, _ in second_slice)
+
+    if primary_failures == 2:
+        clock.advance(seconds=1)
+        manager.record_check_result("backup", healthy=False, error="hold backup")
+        with pytest.raises(MCPInvocationError):
+            await invoke_once(["primary"])
+        primary = manager.get("primary")
+        assert primary is not None
+        assert primary.status is ServerStatus.UNREACHABLE
+
+        clock.advance(seconds=1)
+        calls_before_fourth = len(factory.calls)
+        fourth = await invoke_once(["primary", "backup"])
+        assert fourth.server == "backup"
+        fourth_slice = factory.calls[calls_before_fourth:]
+        assert fourth_slice
+        assert all(server == "backup" for server, _, _ in fourth_slice)
+        clock.advance(seconds=2)
+    else:
+        clock.advance(seconds=1)
+
+    primary = manager.get("primary")
+    assert primary is not None
+    assert primary.status is expected_primary_status
+
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    calls_before_reentry = len(factory.calls)
+    reentry = await invoke_once(["backup", "primary"])
+    assert reentry.server == "primary"
+    assert reentry.method == method
+
+    reentry_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[calls_before_reentry:]
+        if call_method in {"initialize", method}
+    ]
+    assert reentry_slice == [
+        ("primary", "initialize"),
+        ("primary", method),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
