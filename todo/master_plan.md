@@ -9,6 +9,11 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Extended tool-name constant reuse for invoke paths in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROJECT_LIST_TOOL_NAME` and migrated repeated inline `invoke_tool("att.project.list", ...)` call arguments to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Extended resource-URI constant reuse in unit MCP client coverage:
   - migrated remaining inline `read_resource("att://projects", ...)` call arguments to `read_resource(UNIT_TEST_PROJECTS_URI, ...)` in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.

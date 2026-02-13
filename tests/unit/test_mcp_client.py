@@ -62,6 +62,7 @@ UNIT_TEST_SESSION_ID_FIRST = "session-1"
 UNIT_TEST_SESSION_ID_SECOND = "session-2"
 UNIT_TEST_PROTOCOL_VERSION = "2025-11-25"
 UNIT_TEST_PROJECTS_URI = "att://projects"
+UNIT_TEST_PROJECT_LIST_TOOL_NAME = "att.project.list"
 UNIT_TEST_FRESHNESS_UNKNOWN = "unknown"
 UNIT_TEST_FRESHNESS_ACTIVE_RECENT = "active_recent"
 UNIT_TEST_FRESHNESS_STALE = "stale"
@@ -377,7 +378,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
 async def test_invoke_tool_raises_when_no_servers_available() -> None:
     manager = MCPClientManager()
     with pytest.raises(MCPInvocationError) as exc_info:
-        await manager.invoke_tool("att.project.list")
+        await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
     assert exc_info.value.method == UNIT_TEST_TOOLS_CALL_METHOD
     assert exc_info.value.attempts == []
 
@@ -411,7 +412,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     manager.register("backup", "http://backup.local")
 
     with pytest.raises(MCPInvocationError) as exc_info:
-        await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+        await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"])
 
     error = exc_info.value
     assert error.method == UNIT_TEST_TOOLS_CALL_METHOD
@@ -461,7 +462,7 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
     manager.register("codex", "http://codex.local")
 
     await manager.initialize_server(UNIT_TEST_CODEX_SERVER)
-    result = await manager.invoke_tool("att.project.list")
+    result = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
     assert result.server == UNIT_TEST_CODEX_SERVER
     assert calls == [
@@ -498,7 +499,7 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
     manager.register("codex", "http://codex.local")
 
     with pytest.raises(MCPInvocationError) as exc_info:
-        await manager.invoke_tool("att.project.list")
+        await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
     error = exc_info.value
     assert len(error.attempts) == 2
@@ -616,7 +617,9 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
 
-    result = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+    result = await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
+    )
     assert result.server == UNIT_TEST_BACKUP_SERVER
 
     events = manager.list_invocation_events()
@@ -667,7 +670,7 @@ async def test_invocation_events_retention_is_bounded() -> None:
     manager = MCPClientManager(transport=transport, max_invocation_events=3)
     manager.register("codex", "http://codex.local")
 
-    await manager.invoke_tool("att.project.list")
+    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
     events = manager.list_invocation_events()
     assert len(events) == 3
@@ -829,7 +832,7 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
     manager = MCPClientManager(transport=transport)
     manager.register("codex", "http://codex.local")
 
-    result = await manager.invoke_tool("att.project.list")
+    result = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
     assert result.server == UNIT_TEST_CODEX_SERVER
     assert calls == [
@@ -1073,7 +1076,7 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     assert [item.server for item in before] == list(UNIT_TEST_SERVER_A_B_VECTOR)
     assert all(item.active is False for item in before)
 
-    await manager.invoke_tool("att.project.list", preferred=["b"])
+    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["b"])
 
     after = manager.list_adapter_sessions()
     by_name = {item.server: item for item in after}
@@ -1093,8 +1096,8 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     manager.register("b", "http://b.local")
     manager.register("c", "http://c.local")
 
-    await manager.invoke_tool("att.project.list", preferred=["a"])
-    await manager.invoke_tool("att.project.list", preferred=["c"])
+    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["a"])
+    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["c"])
 
     active_only = manager.list_adapter_sessions(active_only=True)
     assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C]
@@ -1120,7 +1123,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert initial is not None
     assert initial.freshness == UNIT_TEST_FRESHNESS_UNKNOWN
 
-    await manager.invoke_tool("att.project.list", preferred=["nat"])
+    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
 
     recent = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert recent is not None
@@ -1150,7 +1153,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     manager.register("a", "http://a.local")
     manager.register("b", "http://b.local")
 
-    await manager.invoke_tool("att.project.list", preferred=["a"])
+    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["a"])
 
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
@@ -1174,7 +1177,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     )
     manager.register("nat", "http://nat.local")
 
-    first = await manager.invoke_tool("att.project.list", preferred=["nat"])
+    first = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
     assert isinstance(first.result, dict)
     first_session_id = first.result["structuredContent"]["session_id"]
     assert first_session_id == UNIT_TEST_SESSION_ID_FIRST
@@ -1185,7 +1188,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     assert factory.closed == 1
     assert factory.sessions[0] is not factory.sessions[1]
 
-    second = await manager.invoke_tool("att.project.list", preferred=["nat"])
+    second = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
     assert isinstance(second.result, dict)
     second_session_id = second.result["structuredContent"]["session_id"]
     assert second_session_id == UNIT_TEST_SESSION_ID_SECOND
@@ -1210,7 +1213,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     manager.register("nat", "http://nat.local")
 
     with pytest.raises(MCPInvocationError):
-        await manager.invoke_tool("att.project.list", preferred=["nat"])
+        await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
 
     first_diag = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert first_diag is not None
@@ -1218,7 +1221,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     assert factory.created == 1
     assert factory.closed == 1
 
-    retry = await manager.invoke_tool("att.project.list", preferred=["nat"])
+    retry = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
     assert retry.server == UNIT_TEST_NAT_SERVER
     assert isinstance(retry.result, dict)
     assert retry.result["structuredContent"]["session_id"] == UNIT_TEST_SESSION_ID_SECOND
@@ -1535,7 +1538,9 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
             preferred=["primary", "backup"],
         )
     else:
-        first = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+        first = await manager.invoke_tool(
+            UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
+        )
     assert first.server == UNIT_TEST_PRIMARY_SERVER
 
     if method_key == "initialize":
@@ -1548,7 +1553,9 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
             preferred=["primary", "backup"],
         )
     else:
-        second = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+        second = await manager.invoke_tool(
+            UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
+        )
     assert second.server == UNIT_TEST_BACKUP_SERVER
     assert second.method == expected_method
 
@@ -1638,7 +1645,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     async def invoke_once() -> object:
         if method == "resources/read":
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
-        return await manager.invoke_tool("att.project.list", preferred=["primary"])
+        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary"])
 
     first = await invoke_once()
     second = await invoke_once()
@@ -1692,7 +1699,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     async def invoke_once() -> object:
         if method == "resources/read":
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
-        return await manager.invoke_tool("att.project.list", preferred=["primary"])
+        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary"])
 
     first = await invoke_once()
     assert first.server == UNIT_TEST_PRIMARY_SERVER
@@ -1882,7 +1889,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool("att.project.list", preferred=preferred)
+        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -1955,7 +1962,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool("att.project.list", preferred=preferred)
+        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -2015,7 +2022,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool("att.project.list", preferred=preferred)
+        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
     first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -2092,7 +2099,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     async def invoke_once() -> object:
         if method == "resources/read":
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool("att.project.list", preferred=preferred)
+        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
     calls_before_closed = len(factory.calls)
     with pytest.raises(MCPInvocationError):
@@ -2134,7 +2141,7 @@ async def test_invocation_failure_records_correlation_id_on_connection_events() 
     manager.register("codex", "http://codex.local")
 
     with pytest.raises(MCPInvocationError):
-        await manager.invoke_tool("att.project.list")
+        await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
     invocation_events = manager.list_invocation_events()
     assert invocation_events
@@ -2174,7 +2181,9 @@ async def test_event_list_filters_and_limits() -> None:
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
 
-    result = await manager.invoke_tool("att.project.list", preferred=["primary", "backup"])
+    result = await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
+    )
     request_id = result.request_id
     manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="manual degrade")
 

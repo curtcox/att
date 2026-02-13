@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `45a60394ba1052e172e1d860dcce8a0f84998c58`
-- Last commit: `45a6039 2026-02-13 15:49:37 -0600 - Use terminal server constant`
+- HEAD: `b9312690bf07ad750af4e367abe7029c9a2a9616`
+- Last commit: `b931269 2026-02-13 15:51:54 -0600 - Use UNIT_TEST_PROJECTS_URI in tests`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Extended tool-name constant reuse for invoke paths in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROJECT_LIST_TOOL_NAME` and migrated repeated inline `invoke_tool("att.project.list", ...)` call arguments to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended resource-URI constant reuse in unit MCP client coverage:
   - migrated remaining inline `read_resource("att://projects", ...)` call arguments to `read_resource(UNIT_TEST_PROJECTS_URI, ...)` in `tests/unit/test_mcp_client.py`.
@@ -132,8 +137,8 @@
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by extending stable server-name constant reuse for remaining adapter/control calls in unit MCP client coverage:
-1. Reuse shared tool-name constants in `tests/unit/test_mcp_client.py` where inline tool literals remain in adapter/control calls:
-   - target repeated inline `invoke_tool("att.project.list", ...)` call arguments by introducing and reusing a dedicated unit-test constant (for example `UNIT_TEST_PROJECT_LIST_TOOL_NAME`).
+1. Reuse shared tool-name constants in `tests/unit/test_mcp_client.py` where inline tool literals remain outside invoke-call arguments:
+   - target remaining inline `"att.project.list"` literals in transport payload assertions/setup (`params.name`) and expected call-order tuples/lists by reusing `UNIT_TEST_PROJECT_LIST_TOOL_NAME` where meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
