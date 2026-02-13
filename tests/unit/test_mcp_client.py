@@ -1332,7 +1332,11 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
 def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory = ClusterNatSessionFactory()
 
-    factory.set_failure_script("primary", "initialize", ["ok", "timeout", "error"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["ok", "timeout", "error"],
+    )
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
         == UNIT_TEST_FAILURE_ACTION_OK
@@ -1350,7 +1354,11 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         is None
     )
 
-    factory.set_failure_script("primary", "tools/call", ["ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        ["ok"],
+    )
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
         == UNIT_TEST_FAILURE_ACTION_OK
@@ -1360,7 +1368,11 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         is None
     )
 
-    factory.set_failure_script("primary", "resources/read", ["ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        ["ok"],
+    )
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
         == UNIT_TEST_FAILURE_ACTION_OK
@@ -1370,7 +1382,11 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         is None
     )
 
-    factory.set_failure_script("primary", "initialize", ["invalid"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["invalid"],
+    )
     with pytest.raises(ValueError, match="unsupported scripted action"):
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
 
@@ -1378,10 +1394,26 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
 def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> None:
     factory = ClusterNatSessionFactory()
 
-    factory.set_failure_script("primary", "initialize", ["timeout", "ok"])
-    factory.set_failure_script("primary", "resources/read", ["error"])
-    factory.set_failure_script("backup", "initialize", ["ok"])
-    factory.set_failure_script("backup", "tools/call", ["error", "ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["timeout", "ok"],
+    )
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        ["error"],
+    )
+    factory.set_failure_script(
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["ok"],
+    )
+    factory.set_failure_script(
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        ["error", "ok"],
+    )
 
     assert (
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
@@ -1475,13 +1507,25 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
 
     if method_key == "initialize":
         factory.fail_on_timeout_initialize.add("primary")
-        factory.set_failure_script("primary", "initialize", ["ok"])
+        factory.set_failure_script(
+            UNIT_TEST_PRIMARY_SERVER,
+            UNIT_TEST_INITIALIZE_METHOD,
+            ["ok"],
+        )
     elif method_key == "tools/call":
         factory.fail_on_timeout_tool_calls.add("primary")
-        factory.set_failure_script("primary", "tools/call", ["ok"])
+        factory.set_failure_script(
+            UNIT_TEST_PRIMARY_SERVER,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+            ["ok"],
+        )
     else:
         factory.fail_on_timeout_resource_reads.add("primary")
-        factory.set_failure_script("primary", "resources/read", ["ok"])
+        factory.set_failure_script(
+            UNIT_TEST_PRIMARY_SERVER,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+            ["ok"],
+        )
 
     if method_key == "resources/read":
         first = await manager.read_resource("att://projects", preferred=["primary", "backup"])
@@ -1536,8 +1580,16 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
 
-    factory.set_failure_script("primary", "tools/call", ["timeout"])
-    factory.set_failure_script("backup", "resources/read", ["timeout"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        ["timeout"],
+    )
+    factory.set_failure_script(
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        ["timeout"],
+    )
 
     first = await manager.invoke_tool(
         "att.project.list",
@@ -1747,7 +1799,11 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     )
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
-    factory.set_failure_script("primary", "resources/read", ["timeout", "ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        ["timeout", "ok"],
+    )
 
     first = await manager.read_resource(
         "att://projects",
@@ -1809,7 +1865,11 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     )
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
-    factory.set_failure_script("primary", "initialize", ["timeout"] * primary_failures + ["ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["timeout"] * primary_failures + ["ok"],
+    )
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
@@ -1878,7 +1938,11 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     )
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
-    factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["timeout", "timeout", "ok"],
+    )
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
@@ -1934,7 +1998,11 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     )
     manager.register("primary", "http://primary.local")
     manager.register("backup", "http://backup.local")
-    factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+    factory.set_failure_script(
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        ["timeout", "timeout", "ok"],
+    )
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == "resources/read":
@@ -2010,8 +2078,8 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     assert primary.status is ServerStatus.UNREACHABLE
     assert backup.status is ServerStatus.UNREACHABLE
 
-    factory.set_failure_script(expected_first, "initialize", ["timeout"])
-    factory.set_failure_script(expected_second, "initialize", ["ok"])
+    factory.set_failure_script(expected_first, UNIT_TEST_INITIALIZE_METHOD, ["timeout"])
+    factory.set_failure_script(expected_second, UNIT_TEST_INITIALIZE_METHOD, ["ok"])
 
     async def invoke_once() -> object:
         if method == "resources/read":
