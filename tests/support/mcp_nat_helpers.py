@@ -169,7 +169,14 @@ class ClusterNatSession:
         self.factory = factory
 
     async def initialize(self) -> ModelPayload:
-        if self.server_name in self.factory.fail_on_timeout_initialize:
+        scripted = self.factory.consume_failure_action(self.server_name, "initialize")
+        if scripted == "timeout":
+            msg = f"{self.server_name} initialize timed out"
+            raise httpx.ReadTimeout(msg)
+        if scripted == "error":
+            msg = f"{self.server_name} initialize unavailable"
+            raise RuntimeError(msg)
+        if scripted is None and self.server_name in self.factory.fail_on_timeout_initialize:
             msg = f"{self.server_name} initialize timed out"
             raise httpx.ReadTimeout(msg)
         self.factory.calls.append((self.server_name, self.session_id, "initialize"))

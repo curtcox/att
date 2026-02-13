@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (convergence helper extraction + scripted flapping controls + plan doc updates)
+- Working tree at handoff creation: dirty (initialize-script precedence + diagnostics-helper migration + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`174 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`175 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -59,15 +59,20 @@
 - Added scripted mixed-method flapping controls and coverage:
   - `ClusterNatSessionFactory` now supports ordered per-server/per-method scripted actions (`ok`/`timeout`/`error`) via `set_failure_script(...)`.
   - added integration coverage that validates deterministic fallback order and correlation streams across scripted `tools/call` and `resources/read` flapping without manual failure-set toggling between calls.
+- Extended scripted-failure realism to initialize stage:
+  - `ClusterNatSession.initialize()` now consumes scripted actions for method `initialize` before set-based timeout toggles.
+  - integration coverage validates script-precedence semantics (`initialize: ok` overrides set timeout) and scripted initialize-timeout failover behavior.
+- Expanded convergence-helper adoption in diagnostics tests:
+  - migrated remaining diagnostics-filter assertions in `tests/integration/test_api_mcp.py` to `tests/support/mcp_convergence_helpers.py`.
+  - preserved existing filter semantics (`server`, `method`, `request_id`, `correlation_id`, `limit`) while reducing repeated test-local assertion boilerplate.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` with scripted-failure realism hardening:
-1. Add script-precedence and initialize-stage script coverage:
-   - add tests proving scripted actions take precedence over set-based failure toggles when both are configured.
-   - extend script controls to support initialize-stage scripted failures (`initialize`) and cover deterministic failover behavior.
-2. Expand helper adoption beyond stage matrices:
-   - migrate remaining diagnostics-filter tests in `tests/integration/test_api_mcp.py` to `tests/support/mcp_convergence_helpers.py` to reduce repeated route/filter assertions.
-   - keep assertions identical while shrinking test-local boilerplate.
+Continue `P12/P13` with scripted-failure hardening and helper reliability:
+1. Add focused unit coverage for scripted helper semantics:
+   - add tests for `ClusterNatSessionFactory.set_failure_script/consume_failure_action` covering unsupported actions, script exhaustion, and fallback to set-based toggles after scripts are consumed.
+   - include explicit checks for `tools/call`, `resources/read`, and `initialize` method keys.
+2. Add scripted `error` action convergence coverage:
+   - add an integration scenario using scripted `error` (non-timeout transport failure) for `initialize` and `invoke` paths to assert stable `transport_error` classification and deterministic failover/correlation behavior.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
@@ -98,6 +103,7 @@ Suggested implementation direction:
 - `tests/integration/test_api_mcp.py`
 - `tests/support/mcp_convergence_helpers.py`
 - `tests/support/mcp_nat_helpers.py`
+- `tests/unit/test_mcp_client.py`
 - `src/att/api/deps.py`
 
 ## Remaining Program-Level Milestones

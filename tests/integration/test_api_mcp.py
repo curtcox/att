@@ -596,17 +596,16 @@ def test_mcp_event_endpoints_support_filters_limits_and_correlation() -> None:
 
     manager.record_check_result("github", healthy=False, error="manual degrade")
 
-    invocation_filtered = client.get(
-        "/api/v1/mcp/invocation-events",
-        params={"server": "codex", "method": "tools/call", "request_id": request_id},
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id,
+        server="codex",
+        method="tools/call",
+        expected_phases=[
+            "initialize_start",
+            "initialize_failure",
+        ],
     )
-    assert invocation_filtered.status_code == 200
-    filtered_items = invocation_filtered.json()["items"]
-    assert [item["phase"] for item in filtered_items] == [
-        "initialize_start",
-        "initialize_failure",
-    ]
-    assert all(item["request_id"] == request_id for item in filtered_items)
 
     invocation_limited = client.get("/api/v1/mcp/invocation-events", params={"limit": 2})
     assert invocation_limited.status_code == 200
@@ -616,11 +615,16 @@ def test_mcp_event_endpoints_support_filters_limits_and_correlation() -> None:
         "invoke_success",
     ]
 
+    assert_connection_event_filters(
+        client,
+        request_id=request_id,
+        server="codex",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
     correlated_connection = client.get("/api/v1/mcp/events", params={"correlation_id": request_id})
     assert correlated_connection.status_code == 200
     correlated_items = correlated_connection.json()["items"]
     assert len(correlated_items) == 1
-    assert correlated_items[0]["server"] == "codex"
     assert correlated_items[0]["correlation_id"] == request_id
 
     github_connection = client.get("/api/v1/mcp/events", params={"server": "github"})
@@ -646,45 +650,6 @@ def test_mcp_resource_failover_recovery_filters_and_correlation() -> None:
         unreachable_after=2,
     )
     client = _client_with_manager(manager)
-
-    def _assert_invocation_filters(request_id: str, expected_primary_phases: list[str]) -> None:
-        filtered = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={
-                "server": "primary",
-                "method": "resources/read",
-                "request_id": request_id,
-            },
-        )
-        assert filtered.status_code == 200
-        assert [item["phase"] for item in filtered.json()["items"]] == expected_primary_phases
-
-        limited = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={
-                "server": "primary",
-                "method": "resources/read",
-                "request_id": request_id,
-                "limit": 1,
-            },
-        )
-        assert limited.status_code == 200
-        assert [item["phase"] for item in limited.json()["items"]] == expected_primary_phases[-1:]
-
-    def _assert_connection_filters(request_id: str, expected_statuses: list[str]) -> None:
-        filtered = client.get(
-            "/api/v1/mcp/events",
-            params={"server": "primary", "correlation_id": request_id},
-        )
-        assert filtered.status_code == 200
-        assert [item["to_status"] for item in filtered.json()["items"]] == expected_statuses
-
-        limited = client.get(
-            "/api/v1/mcp/events",
-            params={"server": "primary", "correlation_id": request_id, "limit": 1},
-        )
-        assert limited.status_code == 200
-        assert [item["to_status"] for item in limited.json()["items"]] == expected_statuses[-1:]
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
@@ -713,11 +678,19 @@ def test_mcp_resource_failover_recovery_filters_and_correlation() -> None:
     assert first_failover.json()["method"] == "resources/read"
     request_id_1 = first_failover.json()["request_id"]
 
-    _assert_invocation_filters(
-        request_id_1,
-        expected_primary_phases=["initialize_start", "initialize_failure"],
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="resources/read",
+        expected_phases=["initialize_start", "initialize_failure"],
     )
-    _assert_connection_filters(request_id_1, expected_statuses=[ServerStatus.DEGRADED.value])
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
 
     during_window = client.post(
         "/api/v1/mcp/invoke/resource",
@@ -730,8 +703,19 @@ def test_mcp_resource_failover_recovery_filters_and_correlation() -> None:
     assert during_window.json()["server"] == "backup"
     request_id_2 = during_window.json()["request_id"]
 
-    _assert_invocation_filters(request_id_2, expected_primary_phases=[])
-    _assert_connection_filters(request_id_2, expected_statuses=[])
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        method="resources/read",
+        expected_phases=[],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[],
+    )
 
     factory.fail_on_timeout_initialize.remove("primary")
     clock.advance(seconds=1)
@@ -749,16 +733,24 @@ def test_mcp_resource_failover_recovery_filters_and_correlation() -> None:
     assert recovery.json()["method"] == "resources/read"
     request_id_3 = recovery.json()["request_id"]
 
-    _assert_invocation_filters(
-        request_id_3,
-        expected_primary_phases=[
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
             "initialize_start",
             "initialize_success",
             "invoke_start",
             "invoke_success",
         ],
     )
-    _assert_connection_filters(request_id_3, expected_statuses=[ServerStatus.HEALTHY.value])
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        expected_statuses=[ServerStatus.HEALTHY.value],
+    )
 
 
 def test_mcp_invoke_uses_adapter_transport_when_configured() -> None:
@@ -1506,6 +1498,98 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
         request_id=request_id_resource_2,
         server="backup",
         expected_statuses=[ServerStatus.HEALTHY.value],
+    )
+
+
+def test_mcp_scripted_initialize_precedence_and_failover() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    # Scripted initialize "ok" must override set-based initialize timeout toggles.
+    factory.fail_on_timeout_initialize.add("primary")
+    factory.set_failure_script("primary", "initialize", ["ok"])
+    scripted_ok = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert scripted_ok.status_code == 200
+    assert scripted_ok.json()["server"] == "primary"
+    request_id_1 = scripted_ok.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="tools/call",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[],
+    )
+
+    # Scripted initialize timeout should drive deterministic initialize-stage failover.
+    invalidated = client.post("/api/v1/mcp/servers/primary/adapter/invalidate")
+    assert invalidated.status_code == 200
+    factory.set_failure_script("primary", "initialize", ["timeout"])
+    scripted_timeout = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert scripted_timeout.status_code == 200
+    assert scripted_timeout.json()["server"] == "backup"
+    request_id_2 = scripted_timeout.json()["request_id"]
+
+    failover_events = client.get(
+        "/api/v1/mcp/invocation-events",
+        params={"request_id": request_id_2},
+    )
+    assert failover_events.status_code == 200
+    items = failover_events.json()["items"]
+    assert [item["phase"] for item in items] == [
+        "initialize_start",
+        "initialize_failure",
+        "initialize_start",
+        "initialize_success",
+        "invoke_start",
+        "invoke_success",
+    ]
+    assert [item["server"] for item in items] == [
+        "primary",
+        "primary",
+        "backup",
+        "backup",
+        "backup",
+        "backup",
+    ]
+    assert items[1]["error_category"] == "network_timeout"
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
     )
 
 

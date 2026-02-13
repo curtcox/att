@@ -160,3 +160,8 @@ P11
 - Added scripted mixed-method flapping coverage:
   - `ClusterNatSessionFactory` now supports ordered per-server/per-method failure scripts via `set_failure_script(...)`.
   - integration scenario now validates scripted flapping across `tools/call` and `resources/read` with deterministic fallback ordering and correlated connection/invocation streams.
+- Extended scripted controls to initialize stage with precedence coverage:
+  - `ClusterNatSession.initialize()` now consumes scripted actions for `initialize` before evaluating set-based timeout toggles.
+  - integration coverage validates script-precedence semantics (scripted `ok` overriding set timeout) plus scripted initialize-timeout failover determinism.
+- Expanded convergence-helper adoption:
+  - migrated remaining diagnostics-filter integration assertions in `tests/integration/test_api_mcp.py` to `tests/support/mcp_convergence_helpers.py` to reduce repeated route/filter boilerplate.
