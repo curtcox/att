@@ -16,17 +16,7 @@ from att.mcp.client import (
     NATMCPTransportAdapter,
     ServerStatus,
 )
-
-
-class _TestClock:
-    def __init__(self, start: datetime | None = None) -> None:
-        self.current = start or datetime(2026, 1, 1, tzinfo=UTC)
-
-    def __call__(self) -> datetime:
-        return self.current
-
-    def advance(self, *, seconds: int) -> None:
-        self.current += timedelta(seconds=seconds)
+from tests.support.mcp_helpers import MCPTestClock
 
 
 @pytest.mark.asyncio
@@ -34,7 +24,12 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
         return False, "timeout"
 
-    manager = MCPClientManager(probe=flaky_probe, unreachable_after=2)
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        probe=flaky_probe,
+        unreachable_after=2,
+        now_provider=clock,
+    )
     manager.register("codex", "http://codex.local")
 
     await manager.health_check_server("codex")
@@ -43,7 +38,7 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     assert server.status is ServerStatus.DEGRADED
     assert server.retry_count == 1
     assert server.last_error == "timeout"
-    server.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+    clock.advance(seconds=1)
 
     await manager.health_check_server("codex")
     server = manager.get("codex")
@@ -100,7 +95,7 @@ async def test_should_retry_observes_next_retry_window() -> None:
 
 @pytest.mark.asyncio
 async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
-    clock = _TestClock()
+    clock = MCPTestClock()
     manager = MCPClientManager(now_provider=clock)
     manager.register("terminal", "http://terminal.local")
     manager.record_check_result("terminal", healthy=False, error="down")
@@ -344,7 +339,7 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
 @pytest.mark.asyncio
 async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> None:
     calls: list[tuple[str, str]] = []
-    clock = _TestClock()
+    clock = MCPTestClock()
 
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
@@ -1174,7 +1169,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
 @pytest.mark.asyncio
 async def test_adapter_transport_fallback_across_mixed_states() -> None:
     sessions: dict[str, _FakeNatSession] = {}
-    clock = _TestClock()
+    clock = MCPTestClock()
 
     @asynccontextmanager
     async def session_context(endpoint: str) -> Any:

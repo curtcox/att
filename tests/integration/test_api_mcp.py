@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from att.api.app import create_app
@@ -17,6 +18,7 @@ from att.mcp.client import (
     NATMCPTransportAdapter,
     ServerStatus,
 )
+from tests.support.mcp_helpers import MCPTestClock
 
 
 class StaticProbe:
@@ -26,17 +28,6 @@ class StaticProbe:
 
     async def __call__(self, _: ExternalServer) -> tuple[bool, str | None]:
         return self._healthy, self._error
-
-
-class _TestClock:
-    def __init__(self, start: datetime | None = None) -> None:
-        self.current = start or datetime(2026, 1, 1, tzinfo=UTC)
-
-    def __call__(self) -> datetime:
-        return self.current
-
-    def advance(self, *, seconds: int) -> None:
-        self.current += timedelta(seconds=seconds)
 
 
 class FallbackTransport:
@@ -628,7 +619,7 @@ def test_mcp_invoke_tool_reinitializes_stale_server_before_call() -> None:
 
 def test_mcp_invoke_mixed_state_cluster_recovers_in_order() -> None:
     transport = RecoveringTransport()
-    clock = _TestClock()
+    clock = MCPTestClock()
     manager = MCPClientManager(
         probe=StaticProbe(healthy=True),
         transport=transport,
@@ -1366,9 +1357,12 @@ def test_mcp_mixed_state_refresh_invalidate_timeout_preserves_local_snapshots() 
     assert by_name["backup"]["freshness"] == "active_recent"
 
 
-def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> None:
+@pytest.mark.parametrize("timeout_stage", ["initialize", "invoke"])
+def test_mcp_retry_window_convergence_stage_specific_timeouts(
+    timeout_stage: str,
+) -> None:
     factory = _ClusterNatSessionFactory()
-    clock = _TestClock()
+    clock = MCPTestClock()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         unreachable_after=2,
@@ -1411,7 +1405,51 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     backup_snapshot_initial = backup_warm.json()["capability_snapshot"]
     assert backup_snapshot_initial is not None
 
-    factory.fail_on_timeout_tool_calls.add("primary")
+    if timeout_stage == "initialize":
+        invalidated = client.post("/api/v1/mcp/servers/primary/adapter/invalidate")
+        assert invalidated.status_code == 200
+        assert invalidated.json()["initialized"] is False
+        factory.fail_on_timeout_initialize.add("primary")
+        failover_phases = [
+            "initialize_start",
+            "initialize_failure",
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ]
+        failover_servers = [
+            "primary",
+            "primary",
+            "backup",
+            "backup",
+            "backup",
+            "backup",
+        ]
+        failover_error_index = 1
+    else:
+        factory.fail_on_timeout_tool_calls.add("primary")
+        failover_phases = [
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ]
+        failover_servers = [
+            "primary",
+            "primary",
+            "primary",
+            "primary",
+            "backup",
+            "backup",
+            "backup",
+            "backup",
+        ]
+        failover_error_index = 3
 
     first_failover = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -1431,27 +1469,9 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     )
     assert first_events.status_code == 200
     first_items = first_events.json()["items"]
-    assert [item["phase"] for item in first_items] == [
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_failure",
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_success",
-    ]
-    assert [item["server"] for item in first_items] == [
-        "primary",
-        "primary",
-        "primary",
-        "primary",
-        "backup",
-        "backup",
-        "backup",
-        "backup",
-    ]
-    assert first_items[3]["error_category"] == "network_timeout"
+    assert [item["phase"] for item in first_items] == failover_phases
+    assert [item["server"] for item in first_items] == failover_servers
+    assert first_items[failover_error_index]["error_category"] == "network_timeout"
 
     primary_after_first = client.get("/api/v1/mcp/servers/primary")
     assert primary_after_first.status_code == 200
@@ -1500,8 +1520,6 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     clock.advance(seconds=2)
     manager.record_check_result("backup", healthy=False, error="manual degrade")
     clock.advance(seconds=1)
-    factory.fail_on_timeout_tool_calls.remove("primary")
-    factory.fail_on_timeout_initialize.add("primary")
 
     second_failover = client.post(
         "/api/v1/mcp/invoke/tool",
@@ -1521,32 +1539,26 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
     )
     assert third_events.status_code == 200
     third_items = third_events.json()["items"]
-    assert [item["phase"] for item in third_items] == [
-        "initialize_start",
-        "initialize_failure",
-        "initialize_start",
-        "initialize_success",
-        "invoke_start",
-        "invoke_success",
-    ]
-    assert [item["server"] for item in third_items] == [
-        "primary",
-        "primary",
-        "backup",
-        "backup",
-        "backup",
-        "backup",
-    ]
-    assert third_items[1]["error_category"] == "network_timeout"
+    assert [item["phase"] for item in third_items] == failover_phases
+    assert [item["server"] for item in third_items] == failover_servers
+    assert third_items[failover_error_index]["error_category"] == "network_timeout"
 
     primary_after_second = client.get("/api/v1/mcp/servers/primary")
     assert primary_after_second.status_code == 200
-    assert primary_after_second.json()["status"] == ServerStatus.UNREACHABLE.value
-    assert primary_after_second.json()["retry_count"] == 2
-    assert (
-        primary_after_second.json()["capability_snapshot"]["captured_at"]
-        == primary_snapshot_initial["captured_at"]
-    )
+    if timeout_stage == "initialize":
+        assert primary_after_second.json()["status"] == ServerStatus.UNREACHABLE.value
+        assert primary_after_second.json()["retry_count"] == 2
+        assert (
+            primary_after_second.json()["capability_snapshot"]["captured_at"]
+            == primary_snapshot_initial["captured_at"]
+        )
+    else:
+        assert primary_after_second.json()["status"] == ServerStatus.DEGRADED.value
+        assert primary_after_second.json()["retry_count"] == 1
+        assert (
+            primary_after_second.json()["capability_snapshot"]["captured_at"]
+            != primary_snapshot_initial["captured_at"]
+        )
 
     backup_after_second = client.get("/api/v1/mcp/servers/backup")
     assert backup_after_second.status_code == 200
@@ -1555,18 +1567,31 @@ def test_mcp_retry_window_convergence_across_consecutive_recovery_cycles() -> No
         != backup_snapshot_initial["captured_at"]
     )
 
-    correlation_unreachable = client.get(
+    stage_transition = client.get(
         "/api/v1/mcp/events",
         params={"correlation_id": request_id_3},
     )
-    assert correlation_unreachable.status_code == 200
-    unreachable_items = correlation_unreachable.json()["items"]
-    assert any(
-        item["server"] == "primary" and item["to_status"] == ServerStatus.UNREACHABLE.value
-        for item in unreachable_items
-    )
+    assert stage_transition.status_code == 200
+    stage_items = stage_transition.json()["items"]
+    if timeout_stage == "initialize":
+        assert any(
+            item["server"] == "primary" and item["to_status"] == ServerStatus.UNREACHABLE.value
+            for item in stage_items
+        )
+    else:
+        assert any(
+            item["server"] == "primary" and item["to_status"] == ServerStatus.HEALTHY.value
+            for item in stage_items
+        )
+        assert any(
+            item["server"] == "primary" and item["to_status"] == ServerStatus.DEGRADED.value
+            for item in stage_items
+        )
 
-    factory.fail_on_timeout_initialize.remove("primary")
+    if timeout_stage == "initialize":
+        factory.fail_on_timeout_initialize.remove("primary")
+    else:
+        factory.fail_on_timeout_tool_calls.remove("primary")
     clock.advance(seconds=3)
     manager.record_check_result("backup", healthy=False, error="hold backup")
 

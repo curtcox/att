@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (expanded mixed-state clock migration + clock-driven snapshot timing assertions + plan doc updates)
+- Working tree at handoff creation: dirty (shared MCP test clock helper + stage-paired timeout convergence matrix + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`169 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`170 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -28,15 +28,21 @@
 - Extended convergence matrix with clock-driven capability snapshot timing assertions:
   - convergence scenario now explicitly verifies server-local `capability_snapshot.captured_at` retention on failure paths and replacement on recovery initialize.
   - assertions remain request-correlated and deterministic under controlled clock progression.
+- Consolidated duplicated MCP test clock helpers into shared support:
+  - added shared helper module `tests/support/mcp_helpers.py` and converted unit/integration MCP tests to consume `MCPTestClock`.
+  - added package markers (`tests/__init__.py`, `tests/support/__init__.py`) so shared test support imports resolve consistently.
+- Expanded stage-specific timeout convergence matrix with explicit paired scenarios:
+  - replaced single mixed-stage convergence path with paired `initialize` vs `invoke` timeout scenarios under the same clock progression and preferred order.
+  - assertions now explicitly capture stage-specific retry/backoff/status deltas and capability snapshot timing behavior (retention vs replacement) while preserving deterministic correlation/event checks.
 
 ## Active Next Slice (Recommended)
 Continue `P12/P13` with external transport realism and convergence:
-1. Consolidate duplicated test clock helpers:
-   - move `_TestClock` into shared MCP test support to avoid repeated local definitions across unit/integration suites.
-   - keep existing test behavior unchanged while reducing maintenance overhead.
-2. Expand stage-specific timeout convergence matrix:
-   - add explicit paired scenarios for initialize-time vs invoke-time timeouts under the same clock progression and preferred order.
-   - ensure retry/backoff/status deltas and capability snapshot timing outcomes remain deterministic and server-local.
+1. Reduce duplicated MCP test scaffolding beyond clocks:
+   - extract shared cluster NAT session factory/session model helpers used in integration MCP tests into `tests/support` to shrink repeated test-local transport setup.
+   - keep behavior unchanged while improving test readability and maintenance.
+2. Extend stage-paired convergence coverage with diagnostics filter assertions:
+   - for each timeout stage, assert deterministic event-filter behavior (`server`, `request_id`, `correlation_id`, `limit`) on both `/api/v1/mcp/events` and `/api/v1/mcp/invocation-events`.
+   - preserve server-local capability snapshot timing assertions and preferred-order fallback determinism.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

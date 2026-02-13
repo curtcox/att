@@ -131,3 +131,9 @@ P11
 - Added clock-driven capability snapshot timing assertions in convergence flow:
   - verifies `capability_snapshot.captured_at` remains stable across failure/no-reinitialize paths and updates on recovery initialize.
   - keeps assertions server-local and deterministic per request/correlation cycle.
+- Consolidated MCP test clock scaffolding:
+  - introduced shared helper `tests/support/mcp_helpers.py` with `MCPTestClock`.
+  - migrated unit/integration MCP test modules to shared clock helper to eliminate duplicated local clock definitions.
+- Expanded convergence matrix to explicit stage-paired scenarios:
+  - convergence coverage now runs paired `initialize`-timeout and `invoke`-timeout scenarios under the same clock progression and preferred ordering.
+  - assertions explicitly verify stage-specific retry/backoff/status outcomes and capability snapshot timing deltas while preserving deterministic event/correlation checks.
