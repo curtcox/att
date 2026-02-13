@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit full call-order collection helper reuse`)
+- Working tree at handoff creation: dirty (`unit method-scoped re-entry pair collector reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended method-scoped re-entry pair collection helper reuse in unit MCP client coverage:
+  - migrated remaining inline resource retry re-entry call-order pair collection in `tests/unit/test_mcp_client.py` to `_unit_test_collect_reentry_call_order_slice(...)`.
+  - replaced repeated list-comprehension scaffolding `[(server, method) for ... if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_RESOURCES_READ_METHOD}]` with helper-driven collection while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended full call-order collection helper reuse in unit MCP client coverage:
   - added local unit-test helper `_unit_test_collect_full_call_order_slice(...)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated initialize-cache full call-order collection comprehensions (including `session_id`) to helper-driven form in repeated-invoke/invalidate assertions while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
@@ -466,9 +470,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable helper reuse for remaining method-scoped call-order pair collection scaffolding in unit MCP client coverage:
-1. Reuse existing re-entry call-order collection helper in `tests/unit/test_mcp_client.py` where inline pair collection still remains:
-   - target remaining list-comprehension scaffolding of the form `[(server, method) for ... if method in {UNIT_TEST_INITIALIZE_METHOD, <invoke_method>}]` (for example, resource retry re-entry assertions) when helper reuse is meaningful.
+Continue `P12/P13` test-structure hardening by extending stable helper reuse for remaining mixed-method call-order collection scaffolding in unit MCP client coverage:
+1. Reuse a shared helper for mixed-method call-order collection in `tests/unit/test_mcp_client.py` where inline three-method filtering remains:
+   - target remaining list-comprehension scaffolding of the form `[(server, method) for ... if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD}]` when helper reuse is meaningful.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

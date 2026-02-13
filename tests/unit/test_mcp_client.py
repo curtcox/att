@@ -1768,11 +1768,11 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     )
     assert third.server == UNIT_TEST_PRIMARY_SERVER
 
-    third_slice = [
-        (server, method)
-        for server, _, method in factory.calls[calls_before_third:]
-        if method in {UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_RESOURCES_READ_METHOD}
-    ]
+    third_slice = _unit_test_collect_reentry_call_order_slice(
+        factory.calls,
+        calls_before_third,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+    )
     assert third_slice == [
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
         (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
