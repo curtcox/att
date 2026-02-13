@@ -182,6 +182,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper to collect mixed-method observed transport call order and assert expected literal vectors.
   - migrated repeated-same-server and force-reinitialize call-order tests to helper-driven literal assertions while preserving explicit expected vectors at call sites.
   - preserved diagnostics-filter assertions and phase-start/transport subsequence checks unchanged.
+- [x] Reduced duplicated mixed-method request-execution scaffolding in call-order tests:
+  - added shared helper that executes mixed-method request sequences (request post + request-id collection + primary success diagnostics assertions).
+  - added optional per-index pre-request mutation hook and migrated force-reinitialize trigger mutations to this hook while preserving explicit trigger conditions.
+  - migrated repeated-same-server and force-reinitialize tests to helper-driven request execution while preserving explicit request-spec/status vectors and call-order expectations.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.

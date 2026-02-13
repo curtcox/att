@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `d4085e047dea07059eadd271db78767a77d1ddd4`
-- Last commit: `d4085e0 2026-02-13 09:52:57 -0600 Extract mixed-method observed call-order constants`
-- Working tree at handoff creation: dirty (`mixed-method call-order literal helper extraction`)
+- HEAD: `3f7ce4b60cd8af9a0d34db128e9802e9cae96f8e`
+- Last commit: `3f7ce4b 2026-02-13 09:56:20 -0600 Extract mixed-method call-order literal helper`
+- Working tree at handoff creation: dirty (`mixed-method request-sequence execution helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated mixed-method request-execution scaffolding in call-order tests:
+  - added shared helper that executes mixed-method request sequences (request post + request-id collection + primary success diagnostics assertions).
+  - added optional per-index pre-request mutation hook and migrated force-reinitialize trigger mutations to the hook while preserving explicit trigger conditions.
+  - migrated repeated-same-server and force-reinitialize tests to helper-driven request execution while preserving explicit request-spec/status vectors and call-order expectations.
 - Reduced duplicated mixed-method call-order literal assertion wiring in call-order tests:
   - added shared helper to collect mixed-method observed transport call order and assert expected literal vectors.
   - migrated repeated-same-server and force-reinitialize call-order tests to helper-driven literal assertions while keeping explicit expected vectors at test call sites.
@@ -229,11 +233,11 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method request-execution scaffolding:
-1. Extract shared mixed-method request-sequence execution helper:
-   - factor repeated request loop scaffolding (POST + request-id collection + primary success diagnostics assertions) in repeated-same-server and force-reinitialize tests into one helper.
-   - allow per-index pre-request mutation hook so stale-expiry/degraded trigger wiring remains explicit in force-reinitialize coverage.
-   - keep request-spec and expected-status vectors explicit at test call sites for auditability.
+Continue `P12/P13` test-structure hardening by reducing duplicated mixed-method primary test setup scaffolding:
+1. Extract shared mixed-method primary setup helper:
+   - factor repeated `ClusterNatSessionFactory` + `MCPClientManager` + `TestClient` + primary-server registration scaffolding in repeated-same-server and force-reinitialize tests into one helper.
+   - support optional `now_provider` injection so force-reinitialize stale-expiry trigger coverage remains deterministic.
+   - keep test-local trigger/call-order expectations explicit at call sites for auditability.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current diagnostics and call-order assertion behavior unchanged.
    - retain full validation + plan-doc update workflow per slice.

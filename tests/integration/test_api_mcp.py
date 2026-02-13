@@ -240,6 +240,12 @@ FORCE_REINITIALIZE_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
     (),
     (ServerStatus.HEALTHY.value,),
 )
+MIXED_METHOD_REPEATED_EXPECTED_STATUSES: tuple[tuple[str, ...], ...] = (
+    (),
+    (),
+    (),
+    (),
+)
 MIXED_METHOD_REPEATED_EXPECTED_OBSERVED_CALL_ORDER: tuple[tuple[str, str], ...] = (
     ("primary", "initialize"),
     ("primary", "tools/call"),
@@ -578,6 +584,35 @@ def _assert_primary_success_request_diagnostics(
         server="primary",
         expected_statuses=list(expected_statuses),
     )
+
+
+def _run_mixed_method_primary_request_sequence(
+    *,
+    client: TestClient,
+    request_specs: Sequence[tuple[str, dict[str, object], str]],
+    expected_statuses: Sequence[Sequence[str]],
+    before_request: Callable[[int], None] | None = None,
+) -> list[str]:
+    request_ids: list[str] = []
+    for index, ((path, payload, method), statuses) in enumerate(
+        zip(request_specs, expected_statuses, strict=True)
+    ):
+        if before_request is not None:
+            before_request(index)
+
+        response = client.post(path, json=payload)
+        assert response.status_code == 200
+        assert response.json()["server"] == "primary"
+        request_id = response.json()["request_id"]
+        request_ids.append(request_id)
+        _assert_primary_success_request_diagnostics(
+            client=client,
+            request_id=request_id,
+            method=method,
+            expected_statuses=statuses,
+        )
+
+    return request_ids
 
 
 def _collect_method_call_order(
@@ -2203,19 +2238,11 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
     client = _client_with_manager(manager)
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    request_ids: list[str] = []
-    for path, payload, method in MIXED_METHOD_PRIMARY_REQUEST_SPECS:
-        response = client.post(path, json=payload)
-        assert response.status_code == 200
-        assert response.json()["server"] == "primary"
-        request_id = response.json()["request_id"]
-        request_ids.append(request_id)
-        _assert_primary_success_request_diagnostics(
-            client=client,
-            request_id=request_id,
-            method=method,
-            expected_statuses=(),
-        )
+    request_ids = _run_mixed_method_primary_request_sequence(
+        client=client,
+        request_specs=MIXED_METHOD_PRIMARY_REQUEST_SPECS,
+        expected_statuses=MIXED_METHOD_REPEATED_EXPECTED_STATUSES,
+    )
 
     observed_call_order = _assert_mixed_method_call_order_literals(
         factory=factory,
@@ -2239,14 +2266,8 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
     client = _client_with_manager(manager)
 
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
-    request_ids: list[str] = []
-    for index, ((path, payload, method), expected_statuses) in enumerate(
-        zip(
-            MIXED_METHOD_PRIMARY_REQUEST_SPECS,
-            FORCE_REINITIALIZE_EXPECTED_STATUSES,
-            strict=True,
-        )
-    ):
+
+    def _mutate_primary_before_request(index: int) -> None:
         if index == 1:
             primary = manager.get("primary")
             assert primary is not None
@@ -2257,17 +2278,12 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
             primary.status = ServerStatus.DEGRADED
             primary.next_retry_at = None
 
-        response = client.post(path, json=payload)
-        assert response.status_code == 200
-        assert response.json()["server"] == "primary"
-        request_id = response.json()["request_id"]
-        request_ids.append(request_id)
-        _assert_primary_success_request_diagnostics(
-            client=client,
-            request_id=request_id,
-            method=method,
-            expected_statuses=expected_statuses,
-        )
+    request_ids = _run_mixed_method_primary_request_sequence(
+        client=client,
+        request_specs=MIXED_METHOD_PRIMARY_REQUEST_SPECS,
+        expected_statuses=FORCE_REINITIALIZE_EXPECTED_STATUSES,
+        before_request=_mutate_primary_before_request,
+    )
 
     observed_call_order = _assert_mixed_method_call_order_literals(
         factory=factory,
