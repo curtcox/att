@@ -60,6 +60,7 @@ async def run_self_bootstrap(
         rollback_succeeded=result.rollback_succeeded,
         deployed_release_id=result.deployed_release_id,
         rollback_target_release_id=result.rollback_target_release_id,
+        release_metadata_source=result.release_metadata_source,
         success=result.success,
         test_returncode=result.workflow_result.test_result.returncode,
         event_ids=[event.id for event in result.workflow_result.events],

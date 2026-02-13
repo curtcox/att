@@ -30,6 +30,7 @@ class FakeSelfBootstrapManager:
             rollback_succeeded=None,
             deployed_release_id="release-2",
             rollback_target_release_id="release-1",
+            release_metadata_source="git",
             success=True,
             workflow_result=WorkflowRunResult(
                 diff="diff",
@@ -93,6 +94,7 @@ def test_self_bootstrap_run_endpoint(tmp_path: Path) -> None:
     assert payload["restart_watchdog_reason"] == "runtime_healthy"
     assert payload["deployed_release_id"] == "release-2"
     assert payload["rollback_target_release_id"] == "release-1"
+    assert payload["release_metadata_source"] == "git"
     assert payload["test_returncode"] == 0
     assert len(payload["event_ids"]) == 2
 

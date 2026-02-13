@@ -41,6 +41,18 @@ type RestartWatchdog = Callable[[str, str], Awaitable[RestartWatchdogSignal | bo
 
 
 @dataclass(slots=True)
+class ReleaseMetadata:
+    """Release metadata resolved from a concrete source."""
+
+    current_release_id: str | None
+    previous_release_id: str | None
+    source: str
+
+
+type ReleaseMetadataProvider = Callable[[str, Path], Awaitable[ReleaseMetadata | None]]
+
+
+@dataclass(slots=True)
 class SelfBootstrapRequest:
     """Input payload for a self-bootstrap cycle."""
 
@@ -86,6 +98,7 @@ class SelfBootstrapResult:
     restart_watchdog_reason: str | None = None
     deployed_release_id: str | None = None
     rollback_target_release_id: str | None = None
+    release_metadata_source: str | None = None
 
 
 class SelfBootstrapManager:
@@ -104,6 +117,7 @@ class SelfBootstrapManager:
         deployer: Deployer | None = None,
         restart_watchdog: RestartWatchdog | None = None,
         rollback_executor: RollbackExecutor | None = None,
+        release_metadata_provider: ReleaseMetadataProvider | None = None,
         sleeper: Sleeper | None = None,
     ) -> None:
         self._git = git_manager
@@ -116,15 +130,22 @@ class SelfBootstrapManager:
         self._deployer = deployer
         self._restart_watchdog = restart_watchdog
         self._rollback_executor = rollback_executor
+        self._release_metadata_provider = release_metadata_provider
         self._sleep = sleeper or asyncio.sleep
 
     async def execute(self, request: SelfBootstrapRequest) -> SelfBootstrapResult:
         """Run a baseline self-bootstrap cycle."""
+        release_metadata = await self._resolve_release_metadata(request)
         branch_name = request.branch_name or f"codex/self-bootstrap-{uuid4().hex[:8]}"
         pr_url: str | None = None
         merged = False
         restart_watchdog_status = "not_run"
         restart_watchdog_reason: str | None = None
+        deployed_release_id = request.requested_release_id or (
+            release_metadata.current_release_id if release_metadata is not None else None
+        )
+        rollback_target_release_id = self._resolve_rollback_release_id(request, release_metadata)
+        release_metadata_source = release_metadata.source if release_metadata is not None else None
 
         self._git.branch(request.project_path, branch_name, checkout=True)
 
@@ -156,6 +177,7 @@ class SelfBootstrapManager:
                 rollback_succeeded=None,
                 success=False,
                 workflow_result=workflow,
+                release_metadata_source=release_metadata_source,
             )
 
         self._git.push(request.project_path, "origin", branch_name)
@@ -203,6 +225,7 @@ class SelfBootstrapManager:
                     workflow_result=workflow,
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
+                    release_metadata_source=release_metadata_source,
                 )
 
         if request.auto_merge_on_ci_success and pr_url is not None and self._pr_merger is not None:
@@ -232,14 +255,15 @@ class SelfBootstrapManager:
                     rollback_succeeded=None,
                     success=False,
                     workflow_result=workflow,
+                    deployed_release_id=deployed_release_id,
+                    rollback_target_release_id=rollback_target_release_id,
+                    release_metadata_source=release_metadata_source,
                 )
 
         health_status = "not_run"
         rollback_performed = False
         rollback_succeeded: bool | None = None
         deploy_target = request.deploy_target or request.health_check_target
-        deployed_release_id = request.requested_release_id
-        rollback_target_release_id = self._resolve_rollback_release_id(request)
 
         if self._deployer is not None and deploy_target is not None:
             await self._record_event(
@@ -303,7 +327,8 @@ class SelfBootstrapManager:
                         "phase": "restart_watchdog",
                         "target": deploy_target,
                         "release_id": deployed_release_id,
-                        "message": restart_signal.reason or "Runtime failed restart watchdog checks",
+                        "message": restart_signal.reason
+                        or "Runtime failed restart watchdog checks",
                     },
                 )
                 rollback_performed, rollback_succeeded = await self._attempt_rollback(
@@ -339,6 +364,7 @@ class SelfBootstrapManager:
                     restart_watchdog_reason=restart_watchdog_reason,
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
+                    release_metadata_source=release_metadata_source,
                 )
 
         if self._health_checker is not None and request.health_check_target is not None:
@@ -383,6 +409,7 @@ class SelfBootstrapManager:
                     restart_watchdog_reason=restart_watchdog_reason,
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
+                    release_metadata_source=release_metadata_source,
                 )
 
         if deploy_target is not None and not (
@@ -416,6 +443,7 @@ class SelfBootstrapManager:
             restart_watchdog_reason=restart_watchdog_reason,
             deployed_release_id=deployed_release_id,
             rollback_target_release_id=rollback_target_release_id,
+            release_metadata_source=release_metadata_source,
         )
 
     async def _attempt_rollback(
@@ -445,10 +473,27 @@ class SelfBootstrapManager:
         return True, rollback_succeeded
 
     @staticmethod
-    def _resolve_rollback_release_id(request: SelfBootstrapRequest) -> str | None:
+    def _resolve_rollback_release_id(
+        request: SelfBootstrapRequest,
+        release_metadata: ReleaseMetadata | None,
+    ) -> str | None:
         if request.rollback_release_id:
             return request.rollback_release_id
-        return request.previous_release_id
+        if request.previous_release_id:
+            return request.previous_release_id
+        if release_metadata is not None:
+            return release_metadata.previous_release_id
+        return None
+
+    async def _resolve_release_metadata(
+        self,
+        request: SelfBootstrapRequest,
+    ) -> ReleaseMetadata | None:
+        if self._release_metadata_provider is None:
+            return None
+        if request.requested_release_id is not None and request.previous_release_id is not None:
+            return None
+        return await self._release_metadata_provider(request.project_id, request.project_path)
 
     async def _run_rollback_executor(
         self,
@@ -460,10 +505,10 @@ class SelfBootstrapManager:
         if self._rollback_executor is None:
             return False
         if self._rollback_executor_accepts_release_id(self._rollback_executor):
-            executor = cast(RollbackExecutorWithRelease, self._rollback_executor)
-            return await executor(project_id, target, target_release_id)
-        executor = cast(RollbackExecutorLegacy, self._rollback_executor)
-        return await executor(project_id, target)
+            executor_with_release = cast(RollbackExecutorWithRelease, self._rollback_executor)
+            return await executor_with_release(project_id, target, target_release_id)
+        executor_legacy = cast(RollbackExecutorLegacy, self._rollback_executor)
+        return await executor_legacy(project_id, target)
 
     @staticmethod
     def _rollback_executor_accepts_release_id(executor: RollbackExecutor) -> bool:

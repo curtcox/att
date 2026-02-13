@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 from att.api.app import create_app
 from att.api.deps import get_project_manager, get_runtime_manager
-from att.core.runtime_manager import RuntimeLogRead
 from att.core.project_manager import ProjectManager
+from att.core.runtime_manager import RuntimeLogRead
 from att.db.store import SQLiteStore
 
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qs
 from typing import Literal
+from urllib.parse import parse_qs
 
 type ResourceOperation = Literal["projects", "files", "config", "tests", "logs", "ci"]
 

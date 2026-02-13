@@ -5,12 +5,12 @@ from __future__ import annotations
 import subprocess
 import threading
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Sequence
-from urllib import error as urllib_error
-from urllib import request as urllib_request
+
+import httpx
 
 
 @dataclass(slots=True)
@@ -299,19 +299,9 @@ class RuntimeManager:
         timeout_seconds: float,
     ) -> RuntimeHealthProbe:
         try:
-            with urllib_request.urlopen(url, timeout=timeout_seconds) as response:
-                status_code = response.getcode()
-        except urllib_error.HTTPError as exc:
-            return RuntimeHealthProbe(
-                healthy=False,
-                running=True,
-                pid=state.pid,
-                probe="http",
-                reason=f"http_status:{exc.code}",
-                checked_at=checked_at,
-                http_status=exc.code,
-            )
-        except urllib_error.URLError:
+            with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
+                response = client.get(url)
+        except httpx.HTTPError:
             return RuntimeHealthProbe(
                 healthy=False,
                 running=True,
@@ -320,16 +310,7 @@ class RuntimeManager:
                 reason="http_error",
                 checked_at=checked_at,
             )
-
-        if status_code is None:
-            return RuntimeHealthProbe(
-                healthy=False,
-                running=True,
-                pid=state.pid,
-                probe="http",
-                reason="http_status:unknown",
-                checked_at=checked_at,
-            )
+        status_code = response.status_code
 
         healthy = 200 <= status_code < 400
         reason = "http_ok" if healthy else f"http_status:{status_code}"

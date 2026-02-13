@@ -6,6 +6,7 @@ import pytest
 
 from att.core.git_manager import GitResult
 from att.core.self_bootstrap_manager import (
+    ReleaseMetadata,
     RestartWatchdogSignal,
     SelfBootstrapManager,
     SelfBootstrapRequest,
@@ -432,7 +433,9 @@ async def test_self_bootstrap_restart_watchdog_signal_reason_propagates(tmp_path
 
 
 @pytest.mark.asyncio
-async def test_self_bootstrap_health_failure_uses_previous_release_for_rollback(tmp_path: Path) -> None:
+async def test_self_bootstrap_health_failure_uses_previous_release_for_rollback(
+    tmp_path: Path,
+) -> None:
     rollback_targets: list[str | None] = []
 
     async def ci_checker(project_id: str, branch: str) -> str:
@@ -530,3 +533,62 @@ async def test_self_bootstrap_explicit_rollback_release_overrides_previous(tmp_p
     assert result.deployed_release_id == "release-9"
     assert result.rollback_target_release_id == "release-7"
     assert rollback_targets == ["release-7"]
+
+
+@pytest.mark.asyncio
+async def test_self_bootstrap_resolves_release_metadata_from_provider(tmp_path: Path) -> None:
+    rollback_targets: list[str | None] = []
+
+    async def ci_checker(project_id: str, branch: str) -> str:
+        return "success"
+
+    async def deployer(project_id: str, target: str) -> bool:
+        return True
+
+    async def health_checker(target: str) -> bool:
+        return False
+
+    async def rollback_executor(project_id: str, target: str, release_id: str | None) -> bool:
+        rollback_targets.append(release_id)
+        return True
+
+    async def release_metadata_provider(
+        project_id: str, project_path: Path
+    ) -> ReleaseMetadata | None:
+        return ReleaseMetadata(
+            current_release_id="release-git-head",
+            previous_release_id="release-git-prev",
+            source="git",
+        )
+
+    manager = SelfBootstrapManager(
+        git_manager=FakeGitManager(),
+        orchestrator=FakeOrchestrator(committed=True, returncode=0),
+        store=SQLiteStore(tmp_path / "att.db"),
+        ci_checker=ci_checker,
+        deployer=deployer,
+        health_checker=health_checker,
+        rollback_executor=rollback_executor,
+        release_metadata_provider=release_metadata_provider,
+    )
+
+    project_path = tmp_path / "project"
+    project_path.mkdir(parents=True, exist_ok=True)
+    request = SelfBootstrapRequest(
+        project_id="p1",
+        project_path=project_path,
+        file_path="app.py",
+        content="x",
+        commit_message="feat: auto",
+        branch_name="codex/test-branch",
+        deploy_target="att-service",
+        health_check_target="http://localhost:8000/api/v1/health",
+    )
+
+    result = await manager.execute(request)
+
+    assert result.success is False
+    assert result.deployed_release_id == "release-git-head"
+    assert result.rollback_target_release_id == "release-git-prev"
+    assert result.release_metadata_source == "git"
+    assert rollback_targets == ["release-git-prev"]

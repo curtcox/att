@@ -61,13 +61,14 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Self-bootstrap restart watchdog now consumes runtime probe signals and surfaces restart diagnostics (`restart_watchdog_reason`) through manager results + API response payloads.
 - [x] Added cursor-based runtime log streaming reads in manager/API/MCP (`RuntimeManager.read_logs`, `GET /api/v1/projects/{id}/runtime/logs`, `att.runtime.logs`, and `att://project/{id}/logs?cursor=...&limit=...`).
 - [x] Added baseline release-aware rollback metadata in self-bootstrap (`requested_release_id`, `previous_release_id`, `rollback_release_id`) and surfaced resolved rollback target diagnostics in manager/API results.
+- [x] Integrated release metadata source resolution for self-bootstrap rollback defaults via git (`HEAD`/`HEAD^`) and surfaced `release_metadata_source` in API responses.
 - [x] Fixed `code` route precedence bug: static `files/search` and `files/diff` routes now resolve before `files/{file_path:path}`.
 - [x] Added project-existence validation for feature endpoints where `project_id` is in the path.
 - [x] Local development environment bootstrapped in `.venv313` with project + dev dependencies installed.
 - [x] Validation on 2026-02-12: `ruff check`, `mypy`, and `pytest` all passing (110 tests).
 - [x] Sub-plan files scaffolded in `todo/plans/` (`P01` through `P25`) for ongoing detailed planning and tracking.
 - [ ] P12/P13 still in progress for full NAT `nat.mcp` transport integration and live external server wiring.
-- [ ] P16 is in progress (restart watchdog/runtime health/log streaming and baseline release-aware rollback metadata are implemented; remaining work is production release-source integration and rollback policy hardening).
+- [ ] P16 is in progress (restart watchdog/runtime health/log streaming and release-source-aware rollback metadata are implemented; remaining work is rollback policy hardening).
 - [ ] P15 and P17-P25 not started (planned phases remain unchanged).
 - [ ] Remaining work is focused on replacing stubs with full implementations and completing Phase 1 self-bootstrapping.
 

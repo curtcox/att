@@ -3,7 +3,6 @@ from __future__ import annotations
 import io
 import subprocess
 from pathlib import Path
-from urllib import error as urllib_error
 
 from att.core.runtime_manager import RuntimeManager
 
@@ -104,12 +103,26 @@ def test_runtime_manager_probe_reports_http_failure(monkeypatch, tmp_path: Path)
         del args, kwargs
         return fake
 
-    def fake_urlopen(url: str, timeout: float):  # type: ignore[no-untyped-def]
-        del timeout
-        raise urllib_error.HTTPError(url, 503, "unavailable", {}, None)
+    class _FakeResponse:
+        status_code = 503
+
+    class _FakeHttpClient:
+        def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            del args, kwargs
+
+        def __enter__(self):  # type: ignore[no-untyped-def]
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # type: ignore[no-untyped-def]
+            del exc_type, exc, tb
+            return False
+
+        def get(self, url: str):  # type: ignore[no-untyped-def]
+            del url
+            return _FakeResponse()
 
     monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
-    monkeypatch.setattr("att.core.runtime_manager.urllib_request.urlopen", fake_urlopen)
+    monkeypatch.setattr("att.core.runtime_manager.httpx.Client", _FakeHttpClient)
 
     manager = RuntimeManager(health_check_url="http://localhost:8000/health")
     manager.start(tmp_path, tmp_path / "workflow.yaml")
@@ -132,7 +145,9 @@ def test_runtime_manager_probe_command_transient_recovery(monkeypatch, tmp_path:
 
     def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
         del args, kwargs
-        return subprocess.CompletedProcess(args=["health-check"], returncode=command_returncodes.pop(0))
+        return subprocess.CompletedProcess(
+            args=["health-check"], returncode=command_returncodes.pop(0)
+        )
 
     monkeypatch.setattr("att.core.runtime_manager.subprocess.Popen", fake_popen)
     monkeypatch.setattr("att.core.runtime_manager.subprocess.run", fake_run)

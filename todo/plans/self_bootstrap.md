@@ -31,9 +31,11 @@ P04-P13
   - Request fields: `requested_release_id`, `previous_release_id`, `rollback_release_id`
   - Result/API fields: `deployed_release_id`, `rollback_target_release_id`
   - Rollback executor now supports release-target-aware invocation with backwards-compatible fallback for legacy two-argument executors.
+- Added release-source integration for rollback metadata:
+  - `SelfBootstrapManager` now accepts `release_metadata_provider` and resolves release metadata when request fields are omitted.
+  - Default API dependency wiring resolves release metadata from git (`HEAD` and `HEAD^`) and exposes `release_metadata_source` in self-bootstrap results.
 - Remaining scope before completion:
-  - Integrate release metadata from concrete deploy/release sources (not request-only metadata).
-  - Harden rollback policy/validation semantics for production deployment flows.
+  - Harden rollback policy/validation semantics for production deployment flows (release target validation, failure classification, and policy gates).
 - Wired baseline live adapters in `src/att/api/deps.py`:
   - CI status parsing from `gh run list` output
   - PR creation via `gh pr create`

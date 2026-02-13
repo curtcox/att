@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Literal
 
@@ -12,7 +13,11 @@ from att.core.git_manager import GitManager
 from att.core.project_manager import ProjectManager
 from att.core.runtime_manager import RuntimeManager
 from att.core.self_bootstrap_integrations import parse_gh_actions_status
-from att.core.self_bootstrap_manager import RestartWatchdogSignal, SelfBootstrapManager
+from att.core.self_bootstrap_manager import (
+    ReleaseMetadata,
+    RestartWatchdogSignal,
+    SelfBootstrapManager,
+)
 from att.core.test_runner import TestResultPayload, TestRunner
 from att.core.tool_orchestrator import ToolOrchestrator
 from att.db.store import SQLiteStore
@@ -147,6 +152,34 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
         runtime.stop()
         return True
 
+    async def release_metadata_provider(
+        project_id: str, project_path: Path
+    ) -> ReleaseMetadata | None:
+        del project_id
+
+        def _git_rev_parse(revision: str) -> str | None:
+            completed = subprocess.run(
+                ["git", "rev-parse", revision],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                return None
+            value = completed.stdout.strip()
+            return value or None
+
+        current_release = _git_rev_parse("HEAD")
+        if current_release is None:
+            return None
+        previous_release = _git_rev_parse("HEAD^")
+        return ReleaseMetadata(
+            current_release_id=current_release,
+            previous_release_id=previous_release,
+            source="git",
+        )
+
     return SelfBootstrapManager(
         git_manager=git,
         orchestrator=get_tool_orchestrator(),
@@ -157,6 +190,7 @@ def get_self_bootstrap_manager() -> SelfBootstrapManager:
         deployer=deployer,
         restart_watchdog=restart_watchdog,
         rollback_executor=rollback_executor,
+        release_metadata_provider=release_metadata_provider,
     )
 
 
