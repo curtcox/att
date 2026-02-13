@@ -30,6 +30,7 @@ UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY = "http_status"
 UNIT_TEST_INITIALIZE_METHOD = "initialize"
 UNIT_TEST_TOOLS_CALL_METHOD = "tools/call"
 UNIT_TEST_RESOURCES_READ_METHOD = "resources/read"
+UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -312,9 +313,9 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
     assert result.server == "codex"
     assert calls == [
         UNIT_TEST_INITIALIZE_METHOD,
-        "notifications/initialized",
+        UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
         UNIT_TEST_INITIALIZE_METHOD,
-        "notifications/initialized",
+        UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
         UNIT_TEST_TOOLS_CALL_METHOD,
     ]
     server = manager.get("codex")
@@ -419,7 +420,7 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     assert result.server == "recovered"
     assert calls[0] == ("primary", UNIT_TEST_TOOLS_CALL_METHOD)
     assert calls[1] == ("recovered", UNIT_TEST_INITIALIZE_METHOD)
-    assert calls[2] == ("recovered", "notifications/initialized")
+    assert calls[2] == ("recovered", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD)
     assert calls[3] == ("recovered", UNIT_TEST_TOOLS_CALL_METHOD)
     assert ("degraded", UNIT_TEST_INITIALIZE_METHOD) not in calls
     updated_primary = manager.get("primary")
@@ -670,7 +671,7 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
     assert result.server == "codex"
     assert calls == [
         UNIT_TEST_INITIALIZE_METHOD,
-        "notifications/initialized",
+        UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
         UNIT_TEST_TOOLS_CALL_METHOD,
     ]
     server = manager.get("codex")
@@ -711,7 +712,10 @@ async def test_connect_server_runs_health_and_initialize() -> None:
     assert connected.status is ServerStatus.HEALTHY
     assert connected.initialized is True
     assert probe_calls == ["codex"]
-    assert transport_calls == [UNIT_TEST_INITIALIZE_METHOD, "notifications/initialized"]
+    assert transport_calls == [
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD,
+    ]
 
 
 @pytest.mark.asyncio
@@ -799,7 +803,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
     assert resource_read["result"]["contents"][0]["uri"] == "att://projects"
     assert session.calls == [
         ("session", "initialize"),
-        ("session", "notifications/initialized"),
+        ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
         ("tool", "att.project.list"),
         ("resource", "att://projects"),
     ]
@@ -1158,7 +1162,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     ]
     assert sessions["recovered"].calls == [
         ("session", "initialize"),
-        ("session", "notifications/initialized"),
+        ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
         ("tool", "att.project.list"),
     ]
     assert "degraded" not in sessions

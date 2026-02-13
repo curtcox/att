@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended stable initialization-notify assertion literal reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side `"notifications/initialized"` literals in invocation/call-order/transport-call expectations to the shared constant while keeping transport request payload literals and transport method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended stable `resources/read` and invocation phase assertion-literal constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_RESOURCES_READ_METHOD`, `UNIT_TEST_INITIALIZE_START_PHASE`, `UNIT_TEST_INITIALIZE_FAILURE_PHASE`, `UNIT_TEST_INITIALIZE_SUCCESS_PHASE`, and `UNIT_TEST_INVOKE_SUCCESS_PHASE` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side `resources/read` method literals and repeated invocation phase literals to shared constants across fallback, failure-script isolation, call-order, and event-filter assertions while keeping scripted setup inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
