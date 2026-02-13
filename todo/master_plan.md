@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended repeated two-entry re-entry call-order slice helper reuse in unit MCP client coverage:
+  - added local unit-test helpers `_unit_test_primary_reentry_call_order_slice(method)` and `_unit_test_backup_reentry_call_order_slice(method)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side two-entry re-entry vectors to helper-driven assertions across retry-window/unreachable call-order checks while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended dynamic call-order tuple helper reuse in unit MCP client coverage:
   - added local unit-test helpers `_unit_test_primary_method_call_order_entry(method)` and `_unit_test_backup_method_call_order_entry(method)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side dynamic tuple literals `(UNIT_TEST_PRIMARY_SERVER, method)` and `(UNIT_TEST_BACKUP_SERVER, method)` across retry-window/unreachable call-order assertions to helper-driven tuple construction while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
