@@ -3,17 +3,21 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `57fb4c3fdbe7f8db453f324f12fc9df22c573f1f`
-- Last commit: `57fb4c3 2026-02-13 09:24:43 -0600 Add MCP unreachable-transition retry-window parity tests`
-- Working tree at handoff creation: dirty (`tools/call` unreachable-transition parity tests + helper/plan updates)
+- HEAD: `0c916defad2dafbf9f7afbbf5d33be6f6ab46513`
+- Last commit: `0c916de 2026-02-13 09:40:06 -0600 Add MCP tool unreachable-transition parity coverage`
+- Working tree at handoff creation: dirty (`unreachable-transition sequence helper extraction + backup reinitialize parity unit coverage`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`211 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`213 passed`)
 
 ## Recent Delivered Work
+- Reduced unreachable-transition sequence duplication and expanded backup reinitialize parity:
+  - extracted shared integration helper scaffolding for unreachable-transition request progression so `tools/call` and `resources/read` API regressions reuse the same first-failover/closed-window/forced-unreachable/skip/re-entry flow while keeping per-request diagnostics-filter assertions explicit.
+  - added helper-level unit coverage asserting degraded backup reinitialize call-order parity (`initialize` before invoke) when primary is forced unreachable, with paired checks for both `tools/call` and `resources/read`.
+  - retained clock-driven progression and transport-order centric assertions with no direct retry-window state mutation.
 - Added unreachable-transition retry-window parity for `tools/call` with shared failed-request request-id recovery:
   - added API-level `/api/v1/mcp/invoke/tool` unreachable-transition regression that mirrors healthy-first ordering constraints (primary initialize timeout -> backup serve -> forced second primary initialize timeout -> unreachable skip -> primary re-entry).
   - assertions preserve deterministic diagnostics filter behavior (`server`, `method`, `request_id`, `correlation_id`, `limit`) and transport/invocation call-order subsequence parity across the full request sequence.
@@ -121,13 +125,13 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening by reducing unreachable-transition scenario duplication and extending helper-level parity:
-1. Extract a shared API test helper for unreachable-transition call-order sequences:
-   - factor the repeated request progression (first failover, closed-window skip, forced second primary initialize timeout, skip while unreachable, primary re-entry) into a compact helper with method-specific payload hooks.
-   - keep per-request diagnostics-filter assertions explicit in callers while reusing request-id/call-order scaffolding.
-2. Extend helper-level parity around backup reinitialize behavior:
-   - add focused unit coverage asserting backup `initialize` call-order when backup is temporarily marked degraded during forced primary-unreachable transitions for both invoke methods.
-   - keep assertions clock-driven and transport-order centric, without direct retry-window state mutation.
+Continue `P12/P13` call-order hardening by consolidating remaining retry-window test scaffolding:
+1. Factor shared call-order subsequence assertion scaffolding:
+   - extract helper(s) for building expected phase-derived call tuples and validating observed transport-call subsequence parity.
+   - apply to both unreachable-transition tests and retry-window gating tests (`tools/call` + `resources/read`) to reduce duplicated cursor loops.
+2. Extend helper-level matrix for backup non-retryable combinations:
+   - add focused unit matrix coverage that pairs primary unreachable with backup unreachable/degraded retry-window-closed states to confirm deterministic no-candidate failure vs re-entry behavior.
+   - keep clock-driven progression and avoid direct internal retry-window mutation.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

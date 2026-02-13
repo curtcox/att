@@ -1638,6 +1638,56 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_before_invoke(
+    method: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=2,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+    factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
+
+    async def invoke_once(preferred: list[str]) -> object:
+        if method == "resources/read":
+            return await manager.read_resource("att://projects", preferred=preferred)
+        return await manager.invoke_tool("att.project.list", preferred=preferred)
+
+    first = await invoke_once(["primary", "backup"])
+    assert first.server == "backup"
+
+    clock.advance(seconds=1)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+    with pytest.raises(MCPInvocationError):
+        await invoke_once(["primary"])
+
+    primary = manager.get("primary")
+    assert primary is not None
+    assert primary.status is ServerStatus.UNREACHABLE
+
+    clock.advance(seconds=1)
+    calls_before_backup_reentry = len(factory.calls)
+    backup_reentry = await invoke_once(["primary", "backup"])
+    assert backup_reentry.server == "backup"
+    assert backup_reentry.method == method
+
+    backup_reentry_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[calls_before_backup_reentry:]
+        if call_method in {"initialize", method}
+    ]
+    assert backup_reentry_slice == [
+        ("backup", "initialize"),
+        ("backup", method),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

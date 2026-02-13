@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -124,6 +127,90 @@ def _client_with_manager(manager: MCPClientManager) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_mcp_client_manager] = lambda: manager
     return TestClient(app)
+
+
+@dataclass(frozen=True)
+class UnreachableTransitionSequence:
+    request_id_1: str
+    request_id_2: str
+    request_id_3: str
+    request_id_4: str
+    request_id_5: str
+    calls_after_first: int
+    calls_after_third: int
+    calls_before_fifth: int
+
+
+def _run_unreachable_transition_sequence(
+    *,
+    invoke: Callable[[list[str]], Any],
+    client: TestClient,
+    manager: MCPClientManager,
+    clock: MCPTestClock,
+    factory: ClusterNatSessionFactory,
+) -> UnreachableTransitionSequence:
+    first = invoke(["primary", "backup"])
+    assert first.status_code == 200
+    assert first.json()["server"] == "backup"
+    request_id_1 = first.json()["request_id"]
+
+    calls_after_first = len(factory.calls)
+    second = invoke(["primary", "backup"])
+    assert second.status_code == 200
+    assert second.json()["server"] == "backup"
+    request_id_2 = second.json()["request_id"]
+    second_slice = factory.calls[calls_after_first:]
+    assert second_slice
+    assert all(server == "backup" for server, _, _ in second_slice)
+
+    clock.advance(seconds=1)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+    invocation_count_before_third = len(client.get("/api/v1/mcp/invocation-events").json()["items"])
+    third = invoke(["primary"])
+    assert third.status_code == 503
+    request_id_3 = extract_request_id_from_invocation_event_delta(
+        client,
+        previous_count=invocation_count_before_third,
+        expected_phases=[
+            "initialize_start",
+            "initialize_failure",
+        ],
+    )
+
+    primary_after_third = client.get("/api/v1/mcp/servers/primary")
+    assert primary_after_third.status_code == 200
+    assert primary_after_third.json()["status"] == ServerStatus.UNREACHABLE.value
+    assert primary_after_third.json()["retry_count"] == 2
+
+    clock.advance(seconds=1)
+    calls_after_third = len(factory.calls)
+    fourth = invoke(["primary", "backup"])
+    assert fourth.status_code == 200
+    assert fourth.json()["server"] == "backup"
+    request_id_4 = fourth.json()["request_id"]
+    fourth_slice = factory.calls[calls_after_third:]
+    assert fourth_slice
+    assert all(server == "backup" for server, _, _ in fourth_slice)
+
+    clock.advance(seconds=2)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    calls_before_fifth = len(factory.calls)
+    fifth = invoke(["backup", "primary"])
+    assert fifth.status_code == 200
+    assert fifth.json()["server"] == "primary"
+    request_id_5 = fifth.json()["request_id"]
+
+    return UnreachableTransitionSequence(
+        request_id_1=request_id_1,
+        request_id_2=request_id_2,
+        request_id_3=request_id_3,
+        request_id_4=request_id_4,
+        request_id_5=request_id_5,
+        calls_after_first=calls_after_first,
+        calls_after_third=calls_after_third,
+        calls_before_fifth=calls_before_fifth,
+    )
 
 
 def test_mcp_catalog_endpoints() -> None:
@@ -2035,20 +2122,27 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
     factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
 
-    first = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary", "backup"],
-        },
+    def invoke(preferred_servers: list[str]) -> Any:
+        return client.post(
+            "/api/v1/mcp/invoke/tool",
+            json={
+                "tool_name": "att.project.list",
+                "arguments": {},
+                "preferred_servers": preferred_servers,
+            },
+        )
+
+    sequence = _run_unreachable_transition_sequence(
+        invoke=invoke,
+        client=client,
+        manager=manager,
+        clock=clock,
+        factory=factory,
     )
-    assert first.status_code == 200
-    assert first.json()["server"] == "backup"
-    request_id_1 = first.json()["request_id"]
+
     assert_invocation_event_filters(
         client,
-        request_id=request_id_1,
+        request_id=sequence.request_id_1,
         server="primary",
         method="tools/call",
         expected_phases=[
@@ -2058,63 +2152,26 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_1,
+        request_id=sequence.request_id_1,
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
-
-    calls_after_first = len(factory.calls)
-    second = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert second.status_code == 200
-    assert second.json()["server"] == "backup"
-    request_id_2 = second.json()["request_id"]
     assert_invocation_event_filters(
         client,
-        request_id=request_id_2,
+        request_id=sequence.request_id_2,
         server="primary",
         method="tools/call",
         expected_phases=[],
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_2,
+        request_id=sequence.request_id_2,
         server="primary",
         expected_statuses=[],
     )
-    second_slice = factory.calls[calls_after_first:]
-    assert second_slice
-    assert all(server == "backup" for server, _, _ in second_slice)
-
-    clock.advance(seconds=1)
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-    invocation_count_before_third = len(client.get("/api/v1/mcp/invocation-events").json()["items"])
-    third = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary"],
-        },
-    )
-    assert third.status_code == 503
-    request_id_3 = extract_request_id_from_invocation_event_delta(
-        client,
-        previous_count=invocation_count_before_third,
-        expected_phases=[
-            "initialize_start",
-            "initialize_failure",
-        ],
-    )
     assert_invocation_event_filters(
         client,
-        request_id=request_id_3,
+        request_id=sequence.request_id_3,
         server="primary",
         method="tools/call",
         expected_phases=[
@@ -2124,64 +2181,26 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_3,
+        request_id=sequence.request_id_3,
         server="primary",
         expected_statuses=[ServerStatus.UNREACHABLE.value],
     )
-
-    primary_after_third = client.get("/api/v1/mcp/servers/primary")
-    assert primary_after_third.status_code == 200
-    assert primary_after_third.json()["status"] == ServerStatus.UNREACHABLE.value
-    assert primary_after_third.json()["retry_count"] == 2
-
-    clock.advance(seconds=1)
-    calls_after_third = len(factory.calls)
-    fourth = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert fourth.status_code == 200
-    assert fourth.json()["server"] == "backup"
-    request_id_4 = fourth.json()["request_id"]
     assert_invocation_event_filters(
         client,
-        request_id=request_id_4,
+        request_id=sequence.request_id_4,
         server="primary",
         method="tools/call",
         expected_phases=[],
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_4,
+        request_id=sequence.request_id_4,
         server="primary",
         expected_statuses=[],
     )
-    fourth_slice = factory.calls[calls_after_third:]
-    assert fourth_slice
-    assert all(server == "backup" for server, _, _ in fourth_slice)
-
-    clock.advance(seconds=2)
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-
-    calls_before_fifth = len(factory.calls)
-    fifth = client.post(
-        "/api/v1/mcp/invoke/tool",
-        json={
-            "tool_name": "att.project.list",
-            "arguments": {},
-            "preferred_servers": ["backup", "primary"],
-        },
-    )
-    assert fifth.status_code == 200
-    assert fifth.json()["server"] == "primary"
-    request_id_5 = fifth.json()["request_id"]
     assert_invocation_event_filters(
         client,
-        request_id=request_id_5,
+        request_id=sequence.request_id_5,
         server="primary",
         method="tools/call",
         expected_phases=[
@@ -2193,13 +2212,13 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_5,
+        request_id=sequence.request_id_5,
         server="primary",
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
     fifth_slice = [
         (server, method)
-        for server, _, method in factory.calls[calls_before_fifth:]
+        for server, _, method in factory.calls[sequence.calls_before_fifth :]
         if method in {"initialize", "tools/call"}
     ]
     assert fifth_slice == [
@@ -2208,7 +2227,13 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
     ]
 
     events: list[dict[str, object]] = []
-    for request_id in (request_id_1, request_id_2, request_id_3, request_id_4, request_id_5):
+    for request_id in (
+        sequence.request_id_1,
+        sequence.request_id_2,
+        sequence.request_id_3,
+        sequence.request_id_4,
+        sequence.request_id_5,
+    ):
         response = client.get(
             "/api/v1/mcp/invocation-events",
             params={"request_id": request_id},
@@ -2420,19 +2445,26 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
     factory.set_failure_script("primary", "initialize", ["timeout", "timeout", "ok"])
 
-    first = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["primary", "backup"],
-        },
+    def invoke(preferred_servers: list[str]) -> Any:
+        return client.post(
+            "/api/v1/mcp/invoke/resource",
+            json={
+                "uri": "att://projects",
+                "preferred_servers": preferred_servers,
+            },
+        )
+
+    sequence = _run_unreachable_transition_sequence(
+        invoke=invoke,
+        client=client,
+        manager=manager,
+        clock=clock,
+        factory=factory,
     )
-    assert first.status_code == 200
-    assert first.json()["server"] == "backup"
-    request_id_1 = first.json()["request_id"]
+
     assert_invocation_event_filters(
         client,
-        request_id=request_id_1,
+        request_id=sequence.request_id_1,
         server="primary",
         method="resources/read",
         expected_phases=[
@@ -2442,61 +2474,26 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_1,
+        request_id=sequence.request_id_1,
         server="primary",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
-
-    calls_after_first = len(factory.calls)
-    second = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert second.status_code == 200
-    assert second.json()["server"] == "backup"
-    request_id_2 = second.json()["request_id"]
     assert_invocation_event_filters(
         client,
-        request_id=request_id_2,
+        request_id=sequence.request_id_2,
         server="primary",
         method="resources/read",
         expected_phases=[],
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_2,
+        request_id=sequence.request_id_2,
         server="primary",
         expected_statuses=[],
     )
-    second_slice = factory.calls[calls_after_first:]
-    assert second_slice
-    assert all(server == "backup" for server, _, _ in second_slice)
-
-    clock.advance(seconds=1)
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-    invocation_count_before_third = len(client.get("/api/v1/mcp/invocation-events").json()["items"])
-    third = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["primary"],
-        },
-    )
-    assert third.status_code == 503
-    request_id_3 = extract_request_id_from_invocation_event_delta(
-        client,
-        previous_count=invocation_count_before_third,
-        expected_phases=[
-            "initialize_start",
-            "initialize_failure",
-        ],
-    )
     assert_invocation_event_filters(
         client,
-        request_id=request_id_3,
+        request_id=sequence.request_id_3,
         server="primary",
         method="resources/read",
         expected_phases=[
@@ -2506,62 +2503,26 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_3,
+        request_id=sequence.request_id_3,
         server="primary",
         expected_statuses=[ServerStatus.UNREACHABLE.value],
     )
-
-    primary_after_third = client.get("/api/v1/mcp/servers/primary")
-    assert primary_after_third.status_code == 200
-    assert primary_after_third.json()["status"] == ServerStatus.UNREACHABLE.value
-    assert primary_after_third.json()["retry_count"] == 2
-
-    clock.advance(seconds=1)
-    calls_after_third = len(factory.calls)
-    fourth = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["primary", "backup"],
-        },
-    )
-    assert fourth.status_code == 200
-    assert fourth.json()["server"] == "backup"
-    request_id_4 = fourth.json()["request_id"]
     assert_invocation_event_filters(
         client,
-        request_id=request_id_4,
+        request_id=sequence.request_id_4,
         server="primary",
         method="resources/read",
         expected_phases=[],
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_4,
+        request_id=sequence.request_id_4,
         server="primary",
         expected_statuses=[],
     )
-    fourth_slice = factory.calls[calls_after_third:]
-    assert fourth_slice
-    assert all(server == "backup" for server, _, _ in fourth_slice)
-
-    clock.advance(seconds=2)
-    manager.record_check_result("backup", healthy=False, error="hold backup")
-
-    calls_before_fifth = len(factory.calls)
-    fifth = client.post(
-        "/api/v1/mcp/invoke/resource",
-        json={
-            "uri": "att://projects",
-            "preferred_servers": ["backup", "primary"],
-        },
-    )
-    assert fifth.status_code == 200
-    assert fifth.json()["server"] == "primary"
-    request_id_5 = fifth.json()["request_id"]
     assert_invocation_event_filters(
         client,
-        request_id=request_id_5,
+        request_id=sequence.request_id_5,
         server="primary",
         method="resources/read",
         expected_phases=[
@@ -2573,13 +2534,13 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     )
     assert_connection_event_filters(
         client,
-        request_id=request_id_5,
+        request_id=sequence.request_id_5,
         server="primary",
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
     fifth_slice = [
         (server, method)
-        for server, _, method in factory.calls[calls_before_fifth:]
+        for server, _, method in factory.calls[sequence.calls_before_fifth :]
         if method in {"initialize", "resources/read"}
     ]
     assert fifth_slice == [
@@ -2588,7 +2549,13 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
     ]
 
     events: list[dict[str, object]] = []
-    for request_id in (request_id_1, request_id_2, request_id_3, request_id_4, request_id_5):
+    for request_id in (
+        sequence.request_id_1,
+        sequence.request_id_2,
+        sequence.request_id_3,
+        sequence.request_id_4,
+        sequence.request_id_5,
+    ):
         response = client.get(
             "/api/v1/mcp/invocation-events",
             params={"request_id": request_id},
