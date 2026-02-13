@@ -118,6 +118,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - extracted shared module-level constants for method-specific retry-window gating call-order expectations (`expected_third_slice` and full `expected_observed_call_order` tuples).
   - migrated both tool/resource retry-window gating call-order tests to consume the shared constants via the shared call-order helper.
   - preserved helper invocation semantics, diagnostics-filter assertions, and phase-start/transport subsequence parity checks unchanged.
+- [x] Reduced duplicated primary diagnostics helper wiring across retry-window and unreachable-transition paths:
+  - consolidated duplicated primary request-id scoped invocation/connection diagnostics assertions into one shared integration helper.
+  - migrated both tool/resource retry-window gating and tool/resource unreachable-transition call sites to the shared helper while keeping explicit expected phase/status vectors unchanged.
+  - preserved existing call-order helper assertions and phase-start/transport subsequence parity checks unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
