@@ -168,6 +168,22 @@ class SimultaneousUnreachableReopenSequence:
     calls_before_reopen: int
 
 
+PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES: tuple[list[str], ...] = (
+    ["initialize_start", "initialize_failure"],
+    [],
+    ["initialize_start", "initialize_failure"],
+    [],
+    ["initialize_start", "initialize_success", "invoke_start", "invoke_success"],
+)
+PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES: tuple[list[str], ...] = (
+    [ServerStatus.DEGRADED.value],
+    [],
+    [ServerStatus.UNREACHABLE.value],
+    [],
+    [ServerStatus.HEALTHY.value],
+)
+
+
 def _create_retry_window_harness(*, unreachable_after: int) -> RetryWindowHarness:
     factory = ClusterNatSessionFactory()
     clock = MCPTestClock()
@@ -2221,26 +2237,12 @@ def test_mcp_tool_retry_window_unreachable_transition_reenters_primary() -> None
         sequence.request_id_4,
         sequence.request_id_5,
     )
-    expected_primary_phases = (
-        ["initialize_start", "initialize_failure"],
-        [],
-        ["initialize_start", "initialize_failure"],
-        [],
-        ["initialize_start", "initialize_success", "invoke_start", "invoke_success"],
-    )
-    expected_primary_statuses = (
-        [ServerStatus.DEGRADED.value],
-        [],
-        [ServerStatus.UNREACHABLE.value],
-        [],
-        [ServerStatus.HEALTHY.value],
-    )
     _assert_primary_unreachable_transition_diagnostics(
         client=harness.client,
         method="tools/call",
         request_ids=request_ids,
-        expected_phases=expected_primary_phases,
-        expected_statuses=expected_primary_statuses,
+        expected_phases=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES,
+        expected_statuses=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES,
     )
     expected_fifth_slice = [
         ("primary", "initialize"),
@@ -2404,26 +2406,12 @@ def test_mcp_resource_retry_window_unreachable_transition_reenters_primary() -> 
         sequence.request_id_4,
         sequence.request_id_5,
     )
-    expected_primary_phases = (
-        ["initialize_start", "initialize_failure"],
-        [],
-        ["initialize_start", "initialize_failure"],
-        [],
-        ["initialize_start", "initialize_success", "invoke_start", "invoke_success"],
-    )
-    expected_primary_statuses = (
-        [ServerStatus.DEGRADED.value],
-        [],
-        [ServerStatus.UNREACHABLE.value],
-        [],
-        [ServerStatus.HEALTHY.value],
-    )
     _assert_primary_unreachable_transition_diagnostics(
         client=harness.client,
         method="resources/read",
         request_ids=request_ids,
-        expected_phases=expected_primary_phases,
-        expected_statuses=expected_primary_statuses,
+        expected_phases=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_PHASES,
+        expected_statuses=PRIMARY_UNREACHABLE_TRANSITION_EXPECTED_STATUSES,
     )
     expected_fifth_slice = [
         ("primary", "initialize"),

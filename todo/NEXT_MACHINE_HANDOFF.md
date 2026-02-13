@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `f694d07230c974daf447d6425347a46007064236`
-- Last commit: `f694d07 2026-02-13 09:12:08 -0600 Extract unreachable-transition diagnostics assertion helper`
-- Working tree at handoff creation: dirty (`unreachable-transition call-order literal helper extraction`)
+- HEAD: `c2e9cd1610a6c5bb5fa6e3641a697435d3ca52f0`
+- Last commit: `c2e9cd1 2026-02-13 09:34:08 -0600 Extract unreachable-transition call-order literal helper`
+- Working tree at handoff creation: dirty (`unreachable-transition expectation vector constants`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated unreachable-transition expectation vectors with shared constants:
+  - extracted shared module-level constants for primary unreachable-transition expected phases and expected status transitions.
+  - migrated tool/resource unreachable-transition diagnostics helper calls to these shared constants, removing repeated tuple literals while keeping expectations explicit and local in the integration test module.
+  - preserved existing diagnostics helper invocation semantics, call-order literal assertions, and subsequence parity assertions unchanged.
 - Reduced duplicated unreachable-transition call-order literal assertions with shared helper wiring:
   - added shared integration helper that asserts unreachable-transition `fifth_slice` and full `observed_call_order` literal expectations per method using explicit expected tuples supplied by each test.
   - migrated both tool and resource unreachable-transition parity tests to helper-driven call-order literal assertions while keeping explicit expected tuple lists visible at each call site.
@@ -149,17 +153,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing remaining duplicated unreachable-transition expectation vectors:
-1. Extract shared expected phase/status vectors for primary unreachable-transition diagnostics:
-   - remove repeated `expected_primary_phases` and `expected_primary_statuses` tuple literals between tool/resource unreachable-transition tests.
-   - keep expected vectors explicit and close to call sites (e.g., shared module-level constants with clear naming).
-2. Preserve current assertion semantics:
-   - keep `_assert_primary_unreachable_transition_diagnostics(...)` and `_assert_unreachable_transition_call_order_literals(...)` call sites explicit per method.
-   - retain existing transport literal assertions and `assert_call_order_subsequence(...)` behavior unchanged.
+Continue `P12/P13` test-structure hardening by reducing duplicated retry-window gating expectation vectors:
+1. Extract shared expected phase/status vectors for primary retry-window gating diagnostics:
+   - factor duplicated primary phase/status expectations across tool/resource retry-window gating tests into shared constants/helpers.
+   - keep vectors explicit and easy to audit near helper/test usage.
+2. Preserve existing call-order and filter semantics:
+   - keep explicit transport call-order literals per method in each gating test.
+   - retain existing diagnostics filter assertions and phase-start/transport subsequence checks unchanged.
 
 Suggested implementation direction:
-- Limit edits to `tests/integration/test_api_mcp.py`; no product code changes for this slice.
-- Prefer small constant/fixture extraction over deeper helper abstraction to keep readability high.
+- Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
+- Reuse existing helper style from unreachable-transition diagnostics/call-order slices for consistency.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist
