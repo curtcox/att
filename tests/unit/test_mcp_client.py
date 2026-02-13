@@ -234,6 +234,123 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
 
 
 @pytest.mark.asyncio
+async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
+    calls: list[str] = []
+
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        calls.append(method)
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True},
+        }
+
+    manager = MCPClientManager(transport=transport, max_initialization_age_seconds=0)
+    manager.register("codex", "http://codex.local")
+
+    await manager.initialize_server("codex")
+    result = await manager.invoke_tool("att.project.list")
+
+    assert result.server == "codex"
+    assert calls == [
+        "initialize",
+        "notifications/initialized",
+        "initialize",
+        "notifications/initialized",
+        "tools/call",
+    ]
+    server = manager.get("codex")
+    assert server is not None
+    assert server.initialization_expires_at is not None
+
+
+@pytest.mark.asyncio
+async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> None:
+    calls: list[tuple[str, str]] = []
+
+    async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        calls.append((server.name, method))
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        if server.name == "primary":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "error": {"message": "rpc failure"},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"ok": True, "served_by": server.name},
+        }
+
+    manager = MCPClientManager(transport=transport, max_initialization_age_seconds=None)
+    manager.register("primary", "http://primary.local")
+    manager.register("recovered", "http://recovered.local")
+    manager.register("degraded", "http://degraded.local")
+
+    primary = manager.get("primary")
+    assert primary is not None
+    primary.status = ServerStatus.HEALTHY
+    primary.initialized = True
+    primary.last_initialized_at = datetime.now(UTC)
+    primary.initialization_expires_at = datetime.now(UTC) + timedelta(seconds=60)
+
+    recovered = manager.get("recovered")
+    assert recovered is not None
+    recovered.status = ServerStatus.HEALTHY
+    recovered.initialized = False
+
+    manager.record_check_result("degraded", healthy=False, error="down")
+    degraded = manager.get("degraded")
+    assert degraded is not None
+    degraded.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+
+    result = await manager.invoke_tool(
+        "att.project.list",
+        preferred=["primary", "recovered", "degraded"],
+    )
+
+    assert result.server == "recovered"
+    assert calls[0] == ("primary", "tools/call")
+    assert calls[1] == ("recovered", "initialize")
+    assert calls[2] == ("recovered", "notifications/initialized")
+    assert calls[3] == ("recovered", "tools/call")
+    assert ("degraded", "initialize") not in calls
+    updated_primary = manager.get("primary")
+    updated_recovered = manager.get("recovered")
+    assert updated_primary is not None
+    assert updated_recovered is not None
+    assert updated_primary.status is ServerStatus.DEGRADED
+    assert updated_recovered.status is ServerStatus.HEALTHY
+    assert updated_recovered.initialized is True
+
+
+@pytest.mark.asyncio
 async def test_initialize_server_updates_state_on_success() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

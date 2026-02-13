@@ -46,6 +46,7 @@ class ExternalServer:
     initialized: bool = False
     protocol_version: str | None = None
     last_initialized_at: datetime | None = None
+    initialization_expires_at: datetime | None = None
     capability_snapshot: CapabilitySnapshot | None = None
 
     @property
@@ -125,6 +126,7 @@ class MCPClientManager:
         transport: MCPTransport | None = None,
         max_backoff_seconds: int = 8,
         unreachable_after: int = 3,
+        max_initialization_age_seconds: int | None = 300,
     ) -> None:
         self._servers: dict[str, ExternalServer] = {}
         self._events: list[ConnectionEvent] = []
@@ -132,6 +134,7 @@ class MCPClientManager:
         self._transport = transport
         self._max_backoff_seconds = max_backoff_seconds
         self._unreachable_after = unreachable_after
+        self._max_initialization_age_seconds = max_initialization_age_seconds
 
     def register(self, name: str, url: str) -> ExternalServer:
         """Register or replace a server definition."""
@@ -248,6 +251,7 @@ class MCPClientManager:
         initialized_at = datetime.now(UTC)
         server.initialized = True
         server.last_initialized_at = initialized_at
+        server.initialization_expires_at = self._compute_initialization_expiry(initialized_at)
         server.capability_snapshot = CapabilitySnapshot(
             protocol_version=server.protocol_version,
             server_info=self._as_json_object(result.get("serverInfo")),
@@ -340,6 +344,7 @@ class MCPClientManager:
             server.next_retry_at = None
         else:
             server.initialized = False
+            server.initialization_expires_at = None
             server.retry_count += 1
             if server.retry_count >= self._unreachable_after:
                 server.status = ServerStatus.UNREACHABLE
@@ -393,7 +398,10 @@ class MCPClientManager:
         errors: list[str] = []
 
         for server in candidates:
-            initialized = await self.initialize_server(server.name)
+            initialized = await self.initialize_server(
+                server.name,
+                force=self._should_force_reinitialize(server),
+            )
             if initialized is None:
                 attempts.append(
                     MCPInvocationAttempt(
@@ -535,6 +543,22 @@ class MCPClientManager:
             if server.status is ServerStatus.UNREACHABLE and self.should_retry(server.name)
         ]
         return [*healthy, *degraded, *unreachable]
+
+    def _should_force_reinitialize(self, server: ExternalServer) -> bool:
+        if not server.initialized:
+            return False
+        if server.status is not ServerStatus.HEALTHY:
+            return True
+        expiry = server.initialization_expires_at
+        if expiry is not None and datetime.now(UTC) >= expiry:
+            return True
+        return False
+
+    def _compute_initialization_expiry(self, initialized_at: datetime) -> datetime | None:
+        max_age = self._max_initialization_age_seconds
+        if max_age is None:
+            return None
+        return initialized_at + timedelta(seconds=max(0, max_age))
 
     @staticmethod
     async def _default_probe(server: ExternalServer) -> tuple[bool, str | None]:

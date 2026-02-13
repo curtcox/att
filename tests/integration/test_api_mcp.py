@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 
 from att.api.app import create_app
@@ -31,6 +33,38 @@ class FallbackTransport:
         if server.name == "codex":
             raise RuntimeError("codex unavailable")
         if server.name == "failing":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "error": {"message": "rpc failure"},
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": str(request.get("id", "")),
+            "result": {"served_by": server.name, "method": str(request.get("method", ""))},
+        }
+
+
+class RecoveringTransport:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def __call__(self, server: ExternalServer, request: JSONObject) -> JSONObject:
+        method = str(request.get("method", ""))
+        self.calls.append((server.name, method))
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {"protocolVersion": "2025-11-25"},
+            }
+        if method == "notifications/initialized":
+            return {
+                "jsonrpc": "2.0",
+                "id": str(request.get("id", "")),
+                "result": {},
+            }
+        if server.name == "primary":
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -312,3 +346,96 @@ def test_mcp_invoke_error_payload_includes_attempt_trace() -> None:
     assert detail["attempts"][0]["stage"] == "initialize"
     assert detail["attempts"][0]["success"] is False
     assert detail["attempts"][0]["error"] == "rpc error: rpc failure"
+
+
+def test_mcp_invoke_tool_reinitializes_stale_server_before_call() -> None:
+    transport = RecoveringTransport()
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "github", "url": "http://github.local"},
+    )
+    initialized = client.post("/api/v1/mcp/servers/github/initialize")
+    assert initialized.status_code == 200
+
+    server = manager.get("github")
+    assert server is not None
+    server.initialization_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {"limit": 1},
+            "preferred_servers": ["github"],
+        },
+    )
+    assert invoke.status_code == 200
+    assert invoke.json()["server"] == "github"
+    assert transport.calls.count(("github", "initialize")) == 2
+    assert transport.calls[-1] == ("github", "tools/call")
+
+    fetched = client.get("/api/v1/mcp/servers/github")
+    assert fetched.status_code == 200
+    assert fetched.json()["initialization_expires_at"] is not None
+
+
+def test_mcp_invoke_mixed_state_cluster_recovers_in_order() -> None:
+    transport = RecoveringTransport()
+    manager = MCPClientManager(probe=StaticProbe(healthy=True), transport=transport)
+    client = _client_with_manager(manager)
+
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "primary", "url": "http://primary.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "recovered", "url": "http://recovered.local"},
+    )
+    client.post(
+        "/api/v1/mcp/servers",
+        json={"name": "degraded", "url": "http://degraded.local"},
+    )
+
+    primary = manager.get("primary")
+    assert primary is not None
+    primary.status = ServerStatus.HEALTHY
+    primary.initialized = True
+    primary.last_initialized_at = datetime.now(UTC)
+    primary.initialization_expires_at = datetime.now(UTC) + timedelta(seconds=120)
+
+    recovered = manager.get("recovered")
+    assert recovered is not None
+    recovered.status = ServerStatus.HEALTHY
+    recovered.initialized = False
+
+    manager.record_check_result("degraded", healthy=False, error="down")
+    degraded = manager.get("degraded")
+    assert degraded is not None
+    degraded.next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
+
+    invoke = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "recovered", "degraded"],
+        },
+    )
+    assert invoke.status_code == 200
+    assert invoke.json()["server"] == "recovered"
+    assert transport.calls[0] == ("primary", "tools/call")
+    assert transport.calls[1] == ("recovered", "initialize")
+    assert transport.calls[2] == ("recovered", "notifications/initialized")
+    assert transport.calls[3] == ("recovered", "tools/call")
+    assert ("degraded", "initialize") not in transport.calls
+
+    servers = client.get("/api/v1/mcp/servers")
+    assert servers.status_code == 200
+    by_name = {item["name"]: item for item in servers.json()["items"]}
+    assert by_name["primary"]["status"] == ServerStatus.DEGRADED.value
+    assert by_name["recovered"]["status"] == ServerStatus.HEALTHY.value
+    assert by_name["recovered"]["initialized"] is True

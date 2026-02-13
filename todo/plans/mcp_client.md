@@ -50,3 +50,10 @@ P11
 - Added deterministic API error payload mapping for invocation failures:
   - `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` now return structured 503 `detail` payloads with `message`, `method`, and `attempts`.
   - integration coverage validates both no-server and partial-failure trace payload shapes.
+- Added initialization freshness metadata and stale reinitialize gating:
+  - `ExternalServer` now tracks `initialization_expires_at`.
+  - `MCPClientManager` now computes initialization expiry from `max_initialization_age_seconds` and forces reinitialize before invocation when metadata is stale.
+  - unhealthy transitions now invalidate initialization expiry.
+- Added mixed-state recovery sequencing tests:
+  - deterministic preferred-order fallback across `healthy` + `recovered` + `degraded` servers.
+  - explicit stale-server reinitialize assertions in both unit and API integration tests.

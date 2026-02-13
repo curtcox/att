@@ -39,6 +39,7 @@ class MCPServerResponse(BaseModel):
     initialized: bool
     protocol_version: str | None
     last_initialized_at: datetime | None
+    initialization_expires_at: datetime | None
     capability_snapshot: MCPCapabilitySnapshotResponse | None = None
 
 

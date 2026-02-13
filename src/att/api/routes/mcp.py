@@ -46,6 +46,7 @@ def _as_response(server: ExternalServer) -> MCPServerResponse:
         initialized=server.initialized,
         protocol_version=server.protocol_version,
         last_initialized_at=server.last_initialized_at,
+        initialization_expires_at=server.initialization_expires_at,
         capability_snapshot=(
             MCPCapabilitySnapshotResponse(
                 protocol_version=server.capability_snapshot.protocol_version,

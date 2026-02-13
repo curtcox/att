@@ -5,38 +5,35 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (MCP invocation-error diagnostics hardening + plan doc updates)
+- Working tree at handoff creation: dirty (MCP stale-initialization/recovery hardening + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`131 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`135 passed`)
 
 ## Recent Delivered Work
-- MCP invocation failure diagnostics hardened for `P13`:
-  - added `MCPInvocationAttempt` trace model in `MCPClientManager`.
-  - `MCPInvocationError` now carries `method` and ordered attempt traces (per server, `initialize`/`invoke`, success/error).
-  - invocation failures now preserve deterministic per-candidate diagnostics across fallback sequences.
-- MCP API error payload mapping tightened:
-  - `/api/v1/mcp/invoke/tool` and `/api/v1/mcp/invoke/resource` now emit structured 503 details:
-    - `message`
-    - `method`
-    - `attempts[]`
-  - new error detail schemas added in `src/att/api/schemas/mcp.py`.
+- MCP stale-initialization and recovery sequencing hardening delivered (`P13`):
+  - added initialization freshness metadata to servers:
+    - `initialization_expires_at`
+  - `MCPClientManager` now supports staleness gating via `max_initialization_age_seconds` and forces reinitialize before invocation when initialization is stale.
+  - unhealthy transitions now invalidate initialization expiry metadata.
+- API surface updated:
+  - MCP server payload now includes `initialization_expires_at` in `MCPServerResponse`.
 - Test coverage expanded:
-  - unit tests validate `MCPInvocationError` method + attempt traces for no-server and partial-failure scenarios.
-  - integration tests validate 503 detail payload structure and attempt traces.
+  - unit test validates stale initialized server is reinitialized before invocation.
+  - unit/integration tests validate deterministic mixed-state recovery order (`healthy` -> fallback to `recovered`, while skipping unnecessary degraded attempts after recovery succeeds).
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` transport hardening with recovery-focused sequencing:
-1. Add explicit "stale initialization" handling and forced re-initialize rules for degraded/recovered servers before invocation.
-2. Expand integration tests for mixed-state clusters (healthy + degraded + recovered) to verify deterministic server selection and status transitions.
+Continue `P12/P13` transport hardening with live external-server realism:
+1. Add explicit transport-classified failure reasons (network timeout vs HTTP status vs malformed payload) and map these into stable server error categories.
+2. Extend API/integration coverage for these categories to confirm deterministic status transitions and diagnostic payloads.
 
 Suggested implementation direction:
-- Add initialization freshness metadata and reinitialize gating in `MCPClientManager`.
-- Ensure recovered servers can re-enter healthy rotation predictably after transient failures.
-- Add API tests that exercise multi-step recoveries and assert stable payload shape + transition events.
+- Introduce typed transport error classification in `MCPClientManager` (and default transport wrapper) instead of plain string errors.
+- Preserve backward-compatible error text while surfacing structured error category fields.
+- Add integration tests for malformed JSON-RPC payloads and non-2xx transport responses.
 
 ## Resume Checklist
 1. Sync and verify environment:
