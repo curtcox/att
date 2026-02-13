@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Reduced duplicated degraded-status vectors in stage-paired timeout convergence diagnostics assertions:
+  - replaced stage-paired tool/resource timeout convergence `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics-filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order literal/subsequence behavior unchanged.
 - [x] Reduced duplicated stage-paired timeout-stage failover expectation wiring in integration convergence assertions:
   - added shared helper `_stage_paired_failover_expectations_for_timeout_stage(...)` that maps `timeout_stage` to failover phase/server vectors and failover error-index constants.
   - migrated both stage-paired retry-window convergence tests (tool/resource) to consume the helper while keeping method-specific timeout-toggle wiring explicit at each test call site.

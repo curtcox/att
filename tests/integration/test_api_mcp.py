@@ -3454,7 +3454,7 @@ def test_mcp_retry_window_convergence_stage_specific_timeouts(
         client,
         request_id=request_id_1,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     primary_after_first = client.get("/api/v1/mcp/servers/primary")
@@ -3795,7 +3795,7 @@ def test_mcp_resource_retry_window_convergence_stage_specific_timeouts(
         client,
         request_id=request_id_1,
         server="primary",
-        expected_statuses=[ServerStatus.DEGRADED.value],
+        expected_statuses=list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES),
     )
 
     primary_after_first = client.get("/api/v1/mcp/servers/primary")

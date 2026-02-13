@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`stage-paired timeout-stage failover expectation helper extraction`)
+- Working tree at handoff creation: dirty (`stage-paired convergence degraded-status constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated degraded-status vectors in stage-paired timeout convergence diagnostics assertions:
+  - replaced stage-paired tool/resource timeout convergence `expected_statuses=[ServerStatus.DEGRADED.value]` vectors with `list(SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES)`.
+  - kept diagnostics filter and call-order assertions explicit at each test call site while reusing the shared degraded-status constant.
+  - preserved invocation/connection filter semantics and call-order/subsequence parity behavior unchanged.
 - Reduced duplicated stage-paired timeout-stage failover expectation wiring:
   - added shared helper `_stage_paired_failover_expectations_for_timeout_stage(...)` that maps `timeout_stage` to failover phase/server vectors and failover error-index constants.
   - migrated both stage-paired retry-window convergence tests (tool/resource) to consume the helper for expectation mapping while keeping method-specific timeout-toggle wiring explicit at each test call site.
@@ -289,9 +293,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated degraded-status vectors in stage-paired convergence diagnostics assertions:
-1. Reuse shared degraded-status vector constant in stage-paired convergence tests:
-   - replace repeated `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in stage-paired tool/resource timeout convergence diagnostics assertions with `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`.
+Continue `P12/P13` test-structure hardening by reducing duplicated degraded-status vectors in scripted transport-error failover diagnostics assertions:
+1. Reuse shared degraded-status vector constant in scripted error-action failover tests:
+   - replace repeated `expected_statuses=[ServerStatus.DEGRADED.value]` vectors in tool/resource scripted transport-error failover diagnostics assertions with `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES`.
    - keep diagnostics filter and call-order assertions explicit at each test call site.
 2. Preserve existing helper/filter/subsequence semantics:
    - keep current invocation-event and connection-event filter behavior unchanged.
