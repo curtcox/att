@@ -46,6 +46,9 @@ class SelfBootstrapResponseModel(BaseModel):
     deployed_release_id: str | None = None
     rollback_target_release_id: str | None = None
     release_metadata_source: str | None = None
+    rollback_policy_status: str = "not_evaluated"
+    rollback_policy_reason: str | None = None
+    rollback_target_valid: bool | None = None
     success: bool
     test_returncode: int
     event_ids: list[str] = Field(default_factory=list)

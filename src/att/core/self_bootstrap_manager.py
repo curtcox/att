@@ -53,6 +53,15 @@ type ReleaseMetadataProvider = Callable[[str, Path], Awaitable[ReleaseMetadata |
 
 
 @dataclass(slots=True)
+class RollbackPolicyDecision:
+    """Rollback policy decision with validation outcome."""
+
+    allowed: bool
+    reason: str
+    target_valid: bool | None
+
+
+@dataclass(slots=True)
 class SelfBootstrapRequest:
     """Input payload for a self-bootstrap cycle."""
 
@@ -99,6 +108,9 @@ class SelfBootstrapResult:
     deployed_release_id: str | None = None
     rollback_target_release_id: str | None = None
     release_metadata_source: str | None = None
+    rollback_policy_status: str = "not_evaluated"
+    rollback_policy_reason: str | None = None
+    rollback_target_valid: bool | None = None
 
 
 class SelfBootstrapManager:
@@ -263,6 +275,9 @@ class SelfBootstrapManager:
         health_status = "not_run"
         rollback_performed = False
         rollback_succeeded: bool | None = None
+        rollback_policy_status = "not_evaluated"
+        rollback_policy_reason: str | None = None
+        rollback_target_valid: bool | None = None
         deploy_target = request.deploy_target or request.health_check_target
 
         if self._deployer is not None and deploy_target is not None:
@@ -331,11 +346,19 @@ class SelfBootstrapManager:
                         or "Runtime failed restart watchdog checks",
                     },
                 )
-                rollback_performed, rollback_succeeded = await self._attempt_rollback(
+                (
+                    rollback_performed,
+                    rollback_succeeded,
+                    rollback_policy_decision,
+                ) = await self._attempt_rollback(
                     project_id=request.project_id,
                     target=deploy_target,
                     target_release_id=rollback_target_release_id,
+                    deployed_release_id=deployed_release_id,
                 )
+                rollback_policy_status = "allowed" if rollback_policy_decision.allowed else "denied"
+                rollback_policy_reason = rollback_policy_decision.reason
+                rollback_target_valid = rollback_policy_decision.target_valid
                 await self._record_event(
                     project_id=request.project_id,
                     event_type=EventType.DEPLOY_COMPLETED,
@@ -365,6 +388,9 @@ class SelfBootstrapManager:
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
                     release_metadata_source=release_metadata_source,
+                    rollback_policy_status=rollback_policy_status,
+                    rollback_policy_reason=rollback_policy_reason,
+                    rollback_target_valid=rollback_target_valid,
                 )
 
         if self._health_checker is not None and request.health_check_target is not None:
@@ -387,11 +413,21 @@ class SelfBootstrapManager:
             )
             if not healthy:
                 if deploy_target is not None:
-                    rollback_performed, rollback_succeeded = await self._attempt_rollback(
+                    (
+                        rollback_performed,
+                        rollback_succeeded,
+                        rollback_policy_decision,
+                    ) = await self._attempt_rollback(
                         project_id=request.project_id,
                         target=deploy_target,
                         target_release_id=rollback_target_release_id,
+                        deployed_release_id=deployed_release_id,
                     )
+                    rollback_policy_status = (
+                        "allowed" if rollback_policy_decision.allowed else "denied"
+                    )
+                    rollback_policy_reason = rollback_policy_decision.reason
+                    rollback_target_valid = rollback_policy_decision.target_valid
 
                 return SelfBootstrapResult(
                     branch_name=branch_name,
@@ -410,6 +446,9 @@ class SelfBootstrapManager:
                     deployed_release_id=deployed_release_id,
                     rollback_target_release_id=rollback_target_release_id,
                     release_metadata_source=release_metadata_source,
+                    rollback_policy_status=rollback_policy_status,
+                    rollback_policy_reason=rollback_policy_reason,
+                    rollback_target_valid=rollback_target_valid,
                 )
 
         if deploy_target is not None and not (
@@ -444,6 +483,9 @@ class SelfBootstrapManager:
             deployed_release_id=deployed_release_id,
             rollback_target_release_id=rollback_target_release_id,
             release_metadata_source=release_metadata_source,
+            rollback_policy_status=rollback_policy_status,
+            rollback_policy_reason=rollback_policy_reason,
+            rollback_target_valid=rollback_target_valid,
         )
 
     async def _attempt_rollback(
@@ -452,9 +494,28 @@ class SelfBootstrapManager:
         project_id: str,
         target: str,
         target_release_id: str | None,
-    ) -> tuple[bool, bool | None]:
-        if self._rollback_executor is None:
-            return False, None
+        deployed_release_id: str | None,
+    ) -> tuple[bool, bool | None, RollbackPolicyDecision]:
+        decision = self._evaluate_rollback_policy(
+            target_release_id=target_release_id,
+            deployed_release_id=deployed_release_id,
+        )
+        if not decision.allowed:
+            await self._record_event(
+                project_id=project_id,
+                event_type=EventType.ERROR,
+                payload={
+                    "phase": "rollback_policy",
+                    "target": target,
+                    "release_id": target_release_id,
+                    "deployed_release_id": deployed_release_id,
+                    "allowed": False,
+                    "reason": decision.reason,
+                    "target_valid": decision.target_valid,
+                },
+            )
+            return False, None, decision
+
         rollback_succeeded = await self._run_rollback_executor(
             project_id=project_id,
             target=target,
@@ -468,9 +529,42 @@ class SelfBootstrapManager:
                 "target": target,
                 "succeeded": rollback_succeeded,
                 "release_id": target_release_id,
+                "deployed_release_id": deployed_release_id,
+                "policy_reason": decision.reason,
+                "target_valid": decision.target_valid,
             },
         )
-        return True, rollback_succeeded
+        return True, rollback_succeeded, decision
+
+    def _evaluate_rollback_policy(
+        self,
+        *,
+        target_release_id: str | None,
+        deployed_release_id: str | None,
+    ) -> RollbackPolicyDecision:
+        if self._rollback_executor is None:
+            return RollbackPolicyDecision(
+                allowed=False,
+                reason="rollback_executor_missing",
+                target_valid=None,
+            )
+        if target_release_id is None:
+            return RollbackPolicyDecision(
+                allowed=True,
+                reason="rollback_target_unspecified",
+                target_valid=None,
+            )
+        if deployed_release_id is not None and target_release_id == deployed_release_id:
+            return RollbackPolicyDecision(
+                allowed=False,
+                reason="rollback_target_same_as_deployed",
+                target_valid=False,
+            )
+        return RollbackPolicyDecision(
+            allowed=True,
+            reason="rollback_target_validated",
+            target_valid=True,
+        )
 
     @staticmethod
     def _resolve_rollback_release_id(

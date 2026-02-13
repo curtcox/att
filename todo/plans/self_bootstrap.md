@@ -34,8 +34,13 @@ P04-P13
 - Added release-source integration for rollback metadata:
   - `SelfBootstrapManager` now accepts `release_metadata_provider` and resolves release metadata when request fields are omitted.
   - Default API dependency wiring resolves release metadata from git (`HEAD` and `HEAD^`) and exposes `release_metadata_source` in self-bootstrap results.
+- Added rollback policy gates and validation outcomes:
+  - rollback now evaluates allow/deny policy before executor invocation (`rollback_executor_missing`, `rollback_target_same_as_deployed`, etc.).
+  - validation outcomes are surfaced through `rollback_policy_status`, `rollback_policy_reason`, and `rollback_target_valid`.
+  - policy outcomes are also recorded in error events for denied rollback attempts.
 - Remaining scope before completion:
-  - Harden rollback policy/validation semantics for production deployment flows (release target validation, failure classification, and policy gates).
+  - Integrate policy inputs from deploy/runtime release signals beyond git metadata (release registry/source-of-truth integration).
+  - Refine production rollback policy matrix (failure classes, policy overrides, and safe-mode behaviors).
 - Wired baseline live adapters in `src/att/api/deps.py`:
   - CI status parsing from `gh run list` output
   - PR creation via `gh pr create`

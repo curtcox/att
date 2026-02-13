@@ -120,6 +120,9 @@ async def test_self_bootstrap_success_with_ci_pr_merge_and_health(tmp_path: Path
     assert result.restart_watchdog_status == "not_run"
     assert result.health_status == "healthy"
     assert result.rollback_performed is False
+    assert result.rollback_policy_status == "not_evaluated"
+    assert result.rollback_policy_reason is None
+    assert result.rollback_target_valid is None
     assert sleeps == [1.0, 2.0]
 
 
@@ -175,6 +178,9 @@ async def test_self_bootstrap_rolls_back_when_health_check_fails(tmp_path: Path)
     assert result.health_status == "unhealthy"
     assert result.rollback_performed is True
     assert result.rollback_succeeded is True
+    assert result.rollback_policy_status == "allowed"
+    assert result.rollback_policy_reason == "rollback_target_unspecified"
+    assert result.rollback_target_valid is None
 
 
 @pytest.mark.asyncio
@@ -381,6 +387,8 @@ async def test_self_bootstrap_restart_watchdog_failure_triggers_rollback(tmp_pat
     assert result.health_status == "not_run"
     assert result.rollback_performed is True
     assert result.rollback_succeeded is True
+    assert result.rollback_policy_status == "allowed"
+    assert result.rollback_policy_reason == "rollback_target_unspecified"
 
 
 @pytest.mark.asyncio
@@ -430,6 +438,8 @@ async def test_self_bootstrap_restart_watchdog_signal_reason_propagates(tmp_path
     assert result.restart_watchdog_status == "unstable"
     assert result.restart_watchdog_reason == "process_not_running"
     assert result.rollback_performed is True
+    assert result.rollback_policy_status == "allowed"
+    assert result.rollback_policy_reason == "rollback_target_unspecified"
 
 
 @pytest.mark.asyncio
@@ -481,6 +491,9 @@ async def test_self_bootstrap_health_failure_uses_previous_release_for_rollback(
     assert result.success is False
     assert result.deployed_release_id == "release-2"
     assert result.rollback_target_release_id == "release-1"
+    assert result.rollback_policy_status == "allowed"
+    assert result.rollback_policy_reason == "rollback_target_validated"
+    assert result.rollback_target_valid is True
     assert rollback_targets == ["release-1"]
 
 
@@ -532,6 +545,9 @@ async def test_self_bootstrap_explicit_rollback_release_overrides_previous(tmp_p
     assert result.success is False
     assert result.deployed_release_id == "release-9"
     assert result.rollback_target_release_id == "release-7"
+    assert result.rollback_policy_status == "allowed"
+    assert result.rollback_policy_reason == "rollback_target_validated"
+    assert result.rollback_target_valid is True
     assert rollback_targets == ["release-7"]
 
 
@@ -591,4 +607,60 @@ async def test_self_bootstrap_resolves_release_metadata_from_provider(tmp_path: 
     assert result.deployed_release_id == "release-git-head"
     assert result.rollback_target_release_id == "release-git-prev"
     assert result.release_metadata_source == "git"
+    assert result.rollback_policy_status == "allowed"
+    assert result.rollback_policy_reason == "rollback_target_validated"
+    assert result.rollback_target_valid is True
     assert rollback_targets == ["release-git-prev"]
+
+
+@pytest.mark.asyncio
+async def test_self_bootstrap_denies_rollback_when_target_matches_deployed(tmp_path: Path) -> None:
+    rollback_calls: list[str | None] = []
+
+    async def ci_checker(project_id: str, branch: str) -> str:
+        return "success"
+
+    async def deployer(project_id: str, target: str) -> bool:
+        return True
+
+    async def health_checker(target: str) -> bool:
+        return False
+
+    async def rollback_executor(project_id: str, target: str, release_id: str | None) -> bool:
+        rollback_calls.append(release_id)
+        return True
+
+    manager = SelfBootstrapManager(
+        git_manager=FakeGitManager(),
+        orchestrator=FakeOrchestrator(committed=True, returncode=0),
+        store=SQLiteStore(tmp_path / "att.db"),
+        ci_checker=ci_checker,
+        deployer=deployer,
+        health_checker=health_checker,
+        rollback_executor=rollback_executor,
+    )
+
+    project_path = tmp_path / "project"
+    project_path.mkdir(parents=True, exist_ok=True)
+    request = SelfBootstrapRequest(
+        project_id="p1",
+        project_path=project_path,
+        file_path="app.py",
+        content="x",
+        commit_message="feat: auto",
+        branch_name="codex/test-branch",
+        deploy_target="att-service",
+        requested_release_id="release-5",
+        rollback_release_id="release-5",
+        health_check_target="http://localhost:8000/api/v1/health",
+    )
+
+    result = await manager.execute(request)
+
+    assert result.success is False
+    assert result.rollback_performed is False
+    assert result.rollback_succeeded is None
+    assert result.rollback_policy_status == "denied"
+    assert result.rollback_policy_reason == "rollback_target_same_as_deployed"
+    assert result.rollback_target_valid is False
+    assert rollback_calls == []
