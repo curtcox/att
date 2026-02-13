@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `5dc875d712b7566b684e8323992cb717855e4e85`
-- Last commit: `5dc875d 2026-02-13 09:41:34 -0600 Extract retry-window invoke-builder wrappers`
-- Working tree at handoff creation: dirty (`retry-window unreachable-transition bootstrap helper extraction`)
+- HEAD: `b1916452b1fe7f636cc64a92e805d06e4dd89239`
+- Last commit: `b191645 2026-02-13 09:42:42 -0600 Extract retry-window unreachable bootstrap helper`
+- Working tree at handoff creation: dirty (`retry-window gating bootstrap helper extraction`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`225 passed`)
 
 ## Recent Delivered Work
+- Reduced duplicated retry-window gating bootstrap wiring:
+  - added shared helper for method-specific retry-window gating bootstrap (harness setup + method-specific invoke failure script + invoke wiring + gating sequence run).
+  - migrated tool/resource retry-window gating tests to this helper while preserving explicit per-method diagnostics/call-order vectors.
+  - preserved progression semantics, diagnostics filter assertions, and phase-start/transport subsequence checks unchanged.
 - Reduced duplicated retry-window unreachable-transition bootstrap wiring:
   - added a shared helper for method-specific unreachable-transition bootstrap (harness setup + primary initialize timeout script + invoke wiring + sequence run).
   - migrated tool/resource unreachable-transition retry-window tests to this helper while preserving explicit per-method diagnostics and call-order expectation constants.
@@ -209,17 +213,17 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by reducing duplicated retry-window gating bootstrap wiring:
-1. Extract shared bootstrap helper for retry-window gating tests:
-   - factor repeated harness + method-specific invoke failure script setup + invoke-builder wiring in tool/resource retry-window gating tests into a small helper.
-   - keep explicit per-method expected diagnostics/call-order vectors at each test call site.
+Continue `P12/P13` test-structure hardening with a focused small-extraction sweep:
+1. Identify the next smallest repeated assertion/progression scaffold in `tests/integration/test_api_mcp.py`:
+   - prioritize one low-risk extraction that keeps explicit expected vectors and observed call-order literals readable at call sites.
+   - avoid broad restructures; keep changes scoped to one helper + call-site rewires.
 2. Preserve existing helper/filter/subsequence semantics:
-   - keep current gating progression helper and call-order literal assertions unchanged.
+   - keep current progression helpers and call-order literal assertions unchanged.
    - retain full validation + plan-doc update workflow per slice.
 
 Suggested implementation direction:
 - Scope edits to `tests/integration/test_api_mcp.py` only; avoid product code changes.
-- Reuse helper style from the new unreachable-transition bootstrap helper and invoke-builder wrappers.
+- Reuse helper style from the new gating/unreachable bootstrap helpers and invoke-builder wrappers.
 - Run full validation and update both plan docs after completion.
 
 ## Resume Checklist
