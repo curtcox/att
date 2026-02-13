@@ -669,6 +669,19 @@ def _assert_mixed_method_call_order_literals(
     return observed_call_order
 
 
+def _assert_mixed_method_call_order_parity(
+    *,
+    client: TestClient,
+    request_ids: Sequence[str],
+    observed_call_order: list[tuple[str, str]],
+) -> None:
+    _assert_call_order_subsequence_for_requests(
+        client=client,
+        request_ids=request_ids,
+        observed_call_order=observed_call_order,
+    )
+
+
 def _expected_call_order_for_requests(
     *,
     client: TestClient,
@@ -2262,7 +2275,7 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         expected_observed_call_order=MIXED_METHOD_REPEATED_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
-    _assert_call_order_subsequence_for_requests(
+    _assert_mixed_method_call_order_parity(
         client=client,
         request_ids=request_ids,
         observed_call_order=observed_call_order,
@@ -2296,7 +2309,7 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
         expected_observed_call_order=MIXED_METHOD_FORCE_REINITIALIZE_EXPECTED_OBSERVED_CALL_ORDER,
     )
 
-    _assert_call_order_subsequence_for_requests(
+    _assert_mixed_method_call_order_parity(
         client=client,
         request_ids=request_ids,
         observed_call_order=observed_call_order,

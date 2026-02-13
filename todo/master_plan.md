@@ -190,6 +190,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - added shared helper for primary mixed-method harness setup (`ClusterNatSessionFactory` + `MCPClientManager` + `TestClient` + primary server registration).
   - helper supports optional `now_provider` injection and force-reinitialize coverage now consumes it to preserve deterministic stale-expiry trigger behavior.
   - migrated repeated-same-server and force-reinitialize tests to helper-driven setup while preserving explicit trigger mutations and call-order expectations.
+- [x] Reduced duplicated mixed-method final parity assertion wiring in call-order tests:
+  - added shared helper for mixed-method phase-start/transport subsequence parity assertions using request-id vectors and observed call-order tuples.
+  - migrated repeated-same-server and force-reinitialize mixed-method call-order tests to helper-driven final parity assertions.
+  - preserved explicit request-id sequencing, expected observed call-order literals, and diagnostics-filter semantics unchanged.
 - [x] Reduced duplicated retry-window gating call-order literal assertions:
   - added a shared integration helper that asserts retry-window gating backup-only skip slice behavior, primary re-entry `third_slice` literals, and full `observed_call_order` literals per method.
   - migrated both tool/resource retry-window gating tests to helper-driven call-order literal assertions while keeping explicit expected tuple literals visible at each call site.
