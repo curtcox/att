@@ -3,15 +3,15 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `11d08cf9297eff24bec2dc7a6552edff4eb3fc8f`
-- Last commit: `11d08cf 2026-02-13 08:31:17 -0600 Add MCP force-reinitialize call-order parity tests`
-- Working tree at handoff creation: dirty (retry-window gating call-order parity coverage + plan doc updates)
+- HEAD: `b865ac7006fbe4176ac95f65131f5b34472dd56d`
+- Last commit: `b865ac7 2026-02-13 08:40:24 -0600 Add MCP retry-window call-order parity tests`
+- Working tree at handoff creation: dirty (`resources/read` retry-window parity coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`202 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`205 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -107,16 +107,20 @@
   - unit assertions include paired `tools/call` and `resources/read` checks and explicit re-entry call-order expectations (`initialize` before invoke).
   - added API-level regression covering timeout -> closed retry window skip -> retry-window reopen while backup serves requests.
   - API assertions now cross-check transport call order against invocation-event `initialize_start`/`invoke_start` phase streams via subsequence parity and keep deterministic diagnostics-filter checks (`server`, `method`, `request_id`, `correlation_id`, `limit`) per request.
+- Extended retry-window parity coverage for `resources/read` and backup-state matrix behavior:
+  - added helper-level `resources/read` matrix coverage distinguishing backup non-retryable degraded vs unreachable states under mixed preferred ordering before primary re-entry.
+  - added API-level `/api/v1/mcp/invoke/resource` retry-window call-order regression mirroring timeout -> closed retry-window skip -> retry-window reopen while backup serves requests.
+  - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` call-order hardening with `resources/read` retry-window parity:
-1. Add API-level `resources/read` retry-window gating call-order regression:
-   - mirror the new tool-call retry-window sequence for `/api/v1/mcp/invoke/resource` (timeout -> closed retry-window skip -> retry-window reopen while backup serves).
-   - cross-check `factory.calls` ordering against invocation-event `initialize_start`/`invoke_start` phase streams via subsequence parity.
+Continue `P12/P13` call-order hardening with unreachable-transition retry-window parity:
+1. Add API-level unreachable-transition call-order regression for `resources/read`:
+   - drive `primary` through two consecutive timed failures (degraded -> unreachable), then verify retry-window skip behavior while `backup` serves requests.
+   - after retry-window reopen and backup becoming non-retryable, assert deterministic primary re-entry call order (`initialize` then `resources/read`) and subsequence parity with invocation phase starts.
    - preserve deterministic diagnostics-filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`) for each request in the sequence.
-2. Extend helper-level retry-window call-order matrix coverage:
-   - add focused helper assertions that distinguish degraded vs unreachable re-entry ordering under mixed preferred-server lists when backup transitions to non-retryable state.
-   - keep assertions on transport-level ordering only (`initialize`, `resources/read`) to avoid coupling to invocation event internals.
+2. Extend helper-level unreachable retry-window matrix:
+   - add focused unit assertions for mixed preferred-server ordering that distinguish primary degraded vs unreachable skip/re-entry ordering across both invoke methods.
+   - keep assertions transport-order centric and clock-driven (no direct retry-window state mutation).
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.

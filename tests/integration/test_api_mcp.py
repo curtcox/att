@@ -2020,6 +2020,162 @@ def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None
         cursor += 1
 
 
+def test_mcp_resource_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=2,
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+    factory.set_failure_script("primary", "resources/read", ["timeout", "ok"])
+
+    first = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first.status_code == 200
+    assert first.json()["server"] == "backup"
+    request_id_1 = first.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    calls_after_first = len(factory.calls)
+    second = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert second.status_code == 200
+    assert second.json()["server"] == "backup"
+    request_id_2 = second.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        method="resources/read",
+        expected_phases=[],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[],
+    )
+    second_slice = factory.calls[calls_after_first:]
+    assert second_slice
+    assert all(server == "backup" for server, _, _ in second_slice)
+
+    clock.advance(seconds=1)
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    calls_before_third = len(factory.calls)
+    third = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["backup", "primary"],
+        },
+    )
+    assert third.status_code == 200
+    assert third.json()["server"] == "primary"
+    request_id_3 = third.json()["request_id"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        expected_statuses=[ServerStatus.HEALTHY.value],
+    )
+    third_slice = [
+        (server, method)
+        for server, _, method in factory.calls[calls_before_third:]
+        if method in {"initialize", "resources/read"}
+    ]
+    assert third_slice == [
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+    ]
+
+    events: list[dict[str, object]] = []
+    for request_id in (request_id_1, request_id_2, request_id_3):
+        response = client.get(
+            "/api/v1/mcp/invocation-events",
+            params={"request_id": request_id},
+        )
+        assert response.status_code == 200
+        events.extend(response.json()["items"])
+
+    phase_to_method = {
+        "initialize_start": "initialize",
+        "invoke_start": None,
+    }
+    expected_call_order = [
+        (item["server"], phase_to_method[item["phase"]] or item["method"])
+        for item in events
+        if item["phase"] in {"initialize_start", "invoke_start"}
+    ]
+    observed_call_order = [
+        (server, method)
+        for server, _, method in factory.calls
+        if method in {"initialize", "resources/read"}
+    ]
+    assert observed_call_order == [
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+        ("backup", "initialize"),
+        ("backup", "resources/read"),
+        ("backup", "resources/read"),
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+    ]
+
+    cursor = 0
+    for call in observed_call_order:
+        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
+            cursor += 1
+        assert cursor < len(expected_call_order), (
+            f"missing call-order tuple in phase stream: {call}"
+        )
+        cursor += 1
+
+
 def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() -> None:
     factory = ClusterNatSessionFactory()
     manager = MCPClientManager(

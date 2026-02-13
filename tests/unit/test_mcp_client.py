@@ -1496,6 +1496,66 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("backup_failures", "expected_backup_status"),
+    [
+        (1, ServerStatus.DEGRADED),
+        (2, ServerStatus.UNREACHABLE),
+    ],
+)
+async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_state(
+    backup_failures: int,
+    expected_backup_status: ServerStatus,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=2,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+    factory.set_failure_script("primary", "resources/read", ["timeout", "ok"])
+
+    first = await manager.read_resource(
+        "att://projects",
+        preferred=["primary", "backup"],
+    )
+    assert first.server == "backup"
+
+    second = await manager.read_resource(
+        "att://projects",
+        preferred=["backup", "primary"],
+    )
+    assert second.server == "backup"
+
+    clock.advance(seconds=1)
+    for _ in range(backup_failures):
+        manager.record_check_result("backup", healthy=False, error="hold backup")
+    backup = manager.get("backup")
+    assert backup is not None
+    assert backup.status is expected_backup_status
+
+    calls_before_third = len(factory.calls)
+    third = await manager.read_resource(
+        "att://projects",
+        preferred=["backup", "primary"],
+    )
+    assert third.server == "primary"
+
+    third_slice = [
+        (server, method)
+        for server, _, method in factory.calls[calls_before_third:]
+        if method in {"initialize", "resources/read"}
+    ]
+    assert third_slice == [
+        ("primary", "initialize"),
+        ("primary", "resources/read"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
