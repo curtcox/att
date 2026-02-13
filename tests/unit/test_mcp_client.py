@@ -1757,6 +1757,76 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize(
+    ("preferred", "expected_first", "expected_second"),
+    [
+        (["primary", "backup"], "primary", "backup"),
+        (["backup", "primary"], "backup", "primary"),
+    ],
+)
+async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candidates(
+    method: str,
+    preferred: list[str],
+    expected_first: str,
+    expected_second: str,
+) -> None:
+    factory = ClusterNatSessionFactory()
+    clock = MCPTestClock()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+        now_provider=clock,
+        unreachable_after=1,
+    )
+    manager.register("primary", "http://primary.local")
+    manager.register("backup", "http://backup.local")
+
+    manager.record_check_result("primary", healthy=False, error="hold primary")
+    manager.record_check_result("backup", healthy=False, error="hold backup")
+
+    primary = manager.get("primary")
+    backup = manager.get("backup")
+    assert primary is not None
+    assert backup is not None
+    assert primary.status is ServerStatus.UNREACHABLE
+    assert backup.status is ServerStatus.UNREACHABLE
+
+    factory.set_failure_script(expected_first, "initialize", ["timeout"])
+    factory.set_failure_script(expected_second, "initialize", ["ok"])
+
+    async def invoke_once() -> object:
+        if method == "resources/read":
+            return await manager.read_resource("att://projects", preferred=preferred)
+        return await manager.invoke_tool("att.project.list", preferred=preferred)
+
+    calls_before_closed = len(factory.calls)
+    with pytest.raises(MCPInvocationError):
+        await invoke_once()
+    assert len(factory.calls) == calls_before_closed
+
+    clock.advance(seconds=1)
+    calls_before_reopen = len(factory.calls)
+    reopened = await invoke_once()
+    assert reopened.server == expected_second
+    assert reopened.method == method
+    reopen_events = manager.list_invocation_events(request_id=reopened.request_id)
+    initialize_starts = [
+        event.server for event in reopen_events if event.phase == "initialize_start"
+    ]
+    assert initialize_starts == [expected_first, expected_second]
+
+    reopen_slice = [
+        (server, call_method)
+        for server, _, call_method in factory.calls[calls_before_reopen:]
+        if call_method in {"initialize", method}
+    ]
+    assert reopen_slice == [
+        (expected_second, "initialize"),
+        (expected_second, method),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))

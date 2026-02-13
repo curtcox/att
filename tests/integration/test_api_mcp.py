@@ -1672,41 +1672,21 @@ def test_mcp_scripted_call_order_matches_invocation_phase_starts() -> None:
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
 
-    first_events = client.get(
-        "/api/v1/mcp/invocation-events",
-        params={"request_id": tool_request_id},
+    events = collect_invocation_events_for_requests(
+        client,
+        request_ids=(tool_request_id, resource_request_id),
     )
-    assert first_events.status_code == 200
-    second_events = client.get(
-        "/api/v1/mcp/invocation-events",
-        params={"request_id": resource_request_id},
-    )
-    assert second_events.status_code == 200
-    events = first_events.json()["items"] + second_events.json()["items"]
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    expected_call_order = expected_call_order_from_phase_starts(events)
 
     observed_call_order = [
         (server, method)
         for server, _, method in factory.calls
         if method in {"initialize", "tools/call", "resources/read"}
     ]
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
@@ -1779,24 +1759,8 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
             expected_statuses=[],
         )
 
-    events: list[dict[str, object]] = []
-    for request_id in request_ids:
-        response = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"request_id": request_id},
-        )
-        assert response.status_code == 200
-        events.extend(response.json()["items"])
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    events = collect_invocation_events_for_requests(client, request_ids=request_ids)
+    expected_call_order = expected_call_order_from_phase_starts(events)
 
     observed_call_order = [
         (server, method)
@@ -1811,14 +1775,10 @@ def test_mcp_repeated_same_server_calls_skip_transport_reinitialize() -> None:
         ("primary", "resources/read"),
     ]
 
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
@@ -1908,24 +1868,8 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
             expected_statuses=expected_statuses,
         )
 
-    events: list[dict[str, object]] = []
-    for request_id in request_ids:
-        response = client.get(
-            "/api/v1/mcp/invocation-events",
-            params={"request_id": request_id},
-        )
-        assert response.status_code == 200
-        events.extend(response.json()["items"])
-
-    phase_to_method = {
-        "initialize_start": "initialize",
-        "invoke_start": None,
-    }
-    expected_call_order = [
-        (item["server"], phase_to_method[item["phase"]] or item["method"])
-        for item in events
-        if item["phase"] in {"initialize_start", "invoke_start"}
-    ]
+    events = collect_invocation_events_for_requests(client, request_ids=request_ids)
+    expected_call_order = expected_call_order_from_phase_starts(events)
 
     observed_call_order = [
         (server, method)
@@ -1942,14 +1886,10 @@ def test_mcp_force_reinitialize_triggers_add_initialize_to_call_order() -> None:
         ("primary", "resources/read"),
     ]
 
-    cursor = 0
-    for call in observed_call_order:
-        while cursor < len(expected_call_order) and expected_call_order[cursor] != call:
-            cursor += 1
-        assert cursor < len(expected_call_order), (
-            f"missing call-order tuple in phase stream: {call}"
-        )
-        cursor += 1
+    assert_call_order_subsequence(
+        observed_call_order=observed_call_order,
+        expected_call_order=expected_call_order,
+    )
 
 
 def test_mcp_retry_window_gating_call_order_skips_and_reenters_primary() -> None:
