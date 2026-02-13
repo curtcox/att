@@ -1168,6 +1168,37 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         factory.consume_failure_action("primary", "initialize")
 
 
+def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> None:
+    factory = ClusterNatSessionFactory()
+
+    factory.set_failure_script("primary", "initialize", ["timeout", "ok"])
+    factory.set_failure_script("primary", "resources/read", ["error"])
+    factory.set_failure_script("backup", "initialize", ["ok"])
+    factory.set_failure_script("backup", "tools/call", ["error", "ok"])
+
+    assert factory.consume_failure_action("primary", "initialize") == "timeout"
+    assert factory.failure_scripts[("primary", "initialize")] == ["ok"]
+    assert factory.failure_scripts[("primary", "resources/read")] == ["error"]
+    assert factory.failure_scripts[("backup", "initialize")] == ["ok"]
+    assert factory.failure_scripts[("backup", "tools/call")] == ["error", "ok"]
+
+    assert factory.consume_failure_action("backup", "tools/call") == "error"
+    assert factory.failure_scripts[("primary", "initialize")] == ["ok"]
+    assert factory.failure_scripts[("primary", "resources/read")] == ["error"]
+    assert factory.failure_scripts[("backup", "initialize")] == ["ok"]
+    assert factory.failure_scripts[("backup", "tools/call")] == ["ok"]
+
+    assert factory.consume_failure_action("primary", "resources/read") == "error"
+    assert factory.consume_failure_action("backup", "initialize") == "ok"
+    assert factory.consume_failure_action("primary", "initialize") == "ok"
+    assert factory.consume_failure_action("backup", "tools/call") == "ok"
+
+    assert factory.consume_failure_action("primary", "initialize") is None
+    assert factory.consume_failure_action("primary", "resources/read") is None
+    assert factory.consume_failure_action("backup", "initialize") is None
+    assert factory.consume_failure_action("backup", "tools/call") is None
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("method_key", "expected_method"),

@@ -5,13 +5,13 @@
 - Branch: `main`
 - HEAD: `1d4fc8d767b34031caee6e3ede14769f22b1fd2b`
 - Last commit: `1d4fc8d 2026-02-12 17:46:16 -0600 Refine test result payload typing`
-- Working tree at handoff creation: dirty (scripted-helper unit coverage + scripted-error convergence + plan doc updates)
+- Working tree at handoff creation: dirty (resources scripted-error parity coverage + helper script-isolation coverage + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`181 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`184 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -70,15 +70,21 @@
   - explicit method-key checks cover `initialize`, `tools/call`, and `resources/read`.
 - Added scripted `error` action convergence coverage:
   - integration coverage now exercises scripted `error` at initialize-stage and invoke-stage paths, asserting stable `transport_error` classification and deterministic failover/correlation behavior.
+- Extended scripted `error` convergence parity to `resources/read`:
+  - added paired initialize/invoke scripted-error scenarios for `/api/v1/mcp/invoke/resource`, asserting deterministic failover order, stable `transport_error` classification, and correlated request behavior.
+  - added deterministic invocation/connection filter assertions for correlated `resources/read` requests (`server`, `method`, `request_id`, `correlation_id`, `limit`).
+- Added helper-level scripted-failure isolation coverage:
+  - added unit assertions that per-server/per-method scripts remain isolated under shared `ClusterNatSessionFactory` state.
+  - added mixed-script regression checks across `primary` and `backup` so consuming one key does not mutate unrelated script queues.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` with cross-method scripted-error parity:
-1. Extend scripted `error` convergence to `resources/read`:
-   - add paired initialize/invoke scripted-error scenarios for `/api/v1/mcp/invoke/resource` with deterministic failover order and `transport_error` classification.
-   - assert matching invocation/connection filter behavior (`server`, `method`, `request_id`, `correlation_id`, `limit`) for correlated requests.
-2. Add helper-level script isolation checks:
-   - add unit tests proving per-server/per-method scripts are isolated (consuming one server/method script does not affect others).
-   - include regression checks for mixed scripts on `primary` vs `backup` under shared factory state.
+Continue `P12/P13` scripted-controls convergence hardening:
+1. Extend scripted precedence parity to `resources/read` initialize stage:
+   - add an integration scenario proving scripted `initialize: ok` for `resources/read` overrides set-based initialize timeout toggles (mirroring existing tool-path precedence coverage).
+   - assert deterministic correlation/filter behavior (`request_id`, `correlation_id`, `limit`) and no degraded transition for the overridden attempt.
+2. Add API-level mixed-script isolation regression:
+   - add an integration scenario with mixed scripts on `primary` vs `backup` across `tools/call` and `resources/read` in sequence.
+   - assert each request consumes only its targeted server/method script queue and leaves unrelated queues intact until exercised.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
