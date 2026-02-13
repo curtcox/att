@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended resource URI assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROJECTS_URI` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side inline `"att://projects"` checks in resource read result assertions and expected adapter `session.calls` vectors to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended protocol-version assertion constant reuse in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_PROTOCOL_VERSION` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side inline `"2025-11-25"` protocol-version checks (initialize response assertion and capability snapshot protocol assertions) to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.

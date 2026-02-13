@@ -51,6 +51,7 @@ UNIT_TEST_INVOKE_SUCCESS_PHASE = "invoke_success"
 UNIT_TEST_SESSION_ID_FIRST = "session-1"
 UNIT_TEST_SESSION_ID_SECOND = "session-2"
 UNIT_TEST_PROTOCOL_VERSION = "2025-11-25"
+UNIT_TEST_PROJECTS_URI = "att://projects"
 
 
 @pytest.mark.asyncio
@@ -229,7 +230,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
     assert result.server == UNIT_TEST_SECONDARY_SERVER
     assert result.method == UNIT_TEST_RESOURCES_READ_METHOD
     assert isinstance(result.result, dict)
-    assert result.result["uri"] == "att://projects"
+    assert result.result["uri"] == UNIT_TEST_PROJECTS_URI
     assert calls[0] == (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
     assert calls[-1] == (UNIT_TEST_SECONDARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
 
@@ -824,12 +825,12 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         },
     )
     assert isinstance(resource_read["result"], dict)
-    assert resource_read["result"]["contents"][0]["uri"] == "att://projects"
+    assert resource_read["result"]["contents"][0]["uri"] == UNIT_TEST_PROJECTS_URI
     assert session.calls == [
         ("session", UNIT_TEST_INITIALIZE_METHOD),
         ("session", UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD),
         ("tool", "att.project.list"),
-        ("resource", "att://projects"),
+        ("resource", UNIT_TEST_PROJECTS_URI),
     ]
 
 

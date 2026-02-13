@@ -5,7 +5,7 @@
 - Branch: `main`
 - HEAD: `97a1b3af8b67696bb78e76e5452cf38f665de2f0`
 - Last commit: `97a1b3a 2026-02-13 10:06:43 -0600 Extract mixed-method final parity helper`
-- Working tree at handoff creation: dirty (`unit protocol-version assertion constant reuse`)
+- Working tree at handoff creation: dirty (`unit resource-uri assertion constant reuse`)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -14,6 +14,10 @@
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`235 passed`)
 
 ## Recent Delivered Work
+- Extended resource URI assertion constant reuse in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_PROJECTS_URI` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated assertion-side inline `"att://projects"` checks in resource read result assertions and expected adapter `session.calls` vectors to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended protocol-version assertion constant reuse in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_PROTOCOL_VERSION` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side inline `"2025-11-25"` protocol-version checks (initialize response assertion and capability snapshot protocol assertions) to the shared constant while keeping registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
@@ -389,9 +393,9 @@
   - preserved deterministic diagnostics-filter checks and invocation-phase/transport-call subsequence parity assertions per request.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by extending stable assertion-literal constant reuse for repeated resource URI checks in unit MCP client coverage:
-1. Reuse a shared unit-test constant for repeated assertion-side resource URI literals in `tests/unit/test_mcp_client.py`:
-   - target repeated assertion literals such as `"att://projects"` where reuse is meaningful in assertion paths.
+Continue `P12/P13` test-structure hardening by extending stable assertion-literal constant reuse for freshness-state assertions in unit MCP client coverage:
+1. Reuse shared unit-test constants for repeated assertion-side freshness literals in `tests/unit/test_mcp_client.py`:
+   - target repeated assertion literals such as `"unknown"`, `"active_recent"`, and `"stale"` where reuse is meaningful in assertion paths.
    - keep registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
