@@ -752,6 +752,10 @@ def test_mcp_resource_failover_recovery_filters_and_correlation() -> None:
         expected_statuses=[ServerStatus.HEALTHY.value],
     )
 
+    primary = client.get("/api/v1/mcp/servers/primary")
+    assert primary.status_code == 200
+    assert primary.json()["status"] == ServerStatus.HEALTHY.value
+
 
 def test_mcp_invoke_uses_adapter_transport_when_configured() -> None:
     adapter = FallbackTransport()
@@ -1501,7 +1505,7 @@ def test_mcp_scripted_flapping_preserves_mixed_method_order_and_correlation() ->
     )
 
 
-def test_mcp_scripted_mixed_method_isolation_across_servers() -> None:
+def test_mcp_scripted_initialize_and_invoke_method_isolation_across_servers() -> None:
     factory = ClusterNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
@@ -1511,6 +1515,8 @@ def test_mcp_scripted_mixed_method_isolation_across_servers() -> None:
     client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
     client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
 
+    factory.set_failure_script("primary", "initialize", ["ok"])
+    factory.set_failure_script("backup", "initialize", ["ok"])
     factory.set_failure_script("primary", "tools/call", ["error"])
     factory.set_failure_script("primary", "resources/read", ["ok"])
     factory.set_failure_script("backup", "resources/read", ["timeout"])
@@ -1527,6 +1533,8 @@ def test_mcp_scripted_mixed_method_isolation_across_servers() -> None:
     assert first_tool.json()["server"] == "backup"
     request_id_1 = first_tool.json()["request_id"]
 
+    assert factory.failure_scripts[("primary", "initialize")] == []
+    assert factory.failure_scripts[("backup", "initialize")] == []
     assert factory.failure_scripts[("primary", "tools/call")] == []
     assert factory.failure_scripts[("primary", "resources/read")] == ["ok"]
     assert factory.failure_scripts[("backup", "resources/read")] == ["timeout"]
@@ -1613,6 +1621,122 @@ def test_mcp_scripted_mixed_method_isolation_across_servers() -> None:
         server="backup",
         expected_statuses=[ServerStatus.DEGRADED.value],
     )
+
+
+def test_mcp_initialize_script_exhaustion_falls_back_to_set_timeout_without_mutating_method_queues() -> (
+    None
+):
+    factory = ClusterNatSessionFactory()
+    manager = MCPClientManager(
+        transport_adapter=NATMCPTransportAdapter(session_factory=factory),
+    )
+    client = _client_with_manager(manager)
+
+    client.post("/api/v1/mcp/servers", json={"name": "primary", "url": "http://primary.local"})
+    client.post("/api/v1/mcp/servers", json={"name": "backup", "url": "http://backup.local"})
+
+    factory.fail_on_timeout_initialize.add("primary")
+    factory.set_failure_script("primary", "initialize", ["ok"])
+    factory.set_failure_script("primary", "tools/call", ["ok"])
+
+    first_resource = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert first_resource.status_code == 200
+    assert first_resource.json()["server"] == "primary"
+    request_id_1 = first_resource.json()["request_id"]
+    assert factory.failure_scripts[("primary", "initialize")] == []
+    assert factory.failure_scripts[("primary", "tools/call")] == ["ok"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_1,
+        server="primary",
+        expected_statuses=[],
+    )
+
+    invalidated = client.post("/api/v1/mcp/servers/primary/adapter/invalidate")
+    assert invalidated.status_code == 200
+    second_resource = client.post(
+        "/api/v1/mcp/invoke/resource",
+        json={
+            "uri": "att://projects",
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert second_resource.status_code == 200
+    assert second_resource.json()["server"] == "backup"
+    request_id_2 = second_resource.json()["request_id"]
+
+    assert factory.failure_scripts[("primary", "tools/call")] == ["ok"]
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        method="resources/read",
+        expected_phases=[
+            "initialize_start",
+            "initialize_failure",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_2,
+        server="primary",
+        expected_statuses=[ServerStatus.DEGRADED.value],
+    )
+
+    manager.record_check_result("primary", healthy=True)
+    factory.fail_on_timeout_initialize.remove("primary")
+    third_tool = client.post(
+        "/api/v1/mcp/invoke/tool",
+        json={
+            "tool_name": "att.project.list",
+            "arguments": {},
+            "preferred_servers": ["primary", "backup"],
+        },
+    )
+    assert third_tool.status_code == 200
+    assert third_tool.json()["server"] == "primary"
+    request_id_3 = third_tool.json()["request_id"]
+    assert factory.failure_scripts[("primary", "tools/call")] == []
+    assert_invocation_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        method="tools/call",
+        expected_phases=[
+            "initialize_start",
+            "initialize_success",
+            "invoke_start",
+            "invoke_success",
+        ],
+    )
+    assert_connection_event_filters(
+        client,
+        request_id=request_id_3,
+        server="primary",
+        expected_statuses=[],
+    )
+
+    primary = client.get("/api/v1/mcp/servers/primary")
+    assert primary.status_code == 200
+    assert primary.json()["status"] == ServerStatus.HEALTHY.value
 
 
 def test_mcp_scripted_initialize_precedence_and_failover() -> None:

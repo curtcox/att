@@ -3,15 +3,15 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `f9cd481adf375870a6516884de4c74ccf96acc70`
-- Last commit: `f9cd481 2026-02-13 07:20:02 -0600 Update handoff snapshot metadata`
-- Working tree at handoff creation: dirty (resources initialize-precedence parity + API mixed-script isolation + plan doc updates)
+- HEAD: `c688f53565e67eb8e38d7d704605e6f27503833a`
+- Last commit: `c688f53 2026-02-13 07:29:53 -0600 Add MCP scripted initialize parity and API isolation coverage`
+- Working tree at handoff creation: dirty (mixed initialize+invoke script isolation + initialize-script exhaustion regression + plan doc updates)
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
   - `./.venv313/bin/ruff check .` passes
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
-  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`186 passed`)
+  - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`187 passed`)
 
 ## Recent Delivered Work
 - Added lightweight manager clock seam for deterministic retry/backoff/freshness behavior in tests:
@@ -82,15 +82,21 @@
 - Added API-level mixed-script isolation regression:
   - added integration sequencing across `tools/call` and `resources/read` with mixed scripts on `primary` and `backup`.
   - assertions now verify only targeted server/method script queues are consumed per request while unrelated queues remain intact until exercised.
+- Added API-level mixed initialize+invoke script isolation coverage:
+  - added integration coverage that combines per-server `initialize` scripts with `tools/call` and `resources/read` scripts in one deterministic scenario across `primary` and `backup`.
+  - assertions verify initialize-script queue consumption is isolated from invoke-script queues while preserving deterministic failover order and correlated diagnostics filters.
+- Added initialize-script exhaustion regression at API level:
+  - added integration coverage proving scripted initialize override depletion falls back to set-based initialize timeout toggles after adapter invalidation.
+  - assertions verify fallback degradation/correlation behavior and confirm unrelated invoke method script queues remain untouched until explicitly invoked.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` scripted-controls hardening with initialize-script isolation parity:
-1. Add API integration coverage for mixed initialize + invoke scripts on both servers:
-   - combine `initialize` scripts with method scripts (`tools/call`/`resources/read`) in one scenario across `primary` and `backup`.
-   - assert initialize-script consumption is isolated from invoke-script queues and preserves deterministic failover/correlation semantics.
-2. Add queue-exhaustion regression assertions at API level for initialize scripts:
-   - after scripted initialize actions are consumed, prove subsequent requests fall back to set-based initialize timeout toggles without mutating unrelated method queues.
-   - keep deterministic invocation/connection filter assertions (`server`, `method`, `request_id`, `correlation_id`, `limit`).
+Continue `P12/P13` scripted-controls hardening with helper/API call-order parity:
+1. Add helper-level call-order unit coverage for mixed scripted flows:
+   - add unit assertions over `ClusterNatSessionFactory.calls` proving deterministic `initialize`/`invoke` call ordering under mixed `initialize` + `tools/call` + `resources/read` scripted actions.
+   - include paired server scenarios (`primary` then `backup`) to ensure ordering remains stable under failover.
+2. Add API-level call-order regression for mixed scripted failover:
+   - add integration assertions that cross-check `factory.calls` ordering against invocation-event phases for one mixed `tools/call` + `resources/read` scripted sequence.
+   - keep existing deterministic diagnostics-filter checks (`server`, `method`, `request_id`, `correlation_id`, `limit`) unchanged.
 
 Suggested implementation direction:
 - Keep manager as aggregation/source-of-truth and route logic thin.
