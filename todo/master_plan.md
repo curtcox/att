@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Extended remaining non-adapter `a`/`b` server-name assertion constant reuse in unit MCP client coverage:
+  - reused `UNIT_TEST_SERVER_A` and `UNIT_TEST_SERVER_B` in remaining non-adapter assertion vectors (`choose_server` preference assertions and `initialize_all` name-vector assertion) in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, transport request payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Extended adapter-session server-name assertion literal reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_NAT_SERVER`, `UNIT_TEST_SERVER_A`, and `UNIT_TEST_SERVER_B` in `tests/unit/test_mcp_client.py`.
   - migrated repeated assertion-side adapter diagnostics/filter server literals (`"nat"`, `"a"`, `"b"`) to shared constants while keeping adapter/session setup behavior, transport request payload literals, and method-branch conditionals explicit and unchanged.

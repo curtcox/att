@@ -145,12 +145,12 @@ def test_choose_server_prefers_healthy_then_degraded() -> None:
 
     selected = manager.choose_server()
     assert selected is not None
-    assert selected.name == "b"
+    assert selected.name == UNIT_TEST_SERVER_B
 
     manager.record_check_result("b", healthy=False, error="down")
     fallback = manager.choose_server(preferred=["a", "b"])
     assert fallback is not None
-    assert fallback.name == "a"
+    assert fallback.name == UNIT_TEST_SERVER_A
 
 
 @pytest.mark.asyncio
@@ -655,7 +655,7 @@ async def test_initialize_all_returns_all_servers() -> None:
 
     results = await manager.initialize_all()
 
-    assert [server.name for server in results] == ["a", "b"]
+    assert [server.name for server in results] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B]
     assert all(server.initialized for server in results)
 
 
