@@ -6,6 +6,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 
 ## Implementation Progress (2026-02-13)
 
+- [x] Retired degraded-status compatibility alias debt after canonical ownership migration:
+  - removed `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` compatibility alias and retained only canonical `FAILOVER_DEGRADED_EXPECTED_STATUSES` for degraded-status expectations.
+  - updated focused constant regression coverage to assert canonical degraded-status vector semantics without alias coupling.
+  - preserved diagnostics-filter semantics and call-order literal/subsequence behavior unchanged.
 - [x] Canonicalized degraded-status constant ownership after alias adoption in MCP integration diagnostics tests:
   - made `FAILOVER_DEGRADED_EXPECTED_STATUSES` the literal-defined canonical degraded-status tuple.
   - kept `SCRIPTED_FAILOVER_DEGRADED_EXPECTED_STATUSES` as a compatibility alias to the canonical constant and updated focused regression coverage to assert canonical-vector and alias-equivalence semantics.
