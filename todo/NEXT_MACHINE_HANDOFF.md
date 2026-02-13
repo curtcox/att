@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: 2026-02-13
 - Branch: `main`
-- HEAD: `87235298142e64ac5df937a99d7b2a372a332fe3`
-- Last commit: `8723529 2026-02-13 14:30:11 -0600 Extract mixed-method unit call-order collector helper`
-- Working tree at handoff creation: dirty (`unit set_failure_script method constant reuse`)
+- HEAD: `ab8c2bd56a7a061e631901877e632d4b488a0876`
+- Last commit: `ab8c2bd 2026-02-13 14:34:21 -0600 Replace unit failure-script method literals with constants`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
