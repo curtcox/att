@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed residual `a`/`b` endpoint URL literal cleanup in nearby adapter-session unit coverage:
-  - reused local unit-test URL constants `UNIT_TEST_SERVER_A_URL` and `UNIT_TEST_SERVER_B_URL`.
-  - migrated remaining inline `manager.register("a", "http://a.local")` and `manager.register("b", "http://b.local")` setup literals outside the freshness-filter test to constant-driven form in `tests/unit/test_mcp_client.py`.
+- [x] Completed residual `terminal` endpoint URL literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_TERMINAL_SERVER_URL`.
+  - migrated remaining inline `manager.register("terminal", "http://terminal.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 

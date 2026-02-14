@@ -98,6 +98,8 @@ UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
 UNIT_TEST_NAT_SERVER_URL = "http://nat.local"
 UNIT_TEST_SERVER_A_URL = "http://a.local"
 UNIT_TEST_SERVER_B_URL = "http://b.local"
+UNIT_TEST_SERVER_C_URL = "http://c.local"
+UNIT_TEST_TERMINAL_SERVER_URL = "http://terminal.local"
 UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS = 60
 UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS = 61
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
@@ -287,7 +289,7 @@ async def test_health_check_recovery_resets_backoff() -> None:
 @pytest.mark.asyncio
 async def test_should_retry_observes_next_retry_window() -> None:
     manager = MCPClientManager()
-    manager.register("terminal", "http://terminal.local")
+    manager.register("terminal", UNIT_TEST_TERMINAL_SERVER_URL)
 
     now = datetime.now(UTC)
     manager.record_check_result(
@@ -305,7 +307,7 @@ async def test_should_retry_observes_next_retry_window() -> None:
 async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
     clock = MCPTestClock()
     manager = MCPClientManager(now_provider=clock)
-    manager.register("terminal", "http://terminal.local")
+    manager.register("terminal", UNIT_TEST_TERMINAL_SERVER_URL)
     manager.record_check_result(
         UNIT_TEST_TERMINAL_SERVER, healthy=False, error=UNIT_TEST_ERROR_DOWN
     )
@@ -1135,7 +1137,7 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
     manager.register("a", UNIT_TEST_SERVER_A_URL)
     manager.register("b", UNIT_TEST_SERVER_B_URL)
-    manager.register("c", "http://c.local")
+    manager.register("c", UNIT_TEST_SERVER_C_URL)
 
     await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["a"])
     await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["c"])
