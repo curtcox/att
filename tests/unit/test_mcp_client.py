@@ -96,6 +96,8 @@ UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID = "resource-1"
 UNIT_TEST_HTTP_METHOD_POST = "POST"
 UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
 UNIT_TEST_NAT_SERVER_URL = "http://nat.local"
+UNIT_TEST_SERVER_A_URL = "http://a.local"
+UNIT_TEST_SERVER_B_URL = "http://b.local"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -1189,8 +1191,8 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=60,
     )
-    manager.register(UNIT_TEST_SERVER_A, "http://a.local")
-    manager.register(UNIT_TEST_SERVER_B, "http://b.local")
+    manager.register(UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_A_URL)
+    manager.register(UNIT_TEST_SERVER_B, UNIT_TEST_SERVER_B_URL)
 
     await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
