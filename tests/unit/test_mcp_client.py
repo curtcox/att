@@ -1852,8 +1852,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
-    initialized = await manager.initialize_server(UNIT_TEST_NAT_SERVER)
-    assert initialized is not None
+    await manager.initialize_server(UNIT_TEST_NAT_SERVER)
     assert factory.created == 1
 
     _assert_unit_test_server_diagnostics_state_vector(
@@ -1871,8 +1870,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
-    refreshed = await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
-    assert refreshed is not None
+    await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
     assert factory.created == 2
     _assert_unit_test_server_diagnostics_state_vector(
         manager,

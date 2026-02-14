@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `04beeb1d3d2b45609a48d09bf3453186bc4314cb`
-- Last commit: `04beeb1 2026-02-14 14:57:36 -0600 - Add handoff helper tools for quickview and delivered updates`
+- HEAD: `07ed4da410e5ea9e0bb790688709ac02c779e988`
+- Last commit: `07ed4da 2026-02-14 15:02:32 -0600 - Document handoff helper usage guidance for agents`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,10 +21,10 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed handoff productivity tooling to speed repeated NEXT_MACHINE_HANDOFF read/update workflow:
-  - added `scripts/handoff_helper.py` with `quickview` (prints Snapshot/Active Next Slice/Resume Checklist/Working Agreement) and `prepend-recent` (prepends delivered-work bullets under Recent Delivered Work) plus unit coverage in `tests/unit/test_handoff_helper_script.py`, and added explicit AGENTS self-guidance to prefer these commands when helpful.
-  - added Makefile shortcuts `handoff-quickview` and `handoff-prepend` for fast local use, while preserving existing `snapshot` behavior.
-  - preserved planning-doc guardrail limits (`todo/NEXT_MACHINE_HANDOFF.md <= 250`, `todo/master_plan.md <= 1300`) and kept full validation green.
+- Completed adapter-session control assertion helper cleanup in unit MCP client coverage:
+  - removed redundant direct non-`None` checks in `test_manager_adapter_session_controls_invalidate_and_refresh` (`initialize_server(...)` and `refresh_adapter_session(...)` return-value checks) and relied on existing helper-driven diagnostics state-vector assertions.
+  - preserved adapter-session control semantics (supports/invalidate/refresh), timeout-category regression coverage, invocation-event/connection-event filter behavior, and call-order/subsequence behavior unchanged.
+  - kept full validation green and planning-doc guardrail limits unchanged (`todo/NEXT_MACHINE_HANDOFF.md <= 250`, `todo/master_plan.md <= 1300`).
 
 - Completed single-list NAT adapter-session listing state assertion helper reuse in freshness coverage:
   - added local unit-test helper `_assert_unit_test_single_listed_adapter_session_servers_and_keyed_states(...)` in `tests/unit/test_mcp_client.py`.
