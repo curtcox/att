@@ -208,6 +208,7 @@ UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES = (
     (UNIT_TEST_SERVER_A, True, True, True),
     (UNIT_TEST_SERVER_C, True, True, True),
 )
+UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE = ((UNIT_TEST_SERVER_C, True, True, True),)
 UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE = (
     UNIT_TEST_FRESHNESS_UNKNOWN,
     UNIT_TEST_FRESHNESS_ACTIVE_RECENT,
@@ -1893,16 +1894,23 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     active_only = manager.list_adapter_sessions(active_only=True)
+    _assert_unit_test_listed_adapter_session_servers(
+        active_only,
+        UNIT_TEST_SERVER_A_C_VECTOR,
+    )
     _assert_unit_test_listed_adapter_session_keyed_states(
         _unit_test_listed_adapter_sessions_by_server(active_only),
         UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES,
     )
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
-    _assert_unit_test_single_listed_session_server(
+    _assert_unit_test_listed_adapter_session_servers(
         only_c,
-        UNIT_TEST_SERVER_C,
-        active=True,
+        UNIT_TEST_SERVER_C_VECTOR,
+    )
+    _assert_unit_test_listed_adapter_session_keyed_states(
+        _unit_test_listed_adapter_sessions_by_server(only_c),
+        UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE,
     )
 
     limited = manager.list_adapter_sessions(limit=1)
