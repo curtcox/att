@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `aa66fcf78428aa4f9d64602f14353bb356f7be93`
-- Last commit: `aa66fcf 2026-02-14 07:40:55 -0600 - Refactor NAT failure-script action-order assertions`
+- HEAD: `1c34ad6f1c77e968eeb383e36333c48df7b7aa7b`
+- Last commit: `1c34ad6 2026-02-14 07:52:30 -0600 - Refactor NAT failure-script snapshot assertions`
 - Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
