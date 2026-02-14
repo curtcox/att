@@ -677,14 +677,6 @@ def _assert_unit_test_server_diagnostics_state_vector(
     return diagnostics
 
 
-def _assert_unit_test_single_listed_session_freshness(
-    listing: list[Any],
-    expected_freshness: str,
-) -> None:
-    assert len(listing) == 1
-    _assert_unit_test_adapter_session_freshness(listing[0], expected_freshness)
-
-
 def _assert_unit_test_listed_adapter_session_servers(
     listing: list[Any],
     expected_servers: tuple[str, ...],
@@ -1974,10 +1966,8 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     )
 
     listing = manager.list_adapter_sessions(server_name=UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_single_listed_session_freshness(
-        listing,
-        expected_listing_stale_freshness,
-    )
+    assert len(listing) == 1
+    _assert_unit_test_adapter_session_freshness(listing[0], expected_listing_stale_freshness)
 
 
 @pytest.mark.asyncio
