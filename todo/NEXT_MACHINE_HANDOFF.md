@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `9e391189e6bff4f84c2e37da9d9fc1792db87d38`
-- Last commit: `9e39118 2026-02-14 09:14:45 -0600 - Add NAT initialize-timeout setup wrapper helper`
-- Working tree at handoff creation: dirty
+- HEAD: `7946937a5a8b8d799d0d45a4ac26276641d23ec7`
+- Last commit: `7946937 2026-02-14 09:21:11 -0600 - Extract generic NAT primary setup-step helper`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
