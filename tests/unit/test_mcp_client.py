@@ -465,6 +465,20 @@ def _assert_unit_test_failure_script_snapshot_after_consumed_actions(
     _assert_unit_test_failure_script_state_snapshot(factory, backup_tools_call_vector)
 
 
+def _assert_unit_test_failure_script_snapshot_after_consumed_action(
+    factory: ClusterNatSessionFactory,
+    server: str,
+    method: str,
+    expected_action: str,
+    backup_tools_call_vector: tuple[str, ...],
+) -> None:
+    _assert_unit_test_failure_script_snapshot_after_consumed_actions(
+        factory,
+        ((server, method, expected_action),),
+        backup_tools_call_vector,
+    )
+
+
 def _assert_unit_test_failure_script_consumed_actions_in_order(
     factory: ClusterNatSessionFactory,
     action_steps: tuple[tuple[str, str, str], ...],
@@ -1702,27 +1716,19 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
         UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
-    _assert_unit_test_failure_script_snapshot_after_consumed_actions(
+    _assert_unit_test_failure_script_snapshot_after_consumed_action(
         factory,
-        (
-            (
-                UNIT_TEST_PRIMARY_SERVER,
-                UNIT_TEST_INITIALIZE_METHOD,
-                UNIT_TEST_FAILURE_ACTION_TIMEOUT,
-            ),
-        ),
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
         UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
-    _assert_unit_test_failure_script_snapshot_after_consumed_actions(
+    _assert_unit_test_failure_script_snapshot_after_consumed_action(
         factory,
-        (
-            (
-                UNIT_TEST_BACKUP_SERVER,
-                UNIT_TEST_TOOLS_CALL_METHOD,
-                UNIT_TEST_FAILURE_ACTION_ERROR,
-            ),
-        ),
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_ACTION_ERROR,
         UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
     )
 

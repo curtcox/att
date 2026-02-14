@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `1c34ad6f1c77e968eeb383e36333c48df7b7aa7b`
-- Last commit: `1c34ad6 2026-02-14 07:52:30 -0600 - Refactor NAT failure-script snapshot assertions`
-- Working tree at handoff creation: clean
+- HEAD: `2a40071cbc8f080026de37208823b615b7fae5a2`
+- Last commit: `2a40071 2026-02-14 07:52:55 -0600 - Refresh handoff snapshot metadata`
+- Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -190,14 +190,14 @@
   - added local unit-test helpers `_assert_unit_test_collected_primary_reentry_slice(...)` and `_assert_unit_test_collected_backup_reentry_slice(...)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated patterns that collected re-entry slices and immediately asserted expected primary/backup vectors to helper-driven calls across retry-window/unreachable tests while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- Completed failure-script progression/setup/snapshot ordering helper assertion reuse in nearby cluster NAT helper validation coverage:
-  - added local unit-test helpers `_assert_unit_test_failure_script_progression(...)`, `_set_unit_test_failure_script(...)`, `_assert_unit_test_failure_script_consumed_actions_in_order(...)`, and `_assert_unit_test_failure_script_snapshot_after_consumed_actions(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated failure-script setup+consume progression assertions, repeated `set_failure_script(...)` setup blocks, repeated consumed-action ordering sequences, and repeated consumed-action-plus-state-snapshot sequences in nearby validation/retry-window/reopen call-order tests to helper-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed failure-script progression/setup/snapshot single-step helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helpers `_assert_unit_test_failure_script_progression(...)`, `_set_unit_test_failure_script(...)`, `_assert_unit_test_failure_script_consumed_actions_in_order(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_actions(...)`, and `_assert_unit_test_failure_script_snapshot_after_consumed_action(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated failure-script setup+consume progression assertions, repeated `set_failure_script(...)` setup blocks, repeated consumed-action ordering sequences, repeated consumed-action-plus-state-snapshot sequences, and remaining repeated single-step consumed-action wrapper assertions in nearby validation/retry-window/reopen call-order tests to helper-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate remaining repeated single-step failure-script consumed-action assertion wrappers in nearby validation tests to tighter helper-driven assertions while keeping server-name setup literals and method-branch conditionals explicit.
+   - migrate remaining repeated multi-step failure-script consumed-action assertion wrappers in nearby validation tests to tighter helper-driven assertions while keeping server-name setup literals and method-branch conditionals explicit.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
