@@ -204,6 +204,10 @@ UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_B_INACTIVE_A_STATES = (
     (UNIT_TEST_SERVER_B, True, True, True),
     (UNIT_TEST_SERVER_A, False, None, None),
 )
+UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES = (
+    (UNIT_TEST_SERVER_A, True, True, True),
+    (UNIT_TEST_SERVER_C, True, True, True),
+)
 UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE = (
     UNIT_TEST_FRESHNESS_UNKNOWN,
     UNIT_TEST_FRESHNESS_ACTIVE_RECENT,
@@ -1889,9 +1893,9 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     active_only = manager.list_adapter_sessions(active_only=True)
-    _assert_unit_test_listed_adapter_session_servers(
-        active_only,
-        UNIT_TEST_SERVER_A_C_VECTOR,
+    _assert_unit_test_listed_adapter_session_keyed_states(
+        _unit_test_listed_adapter_sessions_by_server(active_only),
+        UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES,
     )
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
@@ -1939,7 +1943,10 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
         UNIT_TEST_NAT_SERVER,
         expected_active_recent_freshness,
     )
-    assert recent.active is True
+    _assert_unit_test_adapter_session_state_vector(
+        recent,
+        UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
+    )
 
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
