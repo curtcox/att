@@ -79,6 +79,19 @@ UNIT_TEST_SERVER_C = "c"
 UNIT_TEST_CODEX_SERVER = "codex"
 UNIT_TEST_GITHUB_SERVER = "github"
 UNIT_TEST_TERMINAL_SERVER = "terminal"
+UNIT_TEST_PREFERRED_SERVER_A_VECTOR = [UNIT_TEST_SERVER_A]
+UNIT_TEST_PREFERRED_SERVER_A_B_VECTOR = [
+    UNIT_TEST_SERVER_A,
+    UNIT_TEST_SERVER_B,
+]
+UNIT_TEST_PREFERRED_SERVER_B_VECTOR = [UNIT_TEST_SERVER_B]
+UNIT_TEST_PREFERRED_SERVER_C_VECTOR = [UNIT_TEST_SERVER_C]
+UNIT_TEST_PREFERRED_NAT_VECTOR = [UNIT_TEST_NAT_SERVER]
+UNIT_TEST_PREFERRED_PRIMARY_RECOVERED_DEGRADED_VECTOR = [
+    UNIT_TEST_PRIMARY_SERVER,
+    UNIT_TEST_RECOVERED_SERVER,
+    UNIT_TEST_DEGRADED_SERVER,
+]
 UNIT_TEST_CLUSTER_NAT_MIXED_SCRIPTED_FAILOVER_CALL_ORDER = (
     (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
     (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD),
@@ -885,7 +898,7 @@ def test_choose_server_prefers_healthy_then_degraded() -> None:
     assert selected.name == UNIT_TEST_SERVER_B
 
     manager.record_check_result(UNIT_TEST_SERVER_B, healthy=False, error=UNIT_TEST_ERROR_DOWN)
-    fallback = manager.choose_server(preferred=["a", "b"])
+    fallback = manager.choose_server(preferred=UNIT_TEST_PREFERRED_SERVER_A_B_VECTOR)
     assert fallback is not None
     assert fallback.name == UNIT_TEST_SERVER_A
 
@@ -1171,7 +1184,7 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
 
     result = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-        preferred=["primary", "recovered", "degraded"],
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_RECOVERED_DEGRADED_VECTOR,
     )
 
     assert result.server == UNIT_TEST_RECOVERED_SERVER
@@ -1680,7 +1693,10 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     assert [item.server for item in before] == list(UNIT_TEST_SERVER_A_B_VECTOR)
     assert all(item.active is False for item in before)
 
-    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["b"])
+    await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=UNIT_TEST_PREFERRED_SERVER_B_VECTOR,
+    )
 
     after = manager.list_adapter_sessions()
     by_name = {item.server: item for item in after}
@@ -1700,8 +1716,14 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     manager.register("b", UNIT_TEST_SERVER_B_URL)
     manager.register("c", UNIT_TEST_SERVER_C_URL)
 
-    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["a"])
-    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["c"])
+    await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=UNIT_TEST_PREFERRED_SERVER_A_VECTOR,
+    )
+    await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=UNIT_TEST_PREFERRED_SERVER_C_VECTOR,
+    )
 
     active_only = manager.list_adapter_sessions(active_only=True)
     assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C]
@@ -1727,7 +1749,10 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert initial is not None
     assert initial.freshness == UNIT_TEST_FRESHNESS_UNKNOWN
 
-    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=[UNIT_TEST_NAT_SERVER])
+    await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
+    )
 
     recent = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert recent is not None
@@ -1761,7 +1786,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
 
     await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-        preferred=[UNIT_TEST_SERVER_A],
+        preferred=UNIT_TEST_PREFERRED_SERVER_A_VECTOR,
     )
 
     adapter = manager._adapter_with_session_controls()
@@ -1790,7 +1815,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
 
     first = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-        preferred=[UNIT_TEST_NAT_SERVER],
+        preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
     )
     assert isinstance(first.result, dict)
     first_session_id = first.result["structuredContent"]["session_id"]
@@ -1804,7 +1829,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
 
     second = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-        preferred=[UNIT_TEST_NAT_SERVER],
+        preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
     )
     assert isinstance(second.result, dict)
     second_session_id = second.result["structuredContent"]["session_id"]
@@ -1832,7 +1857,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     with pytest.raises(MCPInvocationError):
         await manager.invoke_tool(
             UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-            preferred=[UNIT_TEST_NAT_SERVER],
+            preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
         )
 
     first_diag = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
@@ -1843,7 +1868,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
 
     retry = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-        preferred=[UNIT_TEST_NAT_SERVER],
+        preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
     )
     assert retry.server == UNIT_TEST_NAT_SERVER
     assert isinstance(retry.result, dict)
@@ -1929,7 +1954,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
 
     result = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
-        preferred=["primary", "recovered", "degraded"],
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_RECOVERED_DEGRADED_VECTOR,
     )
 
     assert result.server == UNIT_TEST_RECOVERED_SERVER
