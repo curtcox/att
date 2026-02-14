@@ -646,6 +646,15 @@ def _unit_test_server_diagnostics(
     return diagnostics
 
 
+def _unit_test_adapter_session_diagnostics(
+    adapter: NATMCPTransportAdapter,
+    server_name: str,
+) -> Any:
+    diagnostics = adapter.session_diagnostics(server_name)
+    assert diagnostics is not None
+    return diagnostics
+
+
 def _assert_unit_test_server_diagnostics_freshness(
     manager: MCPClientManager,
     server_name: str,
@@ -1775,7 +1784,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     adapter = NATMCPTransportAdapter(session_factory=session_context)
     server = ExternalServer(name=UNIT_TEST_NAT_SERVER, url=UNIT_TEST_NAT_SERVER_URL)
 
-    before = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
+    before = _unit_test_adapter_session_diagnostics(adapter, UNIT_TEST_NAT_SERVER)
     _assert_unit_test_adapter_session_state_vector(
         before,
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
@@ -1791,7 +1800,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
         },
     )
 
-    after = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
+    after = _unit_test_adapter_session_diagnostics(adapter, UNIT_TEST_NAT_SERVER)
     _assert_unit_test_adapter_session_state_vector(
         after,
         UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
@@ -1800,7 +1809,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     invalidated = await adapter.invalidate_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
 
-    final = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
+    final = _unit_test_adapter_session_diagnostics(adapter, UNIT_TEST_NAT_SERVER)
     _assert_unit_test_adapter_session_state_vector(
         final,
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
