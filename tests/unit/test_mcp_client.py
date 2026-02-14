@@ -619,6 +619,13 @@ def _assert_unit_test_single_listed_session_server(
         _assert_unit_test_listed_adapter_session_state(listing[0], active=active)
 
 
+def _assert_unit_test_listed_adapter_session_servers(
+    listing: list[Any],
+    expected_servers: tuple[str, ...],
+) -> None:
+    assert [item.server for item in listing] == list(expected_servers)
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1770,7 +1777,10 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     manager.register("a", UNIT_TEST_SERVER_A_URL)
 
     before = manager.list_adapter_sessions()
-    assert [item.server for item in before] == list(UNIT_TEST_SERVER_A_B_VECTOR)
+    _assert_unit_test_listed_adapter_session_servers(
+        before,
+        UNIT_TEST_SERVER_A_B_VECTOR,
+    )
     assert all(item.active is False for item in before)
 
     await manager.invoke_tool(
@@ -1812,7 +1822,10 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     active_only = manager.list_adapter_sessions(active_only=True)
-    assert [item.server for item in active_only] == list(UNIT_TEST_SERVER_A_C_VECTOR)
+    _assert_unit_test_listed_adapter_session_servers(
+        active_only,
+        UNIT_TEST_SERVER_A_C_VECTOR,
+    )
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
     _assert_unit_test_single_listed_session_server(
@@ -1899,10 +1912,16 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     )
 
     stale = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_STALE)
-    assert [item.server for item in stale] == list(UNIT_TEST_SERVER_A_VECTOR)
+    _assert_unit_test_listed_adapter_session_servers(
+        stale,
+        UNIT_TEST_SERVER_A_VECTOR,
+    )
 
     unknown = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_UNKNOWN)
-    assert [item.server for item in unknown] == list(UNIT_TEST_SERVER_B_VECTOR)
+    _assert_unit_test_listed_adapter_session_servers(
+        unknown,
+        UNIT_TEST_SERVER_B_VECTOR,
+    )
 
     recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)
     assert recent == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
