@@ -9,6 +9,12 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Completed residual adapter request-id literal cleanup in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_NAT_INITIALIZE_REQUEST_ID`, `UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID`, and `UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID`.
+  - migrated remaining inline adapter request-id literals (`"init-1"`, `"init-notify"`, and `"resource-1"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Completed residual transport-fixture request literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_NAT_TOOL_REQUEST_ID`, `UNIT_TEST_HTTP_METHOD_POST`, and `UNIT_TEST_NAT_MCP_ENDPOINT`.
   - migrated remaining inline NAT transport fixture request literals (`"tool-1"`, `"POST"`, and `"http://nat.local/mcp"`) to constant-driven form in `tests/unit/test_mcp_client.py`.

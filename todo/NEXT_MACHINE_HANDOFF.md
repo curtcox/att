@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `c75728bc4fb3b3e4a6bf527ce77377718524250b`
-- Last commit: `c75728b 2026-02-13 18:21:44 -0600 - Add invalid payload error category`
+- HEAD: `2d06968ed53fcaf164dac9fefb0ac382936d8147`
+- Last commit: `2d06968 2026-02-13 18:23:46 -0600 - Update NAT transport test constants`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual adapter request-id literal cleanup in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_NAT_INITIALIZE_REQUEST_ID`, `UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID`, and `UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID`.
+  - migrated remaining inline adapter request-id literals (`"init-1"`, `"init-notify"`, and `"resource-1"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual transport-fixture request literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_NAT_TOOL_REQUEST_ID`, `UNIT_TEST_HTTP_METHOD_POST`, and `UNIT_TEST_NAT_MCP_ENDPOINT`.
@@ -38,12 +44,6 @@
 - Completed residual RPC error-message literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_RPC_DOWN`, `UNIT_TEST_ERROR_RPC_FAILURE`, and `UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX`.
   - migrated remaining inline RPC error payload message literals and adjacent assertion text (`"rpc down"`, `"rpc failure"`, and `"rpc error: rpc failure"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Completed residual transport-error literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_ERROR_PRIMARY_DOWN`, `UNIT_TEST_ERROR_INIT_DOWN`, and `UNIT_TEST_ERROR_HTTP_STATUS_503`.
-  - migrated remaining inline transport exception message literals (`"primary down"`, `"init down"`, and `"http status 503"`) plus adjacent assertion-side `"primary down"` comparison to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual adapter request-id literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining adapter request-id fixture text:
-   - migrate remaining inline adapter request-id literals in NAT transport adapter unit coverage (for example `"init-1"`, `"init-notify"`, and `"resource-1"`) to dedicated constants where this improves consistency without reducing readability.
+Continue `P12/P13` test-structure hardening by finishing residual NAT endpoint URL literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining NAT endpoint URL text:
+   - migrate remaining inline NAT endpoint URL literals in adapter unit coverage (for example `ExternalServer(..., url="http://nat.local")` and `manager.register("nat", "http://nat.local")`) to dedicated constants where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

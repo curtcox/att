@@ -90,6 +90,9 @@ UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX = "rpc error: rpc failure"
 UNIT_TEST_ERROR_TIMED_OUT = "timed out"
 UNIT_TEST_ERROR_BAD_PAYLOAD = "bad payload"
 UNIT_TEST_NAT_TOOL_REQUEST_ID = "tool-1"
+UNIT_TEST_NAT_INITIALIZE_REQUEST_ID = "init-1"
+UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID = "init-notify"
+UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID = "resource-1"
 UNIT_TEST_HTTP_METHOD_POST = "POST"
 UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
@@ -958,7 +961,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         server,
         {
             "jsonrpc": "2.0",
-            "id": "init-1",
+            "id": UNIT_TEST_NAT_INITIALIZE_REQUEST_ID,
             "method": "initialize",
             "params": {},
         },
@@ -970,7 +973,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         server,
         {
             "jsonrpc": "2.0",
-            "id": "init-notify",
+            "id": UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID,
             "method": "notifications/initialized",
             "params": {},
         },
@@ -993,7 +996,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         server,
         {
             "jsonrpc": "2.0",
-            "id": "resource-1",
+            "id": UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID,
             "method": "resources/read",
             "params": {"uri": UNIT_TEST_PROJECTS_URI},
         },
