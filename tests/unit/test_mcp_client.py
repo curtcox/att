@@ -35,6 +35,11 @@ UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR = (
     UNIT_TEST_TOOLS_CALL_METHOD,
     UNIT_TEST_RESOURCES_READ_METHOD,
 )
+UNIT_TEST_CLUSTER_NAT_FAILURE_EXHAUSTION_METHOD_MATRIX = (
+    (UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
+    (UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
+    (UNIT_TEST_RESOURCES_READ_METHOD, UNIT_TEST_RESOURCES_READ_METHOD),
+)
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -1571,11 +1576,7 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("method_key", "expected_method"),
-    [
-        (UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
-        (UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
-        (UNIT_TEST_RESOURCES_READ_METHOD, UNIT_TEST_RESOURCES_READ_METHOD),
-    ],
+    UNIT_TEST_CLUSTER_NAT_FAILURE_EXHAUSTION_METHOD_MATRIX,
 )
 async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     method_key: str,

@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `ef71bc377b4174596ab7f7230d14532b9d2e8e3c`
-- Last commit: `ef71bc3 2026-02-13 21:05:23 -0600 - Update test mcp client constants`
+- HEAD: `a7bc9f7f91219cd60fccd2aead7627f22ab77b33`
+- Last commit: `a7bc9f7 2026-02-13 21:07:42 -0600 - Extract cluster NAT method vector`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed repeated method-parametrize vector constant reuse in cluster NAT helper coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated cluster NAT `@pytest.mark.parametrize("method", [...])` callsites to the shared vector while keeping method-branch conditionals constant-driven.
+- Completed scripted failure-exhaustion matrix constant reuse in cluster NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_FAILURE_EXHAUSTION_METHOD_MATRIX` in `tests/unit/test_mcp_client.py`.
+  - migrated the scripted failure-exhaustion `("method_key", "expected_method")` parametrize matrix to the shared constant while keeping method-branch conditionals constant-driven.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by consolidating scripted matrix vectors in cluster NAT helper coverage:
-1. Reuse shared scripted matrix vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby cluster NAT tests:
-   - add a local unit-test constant for the scripted failure-exhaustion `("method_key", "expected_method")` matrix and migrate the remaining inline tuple vector in the cluster NAT section.
+Continue `P12/P13` test-structure hardening by consolidating small repeated parametrize vectors in cluster NAT helper coverage:
+1. Reuse shared small parametrize vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby cluster NAT tests:
+   - add local unit-test constants for repeated two-entry vectors (for example trigger/state matrices like `["stale_expiry", "degraded_status"]`) and migrate nearby inline parametrize lists in the cluster NAT section.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
