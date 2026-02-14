@@ -457,6 +457,19 @@ def _assert_unit_test_failure_script_progression(
     _assert_unit_test_failure_script_method_exhausted(factory, server, method)
 
 
+def _assert_unit_test_failure_script_consumed_actions_in_order(
+    factory: ClusterNatSessionFactory,
+    action_steps: tuple[tuple[str, str, str], ...],
+) -> None:
+    for server, method, expected_action in action_steps:
+        _assert_unit_test_failure_script_consumed_action(
+            factory,
+            server,
+            method,
+            expected_action,
+        )
+
+
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
@@ -1681,48 +1694,57 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
         UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
-    _assert_unit_test_failure_script_consumed_action(
+    _assert_unit_test_failure_script_consumed_actions_in_order(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
+        (
+            (
+                UNIT_TEST_PRIMARY_SERVER,
+                UNIT_TEST_INITIALIZE_METHOD,
+                UNIT_TEST_FAILURE_ACTION_TIMEOUT,
+            ),
+        ),
     )
     _assert_unit_test_failure_script_state_snapshot(
         factory,
         UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
-    _assert_unit_test_failure_script_consumed_action(
+    _assert_unit_test_failure_script_consumed_actions_in_order(
         factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_ACTION_ERROR,
+        (
+            (
+                UNIT_TEST_BACKUP_SERVER,
+                UNIT_TEST_TOOLS_CALL_METHOD,
+                UNIT_TEST_FAILURE_ACTION_ERROR,
+            ),
+        ),
     )
     _assert_unit_test_failure_script_state_snapshot(factory, UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR)
 
-    _assert_unit_test_failure_script_consumed_action(
+    _assert_unit_test_failure_script_consumed_actions_in_order(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
-        UNIT_TEST_FAILURE_ACTION_ERROR,
-    )
-    _assert_unit_test_failure_script_consumed_action(
-        factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_OK,
-    )
-    _assert_unit_test_failure_script_consumed_action(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_OK,
-    )
-    _assert_unit_test_failure_script_consumed_action(
-        factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_ACTION_OK,
+        (
+            (
+                UNIT_TEST_PRIMARY_SERVER,
+                UNIT_TEST_RESOURCES_READ_METHOD,
+                UNIT_TEST_FAILURE_ACTION_ERROR,
+            ),
+            (
+                UNIT_TEST_BACKUP_SERVER,
+                UNIT_TEST_INITIALIZE_METHOD,
+                UNIT_TEST_FAILURE_ACTION_OK,
+            ),
+            (
+                UNIT_TEST_PRIMARY_SERVER,
+                UNIT_TEST_INITIALIZE_METHOD,
+                UNIT_TEST_FAILURE_ACTION_OK,
+            ),
+            (
+                UNIT_TEST_BACKUP_SERVER,
+                UNIT_TEST_TOOLS_CALL_METHOD,
+                UNIT_TEST_FAILURE_ACTION_OK,
+            ),
+        ),
     )
 
     _assert_unit_test_failure_script_terminal_state(factory)

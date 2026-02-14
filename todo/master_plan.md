@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed failure-script setup helper reuse in nearby cluster NAT helper coverage:
-  - added local unit-test helper `_set_unit_test_failure_script(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated `set_failure_script(...)` setup blocks in nearby retry-window/reopen call-order tests to helper-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- [x] Completed failure-script setup/ordering helper reuse in nearby cluster NAT helper coverage:
+  - added local unit-test helpers `_set_unit_test_failure_script(...)` and `_assert_unit_test_failure_script_consumed_actions_in_order(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated `set_failure_script(...)` setup blocks in nearby retry-window/reopen call-order tests and repeated consumed-action ordering assertions in nearby validation tests to helper-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed failure-script setup+consume progression helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_progression(...)` in `tests/unit/test_mcp_client.py`.
