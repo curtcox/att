@@ -539,6 +539,16 @@ def _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(
     )
 
 
+def _set_unit_test_primary_timeout_ok_failure_script(
+    factory: ClusterNatSessionFactory,
+    method: str,
+) -> None:
+    _set_unit_test_failure_scripts(
+        factory,
+        _unit_test_primary_timeout_ok_setup_steps(method),
+    )
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -2111,10 +2121,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_scripts(
-        factory,
-        _unit_test_primary_timeout_ok_setup_steps(method),
-    )
+    _set_unit_test_primary_timeout_ok_failure_script(factory, method)
 
     async def invoke_once() -> object:
         if method == UNIT_TEST_RESOURCES_READ_METHOD:
@@ -2179,9 +2186,9 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_scripts(
+    _set_unit_test_primary_timeout_ok_failure_script(
         factory,
-        _unit_test_primary_timeout_ok_setup_steps(UNIT_TEST_RESOURCES_READ_METHOD),
+        UNIT_TEST_RESOURCES_READ_METHOD,
     )
 
     first = await manager.read_resource(
