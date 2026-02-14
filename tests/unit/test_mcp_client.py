@@ -204,6 +204,10 @@ UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_B_INACTIVE_A_STATES = (
     (UNIT_TEST_SERVER_B, True, True, True),
     (UNIT_TEST_SERVER_A, False, None, None),
 )
+UNIT_TEST_ADAPTER_SESSION_KEYED_INACTIVE_A_B_STATES = (
+    (UNIT_TEST_SERVER_A, False, None, None),
+    (UNIT_TEST_SERVER_B, False, None, None),
+)
 UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES = (
     (UNIT_TEST_SERVER_A, True, True, True),
     (UNIT_TEST_SERVER_C, True, True, True),
@@ -687,10 +691,6 @@ def _assert_unit_test_listed_adapter_session_servers(
     expected_servers: tuple[str, ...],
 ) -> None:
     assert [item.server for item in listing] == list(expected_servers)
-
-
-def _assert_unit_test_listed_adapter_sessions_inactive(listing: list[Any]) -> None:
-    assert all(item.active is False for item in listing)
 
 
 def _assert_unit_test_empty_adapter_session_listing(listing: list[Any]) -> None:
@@ -1867,11 +1867,11 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     manager.register("a", UNIT_TEST_SERVER_A_URL)
 
     before = manager.list_adapter_sessions()
-    _assert_unit_test_listed_adapter_session_servers(
+    _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
         before,
         UNIT_TEST_SERVER_A_B_VECTOR,
+        UNIT_TEST_ADAPTER_SESSION_KEYED_INACTIVE_A_B_STATES,
     )
-    _assert_unit_test_listed_adapter_sessions_inactive(before)
 
     await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
