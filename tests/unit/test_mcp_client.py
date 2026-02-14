@@ -502,9 +502,21 @@ def _assert_unit_test_failure_script_snapshot_after_consumed_action(
 ) -> None:
     _assert_unit_test_failure_script_snapshot_after_consumed_actions(
         factory,
-        ((server, method, expected_action),),
+        _unit_test_failure_script_single_action_steps(
+            server,
+            method,
+            expected_action,
+        ),
         backup_tools_call_vector,
     )
+
+
+def _unit_test_failure_script_single_action_steps(
+    server: str,
+    method: str,
+    expected_action: str,
+) -> tuple[tuple[str, str, str], ...]:
+    return ((server, method, expected_action),)
 
 
 def _assert_unit_test_failure_script_consumed_actions_in_order(
