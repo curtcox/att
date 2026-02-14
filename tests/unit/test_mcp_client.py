@@ -700,18 +700,6 @@ def _assert_unit_test_single_listed_session_freshness(
     _assert_unit_test_adapter_session_freshness(listing[0], expected_freshness)
 
 
-def _assert_unit_test_single_listed_session_server(
-    listing: list[Any],
-    expected_server: str,
-    *,
-    active: bool | None = None,
-) -> None:
-    assert len(listing) == 1
-    assert listing[0].server == expected_server
-    if active is not None:
-        _assert_unit_test_listed_adapter_session_state(listing[0], active=active)
-
-
 def _assert_unit_test_listed_adapter_session_servers(
     listing: list[Any],
     expected_servers: tuple[str, ...],
@@ -1946,9 +1934,9 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     limited = manager.list_adapter_sessions(limit=1)
-    _assert_unit_test_single_listed_session_server(
+    _assert_unit_test_listed_adapter_session_servers(
         limited,
-        UNIT_TEST_SERVER_C,
+        UNIT_TEST_SERVER_C_VECTOR,
     )
 
 
