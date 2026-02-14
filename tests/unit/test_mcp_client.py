@@ -99,6 +99,7 @@ UNIT_TEST_NAT_SERVER_URL = "http://nat.local"
 UNIT_TEST_SERVER_A_URL = "http://a.local"
 UNIT_TEST_SERVER_B_URL = "http://b.local"
 UNIT_TEST_SERVER_C_URL = "http://c.local"
+UNIT_TEST_CODEX_SERVER_URL = "http://codex.local"
 UNIT_TEST_TERMINAL_SERVER_URL = "http://terminal.local"
 UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS = 60
 UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS = 61
@@ -240,7 +241,7 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
         unreachable_after=2,
         now_provider=clock,
     )
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     await manager.health_check_server("codex")
     server = manager.get(UNIT_TEST_CODEX_SERVER)
@@ -497,7 +498,7 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
         }
 
     manager = MCPClientManager(transport=transport, max_initialization_age_seconds=0)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     await manager.initialize_server(UNIT_TEST_CODEX_SERVER)
     result = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
@@ -537,7 +538,7 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
         )
 
     manager = MCPClientManager(transport=transport)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     with pytest.raises(MCPInvocationError) as exc_info:
         await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
@@ -711,7 +712,7 @@ async def test_invocation_events_retention_is_bounded() -> None:
         }
 
     manager = MCPClientManager(transport=transport, max_invocation_events=3)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
@@ -751,7 +752,7 @@ async def test_initialize_server_updates_state_on_success() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     initialized = await manager.initialize_server(UNIT_TEST_CODEX_SERVER)
 
@@ -873,7 +874,7 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     result = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)
 
@@ -913,7 +914,7 @@ async def test_connect_server_runs_health_and_initialize() -> None:
         }
 
     manager = MCPClientManager(probe=probe, transport=transport)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     connected = await manager.connect_server("codex")
 
@@ -943,7 +944,7 @@ async def test_connect_server_skips_initialize_when_unreachable() -> None:
         }
 
     manager = MCPClientManager(probe=probe, transport=transport, unreachable_after=1)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     connected = await manager.connect_server("codex")
 
@@ -2237,7 +2238,7 @@ async def test_invocation_failure_records_correlation_id_on_connection_events() 
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("codex", "http://codex.local")
+    manager.register("codex", UNIT_TEST_CODEX_SERVER_URL)
 
     with pytest.raises(MCPInvocationError):
         await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME)

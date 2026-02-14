@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `0c3e152ef918c5d0ebb4935274455294c0a720fa`
-- Last commit: `0c3e152 2026-02-13 20:32:42 -0600 - Refactor MCP tests to use constant`
+- HEAD: `0a9b3203da07448ac317960c4bea5734e41952a0`
+- Last commit: `0a9b320 2026-02-13 20:39:35 -0600 - Normalize MCP test server urls`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual `terminal` endpoint URL literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_TERMINAL_SERVER_URL`.
-  - migrated remaining inline `manager.register("terminal", "http://terminal.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
+- Completed residual `codex` endpoint URL literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_CODEX_SERVER_URL`.
+  - migrated remaining inline `manager.register("codex", "http://codex.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual `codex` endpoint URL literal cleanup in unit MCP client coverage:
+Continue `P12/P13` test-structure hardening by finishing residual `github` endpoint URL literal cleanup in unit MCP client coverage:
 1. Reuse shared URL constants in `tests/unit/test_mcp_client.py` where this improves consistency in nearby adapter-session tests:
-   - add a local unit-test constant for the codex endpoint URL and migrate remaining inline `manager.register("codex", "http://codex.local")` setup usages to constant-driven form.
+   - add a local unit-test constant for the github endpoint URL and migrate remaining inline `manager.register("github", "http://github.local")` setup usages to constant-driven form.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
