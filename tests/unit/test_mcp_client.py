@@ -653,21 +653,13 @@ def _assert_unit_test_server_diagnostics_absent(
     assert manager.adapter_session_diagnostics(server_name) is None
 
 
-def _unit_test_adapter_session_diagnostics(
-    adapter: NATMCPTransportAdapter,
-    server_name: str,
-) -> Any:
-    diagnostics = adapter.session_diagnostics(server_name)
-    assert diagnostics is not None
-    return diagnostics
-
-
 def _assert_unit_test_adapter_session_diagnostics_state_vector(
     adapter: NATMCPTransportAdapter,
     server_name: str,
     expected_state: tuple[bool, bool, bool],
 ) -> Any:
-    diagnostics = _unit_test_adapter_session_diagnostics(adapter, server_name)
+    diagnostics = adapter.session_diagnostics(server_name)
+    assert diagnostics is not None
     _assert_unit_test_adapter_session_state_vector(diagnostics, expected_state)
     return diagnostics
 
