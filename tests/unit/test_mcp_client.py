@@ -95,6 +95,7 @@ UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID = "init-notify"
 UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID = "resource-1"
 UNIT_TEST_HTTP_METHOD_POST = "POST"
 UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
+UNIT_TEST_NAT_SERVER_URL = "http://nat.local"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -955,7 +956,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         yield session
 
     adapter = NATMCPTransportAdapter(session_factory=session_context)
-    server = ExternalServer(name="nat", url="http://nat.local")
+    server = ExternalServer(name="nat", url=UNIT_TEST_NAT_SERVER_URL)
 
     initialize = await adapter(
         server,
@@ -1020,7 +1021,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
         yield session
 
     adapter = NATMCPTransportAdapter(session_factory=session_context)
-    server = ExternalServer(name="nat", url="http://nat.local")
+    server = ExternalServer(name="nat", url=UNIT_TEST_NAT_SERVER_URL)
 
     before = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert before.active is False
@@ -1057,7 +1058,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
-    manager.register("nat", "http://nat.local")
+    manager.register("nat", UNIT_TEST_NAT_SERVER_URL)
 
     assert manager.supports_adapter_session_controls() is True
     diagnostics = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
@@ -1091,7 +1092,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
 @pytest.mark.asyncio
 async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> None:
     manager = MCPClientManager(transport_adapter=FakeNatSession())  # type: ignore[arg-type]
-    manager.register("nat", "http://nat.local")
+    manager.register("nat", UNIT_TEST_NAT_SERVER_URL)
 
     assert manager.supports_adapter_session_controls() is False
     assert manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER) is None
@@ -1153,7 +1154,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=300,
     )
-    manager.register("nat", "http://nat.local")
+    manager.register("nat", UNIT_TEST_NAT_SERVER_URL)
 
     initial = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert initial is not None
@@ -1211,7 +1212,7 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
-    manager.register("nat", "http://nat.local")
+    manager.register("nat", UNIT_TEST_NAT_SERVER_URL)
 
     first = await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
     assert isinstance(first.result, dict)
@@ -1246,7 +1247,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
         transport_adapter=NATMCPTransportAdapter(session_factory=session_context),
         max_backoff_seconds=0,
     )
-    manager.register("nat", "http://nat.local")
+    manager.register("nat", UNIT_TEST_NAT_SERVER_URL)
 
     with pytest.raises(MCPInvocationError):
         await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["nat"])
@@ -1298,7 +1299,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
         yield session
 
     adapter = NATMCPTransportAdapter(session_factory=session_context)
-    server = ExternalServer(name="nat", url="http://nat.local")
+    server = ExternalServer(name="nat", url=UNIT_TEST_NAT_SERVER_URL)
 
     with pytest.raises(MCPTransportError) as exc_info:
         await adapter(
