@@ -204,6 +204,16 @@ UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_B_INACTIVE_A_STATES = (
     (UNIT_TEST_SERVER_B, True, True, True),
     (UNIT_TEST_SERVER_A, False, None, None),
 )
+UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE = (
+    UNIT_TEST_FRESHNESS_UNKNOWN,
+    UNIT_TEST_FRESHNESS_ACTIVE_RECENT,
+    UNIT_TEST_FRESHNESS_STALE,
+)
+UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE = (UNIT_TEST_FRESHNESS_STALE,)
+UNIT_TEST_ADAPTER_SESSION_FILTER_FRESHNESS_SERVER_VECTORS = (
+    (UNIT_TEST_FRESHNESS_STALE, (UNIT_TEST_SERVER_A,)),
+    (UNIT_TEST_FRESHNESS_UNKNOWN, (UNIT_TEST_SERVER_B,)),
+)
 UNIT_TEST_SESSION_CALL_ENTRY_LABEL = "session"
 UNIT_TEST_TOOL_CALL_ENTRY_LABEL = "tool"
 UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL = "resource"
@@ -1884,7 +1894,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert initial is not None
     _assert_unit_test_adapter_session_freshness(
         initial,
-        UNIT_TEST_FRESHNESS_UNKNOWN,
+        UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE[0],
     )
 
     await manager.invoke_tool(
@@ -1897,7 +1907,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert recent.active is True
     _assert_unit_test_adapter_session_freshness(
         recent,
-        UNIT_TEST_FRESHNESS_ACTIVE_RECENT,
+        UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE[1],
     )
 
     adapter = manager._adapter_with_session_controls()
@@ -1910,13 +1920,13 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert stale is not None
     _assert_unit_test_adapter_session_freshness(
         stale,
-        UNIT_TEST_FRESHNESS_STALE,
+        UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE[2],
     )
 
     listing = manager.list_adapter_sessions(server_name=UNIT_TEST_NAT_SERVER)
     _assert_unit_test_single_listed_session_freshness(
         listing,
-        UNIT_TEST_FRESHNESS_STALE,
+        UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE[0],
     )
 
 
@@ -1941,17 +1951,12 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
         seconds=UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS,
     )
 
-    stale = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_STALE)
-    _assert_unit_test_listed_adapter_session_servers(
-        stale,
-        UNIT_TEST_SERVER_A_VECTOR,
-    )
-
-    unknown = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_UNKNOWN)
-    _assert_unit_test_listed_adapter_session_servers(
-        unknown,
-        UNIT_TEST_SERVER_B_VECTOR,
-    )
+    for freshness, expected_servers in UNIT_TEST_ADAPTER_SESSION_FILTER_FRESHNESS_SERVER_VECTORS:
+        filtered = manager.list_adapter_sessions(freshness=freshness)
+        _assert_unit_test_listed_adapter_session_servers(
+            filtered,
+            expected_servers,
+        )
 
     recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)
     _assert_unit_test_empty_adapter_session_listing(recent)
