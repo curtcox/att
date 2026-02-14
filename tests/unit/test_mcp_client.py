@@ -533,9 +533,9 @@ def _set_unit_test_failure_scripts(
 def _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(
     factory: ClusterNatSessionFactory,
 ) -> None:
-    _set_unit_test_primary_initialize_failure_script(
+    _set_unit_test_failure_scripts(
         factory,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR,
+        UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS,
     )
 
 
