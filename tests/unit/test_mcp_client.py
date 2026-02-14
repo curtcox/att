@@ -331,6 +331,26 @@ UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS = (
         UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR,
     ),
 )
+UNIT_TEST_FAILURE_SCRIPT_ORDER_VALIDATION_PROGRESSION_STEPS = (
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR,
+        UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_ACTION_VECTOR,
+    ),
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
+    ),
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
+    ),
+)
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
@@ -610,6 +630,20 @@ def _assert_unit_test_failure_script_progression(
             server,
             method,
             expected_action,
+        )
+
+
+def _assert_unit_test_failure_script_progressions(
+    factory: ClusterNatSessionFactory,
+    progression_steps: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...],
+) -> None:
+    for server, method, setup_vector, consumed_actions in progression_steps:
+        _assert_unit_test_failure_script_progression(
+            factory,
+            server,
+            method,
+            setup_vector,
+            consumed_actions,
         )
 
 
@@ -1858,28 +1892,9 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
 def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory = ClusterNatSessionFactory()
 
-    _assert_unit_test_failure_script_progression(
+    _assert_unit_test_failure_script_progressions(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR,
-        UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_ACTION_VECTOR,
-    )
-
-    _assert_unit_test_failure_script_progression(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-        UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
-    )
-
-    _assert_unit_test_failure_script_progression(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-        UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
+        UNIT_TEST_FAILURE_SCRIPT_ORDER_VALIDATION_PROGRESSION_STEPS,
     )
 
     _set_unit_test_primary_initialize_failure_script(
