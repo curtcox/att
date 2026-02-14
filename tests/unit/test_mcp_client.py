@@ -2070,9 +2070,11 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
 
     async def invoke_once() -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
-        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary"])
+        return await _invoke_unit_test_method_with_preferred(
+            manager,
+            method,
+            preferred=["primary"],
+        )
 
     first = await invoke_once()
     second = await invoke_once()
@@ -2124,9 +2126,11 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
 
     async def invoke_once() -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
-        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary"])
+        return await _invoke_unit_test_method_with_preferred(
+            manager,
+            method,
+            preferred=["primary"],
+        )
 
     first = await invoke_once()
     assert first.server == UNIT_TEST_PRIMARY_SERVER
@@ -2173,13 +2177,9 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     _set_unit_test_primary_timeout_ok_failure_script(factory, method)
 
     async def invoke_once() -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(
-                UNIT_TEST_PROJECTS_URI,
-                preferred=["primary", "backup"],
-            )
-        return await manager.invoke_tool(
-            UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        return await _invoke_unit_test_method_with_preferred(
+            manager,
+            method,
             preferred=["primary", "backup"],
         )
 
