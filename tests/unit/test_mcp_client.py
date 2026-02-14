@@ -27,6 +27,7 @@ UNIT_TEST_TIMEOUT_ERROR_CATEGORY = "network_timeout"
 UNIT_TEST_TRANSPORT_ERROR_CATEGORY = "transport_error"
 UNIT_TEST_RPC_ERROR_CATEGORY = "rpc_error"
 UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY = "http_status"
+UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY = "invalid_payload"
 UNIT_TEST_INITIALIZE_METHOD = "initialize"
 UNIT_TEST_TOOLS_CALL_METHOD = "tools/call"
 UNIT_TEST_RESOURCES_READ_METHOD = "resources/read"
@@ -82,6 +83,7 @@ UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE = "primary unavailable"
 UNIT_TEST_ERROR_PRIMARY_DOWN = "primary down"
 UNIT_TEST_ERROR_INIT_DOWN = "init down"
 UNIT_TEST_ERROR_HTTP_STATUS_503 = "http status 503"
+UNIT_TEST_ERROR_BAD_STATUS = "bad status"
 UNIT_TEST_ERROR_RPC_DOWN = "rpc down"
 UNIT_TEST_ERROR_RPC_FAILURE = "rpc failure"
 UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX = "rpc error: rpc failure"
@@ -1260,19 +1262,22 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
 @pytest.mark.parametrize(
     ("failure", "category"),
     [
-        (httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT), "network_timeout"),
+        (
+            httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT),
+            UNIT_TEST_TIMEOUT_ERROR_CATEGORY,
+        ),
         (
             httpx.HTTPStatusError(
-                "bad status",
+                UNIT_TEST_ERROR_BAD_STATUS,
                 request=httpx.Request("POST", "http://nat.local/mcp"),
                 response=httpx.Response(
                     503,
                     request=httpx.Request("POST", "http://nat.local/mcp"),
                 ),
             ),
-            "http_status",
+            UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY,
         ),
-        (ValueError(UNIT_TEST_ERROR_BAD_PAYLOAD), "invalid_payload"),
+        (ValueError(UNIT_TEST_ERROR_BAD_PAYLOAD), UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY),
     ],
 )
 async def test_nat_transport_adapter_category_mapping_parity(
