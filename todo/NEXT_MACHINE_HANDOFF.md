@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `87c9abc7055334a844aea8d4bc5d3fb24d722269`
-- Last commit: `87c9abc 2026-02-14 14:40:42 -0600 - Consolidate manager adapter session state assertions`
+- HEAD: `cc1eb8c853f8aedd7553dd6d2d96cb733e1a003e`
+- Last commit: `cc1eb8c 2026-02-14 14:46:37 -0600 - Simplify manager adapter-session initialized assertions`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -22,7 +22,7 @@
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
 - Completed limited-list adapter-session combined helper assertion reuse in NAT filter/freshness coverage:
-  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit`, freshness-filter stale/unknown assertions in `test_manager_list_adapter_sessions_supports_freshness_filter`, active-recent diagnostics freshness+state checks in `test_manager_adapter_session_freshness_semantics`, and invalidate/refresh state checks (including redundant direct `initialized` assertions) in `test_manager_adapter_session_controls_invalidate_and_refresh` from split/server-only assertions to combined helpers (`_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)`, `_assert_unit_test_server_diagnostics_freshness_and_state_vector(...)`, `_assert_unit_test_server_diagnostics_state_vector(...)`) using keyed-state vectors (existing `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` plus freshness vectors) in `tests/unit/test_mcp_client.py`.
+  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit`, freshness-filter stale/unknown assertions in `test_manager_list_adapter_sessions_supports_freshness_filter`, active-recent diagnostics freshness+state checks in `test_manager_adapter_session_freshness_semantics`, invalidate/refresh state checks (including redundant direct `initialized` assertions) in `test_manager_adapter_session_controls_invalidate_and_refresh`, and the redundant refresh-result non-`None` assertion in `test_refresh_adapter_session_recreates_underlying_session_identity` to combined helper-driven state checks (`_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)`, `_assert_unit_test_server_diagnostics_freshness_and_state_vector(...)`, `_assert_unit_test_server_diagnostics_state_vector(...)`) using keyed-state vectors (existing `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` plus freshness vectors) in `tests/unit/test_mcp_client.py`.
   - preserved server-order semantics, active-session state semantics, timeout-category regression coverage, invocation-event/connection-event filter behavior, and call-order/subsequence behavior unchanged.
   - addressed the `todo/master_plan.md` guardrail (`<=1300` lines) by compacting the newest status entry without changing delivered meaning.
 

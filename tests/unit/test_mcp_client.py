@@ -2071,11 +2071,15 @@ async def test_refresh_adapter_session_recreates_underlying_session_identity() -
     first_session_id = first.result["structuredContent"]["session_id"]
     assert first_session_id == UNIT_TEST_SESSION_ID_FIRST
 
-    refreshed = await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
-    assert refreshed is not None
+    await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
     assert factory.created == 2
     assert factory.closed == 1
     assert factory.sessions[0] is not factory.sessions[1]
+    _assert_unit_test_server_diagnostics_state_vector(
+        manager,
+        UNIT_TEST_NAT_SERVER,
+        UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
+    )
 
     second = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
