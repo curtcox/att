@@ -1866,14 +1866,20 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     invalidated = await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
     assert factory.closed == 1
-    server = manager.get(UNIT_TEST_NAT_SERVER)
-    assert server is not None
-    assert server.initialized is False
+    _assert_unit_test_server_diagnostics_state_vector(
+        manager,
+        UNIT_TEST_NAT_SERVER,
+        UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
+    )
 
     refreshed = await manager.refresh_adapter_session(UNIT_TEST_NAT_SERVER)
     assert refreshed is not None
-    assert refreshed.initialized is True
     assert factory.created == 2
+    _assert_unit_test_server_diagnostics_state_vector(
+        manager,
+        UNIT_TEST_NAT_SERVER,
+        UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
+    )
 
 
 @pytest.mark.asyncio
