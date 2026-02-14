@@ -430,6 +430,15 @@ def _assert_unit_test_failure_script_consumed_action(
     assert factory.consume_failure_action(server, method) == expected_action
 
 
+def _set_unit_test_failure_script(
+    factory: ClusterNatSessionFactory,
+    server: str,
+    method: str,
+    setup_vector: tuple[str, ...],
+) -> None:
+    factory.set_failure_script(server, method, list(setup_vector))
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -437,7 +446,7 @@ def _assert_unit_test_failure_script_progression(
     setup_vector: tuple[str, ...],
     consumed_actions: tuple[str, ...],
 ) -> None:
-    factory.set_failure_script(server, method, list(setup_vector))
+    _set_unit_test_failure_script(factory, server, method, setup_vector)
     for expected_action in consumed_actions:
         _assert_unit_test_failure_script_consumed_action(
             factory,
@@ -1634,10 +1643,11 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         (UNIT_TEST_FAILURE_ACTION_OK,),
     )
 
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR,
     )
     with pytest.raises(ValueError, match="unsupported scripted action"):
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
@@ -1646,25 +1656,29 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
 def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> None:
     factory = ClusterNatSessionFactory()
 
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
     )
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_RESOURCES_READ_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR,
     )
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_BACKUP_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
     )
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_BACKUP_SERVER,
         UNIT_TEST_TOOLS_CALL_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
     _assert_unit_test_failure_script_consumed_action(
@@ -1734,24 +1748,27 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
 
     if method_key == UNIT_TEST_INITIALIZE_METHOD:
         factory.fail_on_timeout_initialize.add(UNIT_TEST_PRIMARY_SERVER)
-        factory.set_failure_script(
+        _set_unit_test_failure_script(
+            factory,
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_INITIALIZE_METHOD,
-            list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
+            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
         )
     elif method_key == UNIT_TEST_TOOLS_CALL_METHOD:
         factory.fail_on_timeout_tool_calls.add(UNIT_TEST_PRIMARY_SERVER)
-        factory.set_failure_script(
+        _set_unit_test_failure_script(
+            factory,
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_TOOLS_CALL_METHOD,
-            list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
+            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
         )
     else:
         factory.fail_on_timeout_resource_reads.add(UNIT_TEST_PRIMARY_SERVER)
-        factory.set_failure_script(
+        _set_unit_test_failure_script(
+            factory,
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_RESOURCES_READ_METHOD,
-            list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
+            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
         )
 
     if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
@@ -1817,15 +1834,17 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_TOOLS_CALL_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
     )
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_BACKUP_SERVER,
         UNIT_TEST_RESOURCES_READ_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
     )
 
     first = await manager.invoke_tool(
@@ -1957,10 +1976,11 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         method,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
     )
 
     async def invoke_once() -> object:
@@ -2026,10 +2046,11 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_RESOURCES_READ_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
     )
 
     first = await manager.read_resource(
@@ -2090,10 +2111,11 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(
+        (
             UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR
             if primary_failures == 1
             else UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR
@@ -2175,10 +2197,11 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR,
     )
 
     async def invoke_once(preferred: list[str]) -> object:
@@ -2236,10 +2259,11 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR,
     )
 
     async def invoke_once(preferred: list[str]) -> object:
@@ -2325,15 +2349,17 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     assert primary.status is ServerStatus.UNREACHABLE
     assert backup.status is ServerStatus.UNREACHABLE
 
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         expected_first,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
     )
-    factory.set_failure_script(
+    _set_unit_test_failure_script(
+        factory,
         expected_second,
         UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
     )
 
     async def invoke_once() -> object:
