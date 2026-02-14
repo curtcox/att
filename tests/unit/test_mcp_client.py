@@ -559,6 +559,16 @@ def _set_unit_test_primary_ok_failure_script(
     )
 
 
+def _set_unit_test_primary_initialize_timeout_failure_script(
+    factory: ClusterNatSessionFactory,
+    primary_failures: int,
+) -> None:
+    _set_unit_test_failure_scripts(
+        factory,
+        _unit_test_primary_initialize_timeout_setup_steps(primary_failures),
+    )
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -2250,10 +2260,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_scripts(
-        factory,
-        _unit_test_primary_initialize_timeout_setup_steps(primary_failures),
-    )
+    _set_unit_test_primary_initialize_timeout_failure_script(factory, primary_failures)
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == UNIT_TEST_RESOURCES_READ_METHOD:
