@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `aa8191ed47e297fa1e1e6bc776abd7f89cc9f7d7`
-- Last commit: `aa8191e 2026-02-14 08:26:18 -0600 - Refresh handoff snapshot metadata`
-- Working tree at handoff creation: dirty
+- HEAD: `7ceab16e3e2aa462e18a9d09a32989f411c59f22`
+- Last commit: `7ceab16 2026-02-14 08:31:41 -0600 - Consolidate NAT failure-script setup sequences`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
