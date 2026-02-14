@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `e60d198df113aa3074459bf59d506ebaf5ab3fd4`
-- Last commit: `e60d198 2026-02-13 18:14:46 -0600 - Refine mcp client error trace test`
+- HEAD: `a9403fe189937adf2b5862d33b54f5ad2adf2949`
+- Last commit: `a9403fe 2026-02-13 18:16:50 -0600 - Update RPC error assertions`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual transport-category fixture literal cleanup in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_ERROR_TIMED_OUT` and `UNIT_TEST_ERROR_BAD_PAYLOAD`.
+  - migrated remaining inline fixture message literals in transport mapping coverage (`httpx.ReadTimeout("timed out")` and `ValueError("bad payload")`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual RPC error-message literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_RPC_DOWN`, `UNIT_TEST_ERROR_RPC_FAILURE`, and `UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX`.
@@ -46,12 +52,6 @@
   - migrated direct probe-result literals (`"timeout"` and `"temporary"`) plus adjacent assertion-side `"timeout"` comparison in health-check probe coverage to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Completed residual manual-degrade health error literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_ERROR_MANUAL_DEGRADE`.
-  - migrated the remaining inline `record_check_result(..., error="manual degrade")` path in `tests/unit/test_mcp_client.py` to constant-driven form.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended health-check error-message constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_DOWN`, `UNIT_TEST_ERROR_SLOW`, `UNIT_TEST_ERROR_HOLD_BACKUP`, and `UNIT_TEST_ERROR_HOLD_PRIMARY`.
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual transport-category fixture literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining category-fixture literal text:
-   - migrate remaining inline category-fixture literals in transport mapping coverage (for example `httpx.ReadTimeout("timed out")` and `ValueError("bad payload")`) to dedicated `UNIT_TEST_ERROR_*` constants where this improves consistency without reducing readability.
+Continue `P12/P13` test-structure hardening by finishing residual transport-category mapping literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining category-mapping literal text:
+   - migrate remaining inline mapping literals in transport category parity coverage (for example `httpx.HTTPStatusError("bad status", ...)` and category labels `"network_timeout"`, `"http_status"`, `"invalid_payload"`) to dedicated constants where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

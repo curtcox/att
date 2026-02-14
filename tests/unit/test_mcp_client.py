@@ -85,6 +85,8 @@ UNIT_TEST_ERROR_HTTP_STATUS_503 = "http status 503"
 UNIT_TEST_ERROR_RPC_DOWN = "rpc down"
 UNIT_TEST_ERROR_RPC_FAILURE = "rpc failure"
 UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX = "rpc error: rpc failure"
+UNIT_TEST_ERROR_TIMED_OUT = "timed out"
+UNIT_TEST_ERROR_BAD_PAYLOAD = "bad payload"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -1229,7 +1231,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     async def session_context(endpoint: str) -> Any:
         async with factory(endpoint) as session:
             if session.session_id == "session-1":
-                session.fail_with = httpx.ReadTimeout("timed out")
+                session.fail_with = httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT)
             yield session
 
     manager = MCPClientManager(
@@ -1258,7 +1260,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
 @pytest.mark.parametrize(
     ("failure", "category"),
     [
-        (httpx.ReadTimeout("timed out"), "network_timeout"),
+        (httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT), "network_timeout"),
         (
             httpx.HTTPStatusError(
                 "bad status",
@@ -1270,7 +1272,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
             ),
             "http_status",
         ),
-        (ValueError("bad payload"), "invalid_payload"),
+        (ValueError(UNIT_TEST_ERROR_BAD_PAYLOAD), "invalid_payload"),
     ],
 )
 async def test_nat_transport_adapter_category_mapping_parity(
