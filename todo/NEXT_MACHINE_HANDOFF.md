@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `da7312c9c2908c53c409973811df97e42b052369`
-- Last commit: `da7312c 2026-02-14 08:03:49 -0600 - Refresh handoff snapshot metadata`
-- Working tree at handoff creation: dirty
+- HEAD: `9d9d747bebb6ba1946a8b5d1504814794be9fff2`
+- Last commit: `9d9d747 2026-02-14 08:12:56 -0600 - Reuse NAT progression consumed-action vectors`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
