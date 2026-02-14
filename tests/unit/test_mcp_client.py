@@ -312,6 +312,18 @@ UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SETUP_STEPS = (
         UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     ),
 )
+UNIT_TEST_FAILURE_SCRIPT_MIXED_FAILOVER_SETUP_STEPS = (
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
+    ),
+    (
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
+    ),
+)
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
@@ -575,6 +587,24 @@ def _unit_test_failure_script_single_action_steps(
     expected_action: str,
 ) -> tuple[tuple[str, str, str], ...]:
     return ((server, method, expected_action),)
+
+
+def _unit_test_failure_script_reopen_setup_steps(
+    first_server: str,
+    second_server: str,
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return (
+        (
+            first_server,
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
+        ),
+        (
+            second_server,
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        ),
+    )
 
 
 def _assert_unit_test_failure_script_consumed_actions_in_order(
@@ -1906,18 +1936,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
-    _set_unit_test_failure_script(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
-    )
-    _set_unit_test_failure_script(
-        factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
-    )
+    _set_unit_test_failure_scripts(factory, UNIT_TEST_FAILURE_SCRIPT_MIXED_FAILOVER_SETUP_STEPS)
 
     first = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
@@ -2421,17 +2440,9 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     assert primary.status is ServerStatus.UNREACHABLE
     assert backup.status is ServerStatus.UNREACHABLE
 
-    _set_unit_test_failure_script(
+    _set_unit_test_failure_scripts(
         factory,
-        expected_first,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR,
-    )
-    _set_unit_test_failure_script(
-        factory,
-        expected_second,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        _unit_test_failure_script_reopen_setup_steps(expected_first, expected_second),
     )
 
     async def invoke_once() -> object:
