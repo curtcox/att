@@ -1,10 +1,10 @@
 # Next Machine Handoff
 
 ## Snapshot
-- Date: `2026-02-13`
+- Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `69c0a5bbda863792093449a09964dd4d8c386758`
-- Last commit: `69c0a5b 2026-02-13 21:33:12 -0600 - Latest changes`
+- HEAD: `54f8ecc7cfd9df378eb1d5444868bc073930e831`
+- Last commit: `54f8ecc 2026-02-13 22:30:40 -0600 - Add NAT test failure-script vector constants`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,25 +17,21 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed reopen initialize-start server-order expected-vector constant reuse in NAT helper coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_REOPEN_INITIALIZE_START_SERVER_ORDERS` in `tests/unit/test_mcp_client.py`.
-  - migrated inline expected initialize-start server order assertion in `test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candidates` to constant-driven form.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed failure-script state-check helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_state_snapshot(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated failure-script state-check assertion blocks in `test_cluster_nat_failure_script_isolation_across_servers_and_methods` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- Completed timeout-script action vector constant reuse in nearby cluster NAT helper coverage:
-  - added local unit-test constants `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR`, `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR`, and `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated remaining inline timeout-script setup vectors in nearby cluster NAT helper tests to constant-driven form (mixed scripted failover, retry-window re-entry, resource retry re-entry, unreachable/reopen paths, and failure-script isolation).
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated post-exhaustion consume-state assertions (`is None`) in `test_cluster_nat_failure_script_isolation_across_servers_and_methods` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- Completed non-timeout failure-script action vector constant reuse in nearby cluster NAT helper coverage:
-  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated remaining inline non-timeout failure-script setup vectors (`"ok"`, `"error"`, and `"error"+"ok"`) in nearby cluster NAT helper tests to constant-driven form.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed single-method failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_method_exhausted(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated single-method post-exhaustion consume-state assertions in `test_cluster_nat_failure_script_order_and_validation` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- Completed unsupported-action failure-script setup vector constant reuse in nearby cluster NAT helper validation coverage:
-  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated remaining inline unsupported-action setup vector (`"invalid"`) in failure-script validation coverage to constant-driven form.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed non-terminal failure-script consume-action helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_consumed_action(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated non-terminal consume-action assertions in `test_cluster_nat_failure_script_order_and_validation` and `test_cluster_nat_failure_script_isolation_across_servers_and_methods` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:
   - added local unit-test constant `UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX` in `tests/unit/test_mcp_client.py`.
@@ -197,7 +193,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - add local unit-test constants for remaining inline mixed-action failure-script setup vectors in nearby failure-script validation tests (e.g., `"ok"`, `"timeout"`, `"error"` sequence) and migrate those setup vectors to constant-driven form.
+   - add local unit-test helper assertions for remaining repeated failure-script setup+consume progression checks in nearby validation tests and migrate those repeated assertion blocks to helper-driven form.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

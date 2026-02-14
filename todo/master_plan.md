@@ -39,33 +39,26 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - migrated remaining inline non-timeout failure-script setup vectors (`"ok"`, `"error"`, and `"error"+"ok"`) in nearby cluster NAT helper tests to constant-driven form.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- [x] Completed unsupported-action failure-script setup vector constant reuse in nearby cluster NAT helper validation coverage:
-  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated remaining inline unsupported-action setup vector (`"invalid"`) in failure-script validation coverage to constant-driven form.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- [x] Completed failure-script state-check helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_state_snapshot(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated failure-script state-check assertion blocks in `test_cluster_nat_failure_script_isolation_across_servers_and_methods` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated post-exhaustion consume-state assertions (`is None`) in `test_cluster_nat_failure_script_isolation_across_servers_and_methods` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed single-method failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_method_exhausted(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated single-method post-exhaustion consume-state assertions in `test_cluster_nat_failure_script_order_and_validation` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed non-terminal failure-script consume-action helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_consumed_action(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated non-terminal consume-action assertions in `test_cluster_nat_failure_script_order_and_validation` and `test_cluster_nat_failure_script_isolation_across_servers_and_methods` to helper-driven form while keeping setup literals and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:
   - added local unit-test constant `UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX` in `tests/unit/test_mcp_client.py`.
   - migrated the inline `("failure", "category")` parametrize matrix in `test_nat_transport_adapter_category_mapping_parity` to constant-driven form.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual transport-category fixture literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_ERROR_TIMED_OUT` and `UNIT_TEST_ERROR_BAD_PAYLOAD`.
-  - migrated remaining inline fixture message literals in transport mapping coverage (`httpx.ReadTimeout("timed out")` and `ValueError("bad payload")`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual RPC error-message literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_ERROR_RPC_DOWN`, `UNIT_TEST_ERROR_RPC_FAILURE`, and `UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX`.
-  - migrated remaining inline RPC error payload message literals and adjacent assertion text (`"rpc down"`, `"rpc failure"`, and `"rpc error: rpc failure"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual transport-error literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_ERROR_PRIMARY_DOWN`, `UNIT_TEST_ERROR_INIT_DOWN`, and `UNIT_TEST_ERROR_HTTP_STATUS_503`.
-  - migrated remaining inline transport exception message literals (`"primary down"`, `"init down"`, and `"http status 503"`) plus adjacent assertion-side `"primary down"` comparison to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - [x] Completed residual invoke/failover transport error literal cleanup in unit MCP client coverage:

@@ -241,6 +241,7 @@ UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR = ("error", "ok")
 UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR = ("invalid",)
+UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR = ("ok", "timeout", "error")
 UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR = ("timeout",)
 UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR = ("timeout", "ok")
 UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR = ("timeout", "timeout", "ok")
@@ -373,6 +374,60 @@ def _assert_unit_test_reopen_slice(
         (expected_server, UNIT_TEST_INITIALIZE_METHOD),
         (expected_server, method),
     ]
+
+
+def _assert_unit_test_failure_script_state_snapshot(
+    factory: ClusterNatSessionFactory,
+    backup_tools_call_vector: tuple[str, ...],
+) -> None:
+    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
+    assert factory.failure_scripts[
+        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
+    ] == list(UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR)
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    )
+    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == list(
+        backup_tools_call_vector
+    )
+
+
+def _assert_unit_test_failure_script_terminal_state(
+    factory: ClusterNatSessionFactory,
+) -> None:
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
+        is None
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
+        is None
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD) is None
+    )
+    assert (
+        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD) is None
+    )
+
+
+def _assert_unit_test_failure_script_method_exhausted(
+    factory: ClusterNatSessionFactory,
+    server: str,
+    method: str,
+) -> None:
+    assert factory.consume_failure_action(server, method) is None
+
+
+def _assert_unit_test_failure_script_consumed_action(
+    factory: ClusterNatSessionFactory,
+    server: str,
+    method: str,
+    expected_action: str,
+) -> None:
+    assert factory.consume_failure_action(server, method) == expected_action
 
 
 @pytest.mark.asyncio
@@ -1536,23 +1591,30 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory.set_failure_script(
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        ["ok", "timeout", "error"],
+        list(UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR),
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_OK
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_TIMEOUT
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_ERROR
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_ERROR,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        is None
+    _assert_unit_test_failure_script_method_exhausted(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
     )
 
     factory.set_failure_script(
@@ -1560,13 +1622,16 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_TOOLS_CALL_METHOD,
         list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_OK
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
-        is None
+    _assert_unit_test_failure_script_method_exhausted(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
     )
 
     factory.set_failure_script(
@@ -1574,13 +1639,16 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_RESOURCES_READ_METHOD,
         list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_OK
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-        is None
+    _assert_unit_test_failure_script_method_exhausted(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
     )
 
     factory.set_failure_script(
@@ -1616,72 +1684,51 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
         list(UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR),
     )
 
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_TIMEOUT
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
     )
-    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
-    )
-    assert factory.failure_scripts[
-        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-    ] == list(UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR)
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
-    )
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == [
-        "error",
-        "ok",
-    ]
-
-    assert (
-        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_ERROR
-    )
-    assert factory.failure_scripts[(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
-    )
-    assert factory.failure_scripts[
-        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-    ] == list(UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR)
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)] == list(
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
-    )
-    assert factory.failure_scripts[(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)] == list(
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR
+    _assert_unit_test_failure_script_state_snapshot(
+        factory,
+        UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_ERROR
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_ACTION_ERROR,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_OK
+    _assert_unit_test_failure_script_state_snapshot(factory, UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR)
+
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_ACTION_ERROR,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_OK
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
     )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD)
-        == UNIT_TEST_FAILURE_ACTION_OK
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
+    )
+    _assert_unit_test_failure_script_consumed_action(
+        factory,
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
     )
 
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
-        is None
-    )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD)
-        is None
-    )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_INITIALIZE_METHOD) is None
-    )
-    assert (
-        factory.consume_failure_action(UNIT_TEST_BACKUP_SERVER, UNIT_TEST_TOOLS_CALL_METHOD) is None
-    )
+    _assert_unit_test_failure_script_terminal_state(factory)
 
 
 @pytest.mark.asyncio
