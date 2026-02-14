@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed preferred-order reopen matrix constant reuse in cluster NAT simultaneous-unreachable coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_PREFERRED_REOPEN_MATRIX` in `tests/unit/test_mcp_client.py`.
-  - migrated the inline simultaneous-unreachable preferred-order parametrize matrix (`["primary","backup"]`/`["backup","primary"]`) to the shared constant while preserving expected-first/expected-second semantics.
+- [x] Completed unreachable-after/status matrix constant reuse in cluster NAT retry-window gating coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_UNREACHABLE_AFTER_STATUS_MATRIX` in `tests/unit/test_mcp_client.py`.
+  - migrated the inline two-entry `("unreachable_after", "expected_status")` parametrize list (`(3, ServerStatus.DEGRADED)`, `(1, ServerStatus.UNREACHABLE)`) to the shared constant.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 

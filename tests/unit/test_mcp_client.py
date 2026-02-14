@@ -44,6 +44,10 @@ UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX = (
     (1, ServerStatus.DEGRADED),
     (2, ServerStatus.UNREACHABLE),
 )
+UNIT_TEST_CLUSTER_NAT_UNREACHABLE_AFTER_STATUS_MATRIX = (
+    (3, ServerStatus.DEGRADED),
+    (1, ServerStatus.UNREACHABLE),
+)
 UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR = (
     "stale_expiry",
     "degraded_status",
@@ -1832,10 +1836,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
 @pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize(
     ("unreachable_after", "expected_status"),
-    [
-        (3, ServerStatus.DEGRADED),
-        (1, ServerStatus.UNREACHABLE),
-    ],
+    UNIT_TEST_CLUSTER_NAT_UNREACHABLE_AFTER_STATUS_MATRIX,
 )
 async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_order(
     method: str,
