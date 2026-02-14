@@ -662,6 +662,16 @@ def _unit_test_adapter_session_diagnostics(
     return diagnostics
 
 
+def _assert_unit_test_adapter_session_diagnostics_state_vector(
+    adapter: NATMCPTransportAdapter,
+    server_name: str,
+    expected_state: tuple[bool, bool, bool],
+) -> Any:
+    diagnostics = _unit_test_adapter_session_diagnostics(adapter, server_name)
+    _assert_unit_test_adapter_session_state_vector(diagnostics, expected_state)
+    return diagnostics
+
+
 def _assert_unit_test_server_diagnostics_freshness(
     manager: MCPClientManager,
     server_name: str,
@@ -1791,9 +1801,9 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     adapter = NATMCPTransportAdapter(session_factory=session_context)
     server = ExternalServer(name=UNIT_TEST_NAT_SERVER, url=UNIT_TEST_NAT_SERVER_URL)
 
-    before = _unit_test_adapter_session_diagnostics(adapter, UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state_vector(
-        before,
+    _assert_unit_test_adapter_session_diagnostics_state_vector(
+        adapter,
+        UNIT_TEST_NAT_SERVER,
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
@@ -1807,18 +1817,18 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
         },
     )
 
-    after = _unit_test_adapter_session_diagnostics(adapter, UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state_vector(
-        after,
+    _assert_unit_test_adapter_session_diagnostics_state_vector(
+        adapter,
+        UNIT_TEST_NAT_SERVER,
         UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
     )
 
     invalidated = await adapter.invalidate_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
 
-    final = _unit_test_adapter_session_diagnostics(adapter, UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state_vector(
-        final,
+    _assert_unit_test_adapter_session_diagnostics_state_vector(
+        adapter,
+        UNIT_TEST_NAT_SERVER,
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
