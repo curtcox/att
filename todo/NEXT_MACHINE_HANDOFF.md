@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `012c02ba4ff73f16d70c1571ae2237794f0407e8`
-- Last commit: `012c02b 2026-02-14 14:20:51 -0600 - Install TDD skill`
+- HEAD: `d9ecc243bfe1bafa0c77f2bfa6feb86d06fce617`
+- Last commit: `d9ecc24 2026-02-14 14:26:35 -0600 - Refactor NAT freshness listing assertion into shared helper`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -20,6 +20,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed limited-list adapter-session combined helper assertion reuse in NAT filter coverage:
+  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit` from server-only list assertion to `_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)` using existing keyed-state vector `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` in `tests/unit/test_mcp_client.py`.
+  - preserved server-order semantics, active-session state semantics, timeout-category regression coverage, invocation-event/connection-event filter behavior, and call-order/subsequence behavior unchanged.
+  - addressed the `todo/master_plan.md` guardrail (`<=1300` lines) by compacting the newest status entry without changing delivered meaning.
 
 - Completed single-list NAT adapter-session listing state assertion helper reuse in freshness coverage:
   - added local unit-test helper `_assert_unit_test_single_listed_adapter_session_servers_and_keyed_states(...)` in `tests/unit/test_mcp_client.py`.
@@ -197,7 +202,7 @@
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating remaining NAT helper assertion reuse opportunities:
-1. Reuse existing combined listing-state helpers in `tests/unit/test_mcp_client.py` where nearby tests still mix direct indexing/shape checks with helper assertions.
+1. Reuse existing helper/vector assertions in `tests/unit/test_mcp_client.py` where nearby adapter-session coverage still uses direct shape checks instead of combined server-order + keyed-state assertions.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.

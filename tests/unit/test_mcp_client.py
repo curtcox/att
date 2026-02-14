@@ -1925,9 +1925,10 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     limited = manager.list_adapter_sessions(limit=1)
-    _assert_unit_test_listed_adapter_session_servers(
+    _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
         limited,
         UNIT_TEST_SERVER_C_VECTOR,
+        UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE,
     )
 
 
