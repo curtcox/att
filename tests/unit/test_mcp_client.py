@@ -98,6 +98,8 @@ UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
 UNIT_TEST_NAT_SERVER_URL = "http://nat.local"
 UNIT_TEST_SERVER_A_URL = "http://a.local"
 UNIT_TEST_SERVER_B_URL = "http://b.local"
+UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS = 60
+UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS = 61
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -1189,7 +1191,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     factory = FakeNatSessionFactory()
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
-        adapter_session_stale_after_seconds=60,
+        adapter_session_stale_after_seconds=UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS,
     )
     manager.register(UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_A_URL)
     manager.register(UNIT_TEST_SERVER_B, UNIT_TEST_SERVER_B_URL)
@@ -1202,7 +1204,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
     adapter._sessions[UNIT_TEST_SERVER_A].last_activity_at = datetime.now(UTC) - timedelta(
-        seconds=61,
+        seconds=UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS,
     )
 
     stale = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_STALE)

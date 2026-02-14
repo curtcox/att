@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `c901d1909a2293cdfc307e5817efaacafbf04db6`
-- Last commit: `c901d19 2026-02-13 20:24:40 -0600 - Fix freshness constants usage`
+- HEAD: `1e596f460ea29b82bdab020b614d6c7b0c381c8d`
+- Last commit: `1e596f4 2026-02-13 20:27:18 -0600 - Use constants for manager test URLs`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,10 +17,10 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual adapter endpoint URL literal cleanup in freshness-filter unit coverage:
-  - added local unit-test constants `UNIT_TEST_SERVER_A_URL` and `UNIT_TEST_SERVER_B_URL`.
-  - migrated remaining inline endpoint URL literals in `test_manager_list_adapter_sessions_supports_freshness_filter` (`manager.register(..., "http://a.local")` and `manager.register(..., "http://b.local")`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept server-name constants, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed residual stale-window numeric literal cleanup in freshness-filter unit coverage:
+  - added local unit-test constants `UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS` and `UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS`.
+  - migrated remaining inline stale-window numeric literals in `test_manager_list_adapter_sessions_supports_freshness_filter` (`adapter_session_stale_after_seconds=60` and `timedelta(seconds=61)`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept server-name constants, URL constants, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
@@ -194,10 +194,10 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual stale-window numeric literal cleanup in freshness-filter unit coverage:
-1. Reuse shared numeric constants in `tests/unit/test_mcp_client.py` where this improves consistency in adapter freshness-filter tests:
-   - migrate remaining inline stale-window numeric literals in `test_manager_list_adapter_sessions_supports_freshness_filter` (for example `adapter_session_stale_after_seconds=60` and `timedelta(seconds=61)`) to constant-driven form.
-   - keep server-name constants, URL constants, transport payload literals, and method-branch conditionals explicit and unchanged.
+Continue `P12/P13` test-structure hardening by finishing residual `a`/`b` endpoint URL literal cleanup in nearby adapter-session unit coverage:
+1. Reuse shared URL constants in `tests/unit/test_mcp_client.py` where this improves consistency in nearby adapter-session tests:
+   - migrate remaining inline `manager.register("a", "http://a.local")` and `manager.register("b", "http://b.local")` setup literals outside the freshness-filter test (for example around the existing call-order/initialize-list tests) to `UNIT_TEST_SERVER_A_URL` and `UNIT_TEST_SERVER_B_URL`.
+   - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
