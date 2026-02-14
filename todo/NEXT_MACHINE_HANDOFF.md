@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `1aadebf94ab09017d970ae45efb7d34255005c33`
-- Last commit: `1aadebf 2026-02-14 08:35:03 -0600 - Reuse primary timeout setup-step vector`
+- HEAD: `1055781b4bb30e1f69f24da873d7ed8210bc3e8e`
+- Last commit: `1055781 2026-02-14 08:38:32 -0600 - Reuse NAT primary timeout setup steps`
 - Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
