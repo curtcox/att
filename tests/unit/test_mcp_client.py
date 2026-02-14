@@ -2047,8 +2047,11 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
             preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
         )
 
-    first_diag = _unit_test_server_diagnostics(manager, UNIT_TEST_NAT_SERVER)
-    assert first_diag.active is False
+    _assert_unit_test_server_diagnostics_state_vector(
+        manager,
+        UNIT_TEST_NAT_SERVER,
+        UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
+    )
     assert factory.created == 1
     assert factory.closed == 1
 
