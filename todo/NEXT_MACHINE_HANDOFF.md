@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `94d18e914046d3744daed6f51b28ac7fd8851efd`
-- Last commit: `94d18e9 2026-02-13 20:49:42 -0600 - Update test config URLs`
+- HEAD: `b5ca25b6f687fe25cb57856bd825074958b6730c`
+- Last commit: `b5ca25b 2026-02-13 20:51:43 -0600 - Update tests to use primary server v`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,10 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual `primary` endpoint URL literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_PRIMARY_SERVER_URL`.
-  - migrated remaining inline `manager.register("primary", "http://primary.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
+- Completed residual `backup` endpoint URL literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_BACKUP_SERVER_URL`.
+  - migrated remaining inline `manager.register("backup", "http://backup.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - verified no inline `manager.register("<server>", "http://<server>.local")` setup literals remain in `tests/unit/test_mcp_client.py`.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +195,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual `backup` endpoint URL literal cleanup in unit MCP client coverage:
+Continue `P12/P13` test-structure hardening by finishing residual adapter endpoint host-fragment literal cleanup in unit MCP client coverage:
 1. Reuse shared URL constants in `tests/unit/test_mcp_client.py` where this improves consistency in nearby adapter-session tests:
-   - add a local unit-test constant for the backup endpoint URL and migrate remaining inline `manager.register("backup", "http://backup.local")` setup usages to constant-driven form.
+   - add local unit-test constants for adapter endpoint host fragments (`"primary.local"` and `"recovered.local"`) and migrate remaining inline session-context routing checks to constant-driven form.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
