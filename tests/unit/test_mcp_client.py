@@ -2236,16 +2236,17 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
         UNIT_TEST_RESOURCES_READ_METHOD,
     )
 
-    first = await manager.read_resource(
-        UNIT_TEST_PROJECTS_URI,
-        preferred=["primary", "backup"],
-    )
+    async def invoke_once(preferred: list[str]) -> object:
+        return await _invoke_unit_test_method_with_preferred(
+            manager,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+            preferred,
+        )
+
+    first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
-    second = await manager.read_resource(
-        UNIT_TEST_PROJECTS_URI,
-        preferred=["backup", "primary"],
-    )
+    second = await invoke_once(["backup", "primary"])
     assert second.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
@@ -2255,10 +2256,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     assert backup.status is expected_backup_status
 
     calls_before_third = len(factory.calls)
-    third = await manager.read_resource(
-        UNIT_TEST_PROJECTS_URI,
-        preferred=["backup", "primary"],
-    )
+    third = await invoke_once(["backup", "primary"])
     assert third.server == UNIT_TEST_PRIMARY_SERVER
 
     third_slice = _unit_test_collect_reentry_call_order_slice(
