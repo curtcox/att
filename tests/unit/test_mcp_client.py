@@ -198,6 +198,12 @@ UNIT_TEST_PROJECT_LIST_TOOL_NAME = "att.project.list"
 UNIT_TEST_FRESHNESS_UNKNOWN = "unknown"
 UNIT_TEST_FRESHNESS_ACTIVE_RECENT = "active_recent"
 UNIT_TEST_FRESHNESS_STALE = "stale"
+UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR = (False, False, False)
+UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR = (True, True, True)
+UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_B_INACTIVE_A_STATES = (
+    (UNIT_TEST_SERVER_B, True, True, True),
+    (UNIT_TEST_SERVER_A, False, None, None),
+)
 UNIT_TEST_SESSION_CALL_ENTRY_LABEL = "session"
 UNIT_TEST_TOOL_CALL_ENTRY_LABEL = "tool"
 UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL = "resource"
@@ -573,6 +579,19 @@ def _assert_unit_test_adapter_session_state(
         assert diagnostics.last_activity_at is not None
     else:
         assert diagnostics.last_activity_at is None
+
+
+def _assert_unit_test_adapter_session_state_vector(
+    diagnostics: Any,
+    expected_state: tuple[bool, bool, bool],
+) -> None:
+    active, initialized, has_last_activity = expected_state
+    _assert_unit_test_adapter_session_state(
+        diagnostics,
+        active=active,
+        initialized=initialized,
+        has_last_activity=has_last_activity,
+    )
 
 
 def _assert_unit_test_listed_adapter_session_state(
@@ -1701,11 +1720,9 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     server = ExternalServer(name=UNIT_TEST_NAT_SERVER, url=UNIT_TEST_NAT_SERVER_URL)
 
     before = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state(
+    _assert_unit_test_adapter_session_state_vector(
         before,
-        active=False,
-        initialized=False,
-        has_last_activity=False,
+        UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
     await adapter(
@@ -1719,22 +1736,18 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     )
 
     after = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state(
+    _assert_unit_test_adapter_session_state_vector(
         after,
-        active=True,
-        initialized=True,
-        has_last_activity=True,
+        UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
     )
 
     invalidated = await adapter.invalidate_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
 
     final = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state(
+    _assert_unit_test_adapter_session_state_vector(
         final,
-        active=False,
-        initialized=False,
-        has_last_activity=False,
+        UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
 
@@ -1749,11 +1762,9 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     assert manager.supports_adapter_session_controls() is True
     diagnostics = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert diagnostics is not None
-    _assert_unit_test_adapter_session_state(
+    _assert_unit_test_adapter_session_state_vector(
         diagnostics,
-        active=False,
-        initialized=False,
-        has_last_activity=False,
+        UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
     initialized = await manager.initialize_server(UNIT_TEST_NAT_SERVER)
@@ -1763,11 +1774,9 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
 
     after_initialize = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert after_initialize is not None
-    _assert_unit_test_adapter_session_state(
+    _assert_unit_test_adapter_session_state_vector(
         after_initialize,
-        active=True,
-        initialized=True,
-        has_last_activity=True,
+        UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
     )
 
     invalidated = await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER)
@@ -1819,10 +1828,7 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     by_name = _unit_test_listed_adapter_sessions_by_server(after)
     _assert_unit_test_listed_adapter_session_keyed_states(
         by_name,
-        (
-            (UNIT_TEST_SERVER_B, True, True, True),
-            (UNIT_TEST_SERVER_A, False, None, None),
-        ),
+        UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_B_INACTIVE_A_STATES,
     )
 
 
