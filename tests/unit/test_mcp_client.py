@@ -626,6 +626,18 @@ def _unit_test_primary_timeout_ok_setup_steps(
     )
 
 
+def _unit_test_primary_ok_setup_steps(
+    method: str,
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return (
+        (
+            UNIT_TEST_PRIMARY_SERVER,
+            method,
+            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        ),
+    )
+
+
 def _assert_unit_test_failure_script_consumed_actions_in_order(
     factory: ClusterNatSessionFactory,
     action_steps: tuple[tuple[str, str, str], ...],
@@ -1869,27 +1881,21 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
 
     if method_key == UNIT_TEST_INITIALIZE_METHOD:
         factory.fail_on_timeout_initialize.add(UNIT_TEST_PRIMARY_SERVER)
-        _set_unit_test_failure_script(
+        _set_unit_test_failure_scripts(
             factory,
-            UNIT_TEST_PRIMARY_SERVER,
-            UNIT_TEST_INITIALIZE_METHOD,
-            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+            _unit_test_primary_ok_setup_steps(UNIT_TEST_INITIALIZE_METHOD),
         )
     elif method_key == UNIT_TEST_TOOLS_CALL_METHOD:
         factory.fail_on_timeout_tool_calls.add(UNIT_TEST_PRIMARY_SERVER)
-        _set_unit_test_failure_script(
+        _set_unit_test_failure_scripts(
             factory,
-            UNIT_TEST_PRIMARY_SERVER,
-            UNIT_TEST_TOOLS_CALL_METHOD,
-            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+            _unit_test_primary_ok_setup_steps(UNIT_TEST_TOOLS_CALL_METHOD),
         )
     else:
         factory.fail_on_timeout_resource_reads.add(UNIT_TEST_PRIMARY_SERVER)
-        _set_unit_test_failure_script(
+        _set_unit_test_failure_scripts(
             factory,
-            UNIT_TEST_PRIMARY_SERVER,
-            UNIT_TEST_RESOURCES_READ_METHOD,
-            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+            _unit_test_primary_ok_setup_steps(UNIT_TEST_RESOURCES_READ_METHOD),
         )
 
     if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
