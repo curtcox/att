@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `5ed0163bfd280a26d2938d24792a70f18496bae0`
-- Last commit: `5ed0163 2026-02-13 21:27:24 -0600 - Update NEXT_MACHINE_HANDOFF`
+- HEAD: `69c0a5bbda863792093449a09964dd4d8c386758`
+- Last commit: `69c0a5b 2026-02-13 21:33:12 -0600 - Latest changes`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,24 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed repeated-invokes expected progression constant reuse in NAT cluster unit coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS` in `tests/unit/test_mcp_client.py`.
-  - migrated inline expected call-method progression vectors in `test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate` to constant-driven form.
+- Completed reopen initialize-start server-order expected-vector constant reuse in NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_REOPEN_INITIALIZE_START_SERVER_ORDERS` in `tests/unit/test_mcp_client.py`.
+  - migrated inline expected initialize-start server order assertion in `test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candidates` to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- Completed timeout-script action vector constant reuse in nearby cluster NAT helper coverage:
+  - added local unit-test constants `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR`, `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR`, and `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline timeout-script setup vectors in nearby cluster NAT helper tests to constant-driven form (mixed scripted failover, retry-window re-entry, resource retry re-entry, unreachable/reopen paths, and failure-script isolation).
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- Completed non-timeout failure-script action vector constant reuse in nearby cluster NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline non-timeout failure-script setup vectors (`"ok"`, `"error"`, and `"error"+"ok"`) in nearby cluster NAT helper tests to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- Completed unsupported-action failure-script setup vector constant reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline unsupported-action setup vector (`"invalid"`) in failure-script validation coverage to constant-driven form.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:
@@ -130,16 +145,6 @@
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
-- Extended adapter control server-name constant reuse in unit MCP client coverage:
-  - migrated remaining inline `adapter_session_diagnostics("nat")`, `initialize_server("nat")`, `refresh_adapter_session("nat")`, and adjacent `get("nat")` call arguments to `UNIT_TEST_NAT_SERVER` in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Extended adapter invalidation server-name constant reuse in unit MCP client coverage:
-  - migrated remaining inline `invalidate_adapter_session("nat")` and `invalidate_adapter_session("primary")` call arguments to existing constants (`UNIT_TEST_NAT_SERVER`, `UNIT_TEST_PRIMARY_SERVER`) in `tests/unit/test_mcp_client.py`.
-  - preserved registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
 - Standardized snapshot-refresh process trigger and shortcut:
   - updated `/Users/curt/me/att/AGENTS.md` to require handoff snapshot refresh after validation using `./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or shortcut form).
   - added `/Users/curt/me/att/Makefile` with `make snapshot PASSED=<pytest_pass_count>` shortcut that invokes the updater script.
@@ -185,23 +190,14 @@
   - migrated repeated initialize-cache full call-order collection comprehensions (including `session_id`) to helper-driven form in repeated-invoke/invalidate assertions while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - migrated force-reinitialize call-order pair collection to existing `_unit_test_collect_reentry_call_order_slice(...)` helper usage while preserving expected call-order vectors and trigger-path semantics unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- Extended collected reopen-slice expected-vector helper reuse in unit MCP client coverage:
-  - added local unit-test helper `_assert_unit_test_reopen_slice(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated the remaining explicit simultaneous-unreachable reopen-slice expectation assertion to helper-driven form while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Extended repeated collect+assert re-entry slice helper reuse in unit MCP client coverage:
   - added local unit-test helpers `_assert_unit_test_collected_primary_reentry_slice(...)` and `_assert_unit_test_collected_backup_reentry_slice(...)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated patterns that collected re-entry slices and immediately asserted expected primary/backup vectors to helper-driven calls across retry-window/unreachable tests while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- Extended repeated re-entry slice collection helper reuse in unit MCP client coverage:
-  - added local unit-test helper `_unit_test_collect_reentry_call_order_slice(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated list-comprehension scaffolding that collected `initialize`+`method` re-entry slices from `factory.calls[start:]` to helper-driven collection across retry-window/unreachable and simultaneous-reopen call-order assertions while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - add a local unit-test constant for the inline expected re-entry call-order list in `test_cluster_nat_force_reinitialize_triggers_call_order_parity` and migrate that assertion payload to constant-driven form.
+   - add local unit-test constants for remaining inline mixed-action failure-script setup vectors in nearby failure-script validation tests (e.g., `"ok"`, `"timeout"`, `"error"` sequence) and migrate those setup vectors to constant-driven form.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

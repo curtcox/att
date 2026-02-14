@@ -14,34 +14,40 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - migrated inline expected call-method progression vectors in `test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate` to constant-driven form.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed force-reinitialize expected re-entry call-order vector constant reuse in NAT cluster parity coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_FORCE_REINITIALIZE_REENTRY_CALL_ORDER_LISTS` in `tests/unit/test_mcp_client.py`.
+  - migrated inline expected re-entry call-order list materialization in `test_cluster_nat_force_reinitialize_triggers_call_order_parity` to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed residual primary resource re-entry expected-vector constant reuse in NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_PRIMARY_RESOURCE_REENTRY_CALL_ORDER_SLICE` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline re-entry call-order list assertion in `test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_state` to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed reopen initialize-start server-order expected-vector constant reuse in NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_REOPEN_INITIALIZE_START_SERVER_ORDERS` in `tests/unit/test_mcp_client.py`.
+  - migrated inline expected initialize-start server order assertion in `test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candidates` to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed timeout-script action vector constant reuse in nearby cluster NAT helper coverage:
+  - added local unit-test constants `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_VECTOR`, `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR`, and `UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline timeout-script setup vectors in nearby cluster NAT helper tests to constant-driven form (mixed scripted failover, retry-window re-entry, resource retry re-entry, unreachable/reopen paths, and failure-script isolation).
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed non-timeout failure-script action vector constant reuse in nearby cluster NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline non-timeout failure-script setup vectors (`"ok"`, `"error"`, and `"error"+"ok"`) in nearby cluster NAT helper tests to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- [x] Completed unsupported-action failure-script setup vector constant reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline unsupported-action setup vector (`"invalid"`) in failure-script validation coverage to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:
   - added local unit-test constant `UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX` in `tests/unit/test_mcp_client.py`.
   - migrated the inline `("failure", "category")` parametrize matrix in `test_nat_transport_adapter_category_mapping_parity` to constant-driven form.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_NAT_SERVER_URL`.
-  - migrated remaining inline NAT endpoint URL literals in adapter unit coverage (`ExternalServer(..., url="http://nat.local")` and `manager.register("nat", "http://nat.local")`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual adapter request-id literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_NAT_INITIALIZE_REQUEST_ID`, `UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID`, and `UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID`.
-  - migrated remaining inline adapter request-id literals (`"init-1"`, `"init-notify"`, and `"resource-1"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual transport-fixture request literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_NAT_TOOL_REQUEST_ID`, `UNIT_TEST_HTTP_METHOD_POST`, and `UNIT_TEST_NAT_MCP_ENDPOINT`.
-  - migrated remaining inline NAT transport fixture request literals (`"tool-1"`, `"POST"`, and `"http://nat.local/mcp"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual transport-category mapping literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY` and `UNIT_TEST_ERROR_BAD_STATUS`.
-  - migrated remaining inline category-mapping literals in transport parity coverage (`httpx.HTTPStatusError("bad status", ...)` plus `"network_timeout"`, `"http_status"`, and `"invalid_payload"` category labels) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - [x] Completed residual transport-category fixture literal cleanup in unit MCP client coverage:
@@ -244,14 +250,6 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Extended remaining order-test failure-action timeout/error assertion constant reuse in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_FAILURE_ACTION_TIMEOUT` in `tests/unit/test_mcp_client.py`.
   - migrated remaining order-test and adjacent scripted isolation `consume_failure_action(... ) == "timeout"` assertions to `UNIT_TEST_FAILURE_ACTION_TIMEOUT` and migrated the remaining order-test `== "error"` assertion to existing `UNIT_TEST_FAILURE_ACTION_ERROR`, while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- [x] Extended remaining order-test failure-action `"ok"` assertion constant reuse in unit MCP client coverage:
-  - reused existing local unit-test constant `UNIT_TEST_FAILURE_ACTION_OK` in `tests/unit/test_mcp_client.py`.
-  - migrated the remaining `consume_failure_action(... ) == "ok"` checks in `test_cluster_nat_failure_script_order_and_validation` to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- [x] Extended scripted failure-action `"ok"` assertion constant reuse in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_FAILURE_ACTION_OK` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated assertion-side `consume_failure_action(... ) == "ok"` checks in scripted failure isolation assertions to the shared constant while keeping `set_failure_script(...)` setup inputs, registration/setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Reference Technologies
