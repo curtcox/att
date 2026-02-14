@@ -380,6 +380,7 @@ UNIT_TEST_SERVER_B_VECTOR = (UNIT_TEST_SERVER_B,)
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_A_C_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
+UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR: tuple[()] = ()
 UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY = (
     UNIT_TEST_PRIMARY_SERVER,
     UNIT_TEST_INITIALIZE_METHOD,
@@ -1680,7 +1681,7 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
     assert manager.supports_adapter_session_controls() is False
     assert manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER) is None
     assert await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER) is False
-    assert manager.list_adapter_sessions() == []
+    assert manager.list_adapter_sessions() == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
 
 
 @pytest.mark.asyncio
@@ -1805,7 +1806,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     assert [item.server for item in unknown] == list(UNIT_TEST_SERVER_B_VECTOR)
 
     recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)
-    assert recent == []
+    assert recent == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
 
 
 @pytest.mark.asyncio
