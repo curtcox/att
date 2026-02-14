@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `633de7f1cc59b125b4ea97d4af0d1d181e9469e8`
-- Last commit: `633de7f 2026-02-14 13:48:06 -0600 - Unify pre-invoke inactive listing assertion coverage`
+- HEAD: `cb95d06b3d5b4a2193934cd0233c12491fab781b`
+- Last commit: `cb95d06 2026-02-14 13:51:30 -0600 - Reuse adapter diagnostics retrieval helper in NAT control test`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`

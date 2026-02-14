@@ -646,6 +646,13 @@ def _unit_test_server_diagnostics(
     return diagnostics
 
 
+def _assert_unit_test_server_diagnostics_absent(
+    manager: MCPClientManager,
+    server_name: str,
+) -> None:
+    assert manager.adapter_session_diagnostics(server_name) is None
+
+
 def _unit_test_adapter_session_diagnostics(
     adapter: NATMCPTransportAdapter,
     server_name: str,
@@ -1861,7 +1868,7 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
     manager.register(UNIT_TEST_NAT_SERVER, UNIT_TEST_NAT_SERVER_URL)
 
     assert manager.supports_adapter_session_controls() is False
-    assert manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER) is None
+    _assert_unit_test_server_diagnostics_absent(manager, UNIT_TEST_NAT_SERVER)
     assert await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER) is False
     _assert_unit_test_empty_adapter_session_listing(manager.list_adapter_sessions())
 
