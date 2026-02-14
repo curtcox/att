@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `1f65b7b6ce7b79b7feb865fb3bc8543ff57b338f`
-- Last commit: `1f65b7b 2026-02-14 12:30:47 -0600 - Vectorize adapter session freshness expectations`
+- HEAD: `01bb5f7159852a0cb96253701a718315cf340a07`
+- Last commit: `01bb5f7 2026-02-14 12:34:09 -0600 - Unpack adapter session freshness expectations`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,9 +21,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed adapter-session freshness helper-input tuple-unpacking reuse in non-matrix parity paths:
-  - reused existing local expected vectors `UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE` and `UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE` in `tests/unit/test_mcp_client.py` with tuple-unpacking locals.
-  - migrated repeated singleton freshness index selections (`...SEQUENCE[0/1/2]`) in adapter-session freshness semantics checks to tuple-unpacked helper inputs while keeping server-name setup literals and method semantics explicit and unchanged.
+- Completed adapter-session freshness diagnostics helper reuse in non-matrix parity paths:
+  - added local unit-test helper `_assert_unit_test_server_diagnostics_freshness(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated adapter-session freshness retrieval + assertion scaffolding (`adapter_session_diagnostics(...)` + non-`None` + freshness assertion) in freshness semantics checks to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
@@ -201,7 +201,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby repeated adapter-session freshness retrieval + assertion scaffolding into shared helper form (e.g., repeated `adapter_session_diagnostics(...)` + freshness assert) where this keeps branch intent explicit and behavior unchanged.
+   - migrate any remaining nearby repeated adapter-session diagnostics retrieval + state assertions (active/freshness combinations) into shared helper/vector form where this keeps branch intent explicit and behavior unchanged.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

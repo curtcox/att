@@ -628,6 +628,17 @@ def _assert_unit_test_adapter_session_freshness(
     assert diagnostics.freshness == expected_freshness
 
 
+def _assert_unit_test_server_diagnostics_freshness(
+    manager: MCPClientManager,
+    server_name: str,
+    expected_freshness: str,
+) -> Any:
+    diagnostics = manager.adapter_session_diagnostics(server_name)
+    assert diagnostics is not None
+    _assert_unit_test_adapter_session_freshness(diagnostics, expected_freshness)
+    return diagnostics
+
+
 def _assert_unit_test_single_listed_session_freshness(
     listing: list[Any],
     expected_freshness: str,
@@ -1896,10 +1907,9 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     ) = UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE
     (expected_listing_stale_freshness,) = UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE
 
-    initial = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert initial is not None
-    _assert_unit_test_adapter_session_freshness(
-        initial,
+    _assert_unit_test_server_diagnostics_freshness(
+        manager,
+        UNIT_TEST_NAT_SERVER,
         expected_unknown_freshness,
     )
 
@@ -1908,13 +1918,12 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
         preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
     )
 
-    recent = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert recent is not None
-    assert recent.active is True
-    _assert_unit_test_adapter_session_freshness(
-        recent,
+    recent = _assert_unit_test_server_diagnostics_freshness(
+        manager,
+        UNIT_TEST_NAT_SERVER,
         expected_active_recent_freshness,
     )
+    assert recent.active is True
 
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
@@ -1922,10 +1931,9 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
         seconds=301
     )
 
-    stale = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert stale is not None
-    _assert_unit_test_adapter_session_freshness(
-        stale,
+    _assert_unit_test_server_diagnostics_freshness(
+        manager,
+        UNIT_TEST_NAT_SERVER,
         expected_stale_freshness,
     )
 
