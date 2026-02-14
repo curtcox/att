@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `b53febfc25093446d660ae233d1aafc27f2b6365`
-- Last commit: `b53febf 2026-02-14 09:24:41 -0600 - Added dependencies.md`
-- Working tree at handoff creation: dirty
+- HEAD: `26f1ee4049e1f1958aceff66a1b2c8259803cfcb`
+- Last commit: `26f1ee4 2026-02-14 09:25:12 -0600 - Extract shared NAT primary failure-script setter`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
