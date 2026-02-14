@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed backup-reopen/status matrix constant reuse in cluster NAT closed-backup-window coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_BACKUP_REOPEN_STATUS_MATRIX` in `tests/unit/test_mcp_client.py`.
-  - migrated the inline three-field parametrize matrix (`("backup_failures", "reopen_seconds", "expected_backup_status")`) to the shared constant.
+- [x] Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:
+  - added local unit-test constant `UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX` in `tests/unit/test_mcp_client.py`.
+  - migrated the inline `("failure", "category")` parametrize matrix in `test_nat_transport_adapter_category_mapping_parity` to constant-driven form.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 

@@ -132,6 +132,24 @@ UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID = "init-notify"
 UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID = "resource-1"
 UNIT_TEST_HTTP_METHOD_POST = "POST"
 UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
+UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX = (
+    (
+        httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT),
+        UNIT_TEST_TIMEOUT_ERROR_CATEGORY,
+    ),
+    (
+        httpx.HTTPStatusError(
+            UNIT_TEST_ERROR_BAD_STATUS,
+            request=httpx.Request(UNIT_TEST_HTTP_METHOD_POST, UNIT_TEST_NAT_MCP_ENDPOINT),
+            response=httpx.Response(
+                503,
+                request=httpx.Request(UNIT_TEST_HTTP_METHOD_POST, UNIT_TEST_NAT_MCP_ENDPOINT),
+            ),
+        ),
+        UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY,
+    ),
+    (ValueError(UNIT_TEST_ERROR_BAD_PAYLOAD), UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY),
+)
 UNIT_TEST_NAT_SERVER_URL = "http://nat.local"
 UNIT_TEST_SERVER_A_URL = "http://a.local"
 UNIT_TEST_SERVER_B_URL = "http://b.local"
@@ -1339,24 +1357,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("failure", "category"),
-    [
-        (
-            httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT),
-            UNIT_TEST_TIMEOUT_ERROR_CATEGORY,
-        ),
-        (
-            httpx.HTTPStatusError(
-                UNIT_TEST_ERROR_BAD_STATUS,
-                request=httpx.Request(UNIT_TEST_HTTP_METHOD_POST, UNIT_TEST_NAT_MCP_ENDPOINT),
-                response=httpx.Response(
-                    503,
-                    request=httpx.Request(UNIT_TEST_HTTP_METHOD_POST, UNIT_TEST_NAT_MCP_ENDPOINT),
-                ),
-            ),
-            UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY,
-        ),
-        (ValueError(UNIT_TEST_ERROR_BAD_PAYLOAD), UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY),
-    ],
+    UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX,
 )
 async def test_nat_transport_adapter_category_mapping_parity(
     failure: Exception,
