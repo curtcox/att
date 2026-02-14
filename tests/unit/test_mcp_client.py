@@ -632,6 +632,21 @@ def _record_unit_test_backup_hold_errors(
         _record_unit_test_backup_hold_error(manager)
 
 
+def _set_unit_test_primary_timeout_toggle_with_ok_fallback(
+    factory: ClusterNatSessionFactory,
+    method_key: str,
+) -> None:
+    if method_key == UNIT_TEST_INITIALIZE_METHOD:
+        factory.fail_on_timeout_initialize.add(UNIT_TEST_PRIMARY_SERVER)
+        _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_INITIALIZE_METHOD)
+    elif method_key == UNIT_TEST_TOOLS_CALL_METHOD:
+        factory.fail_on_timeout_tool_calls.add(UNIT_TEST_PRIMARY_SERVER)
+        _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_TOOLS_CALL_METHOD)
+    else:
+        factory.fail_on_timeout_resource_reads.add(UNIT_TEST_PRIMARY_SERVER)
+        _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_RESOURCES_READ_METHOD)
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1957,15 +1972,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
-    if method_key == UNIT_TEST_INITIALIZE_METHOD:
-        factory.fail_on_timeout_initialize.add(UNIT_TEST_PRIMARY_SERVER)
-        _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_INITIALIZE_METHOD)
-    elif method_key == UNIT_TEST_TOOLS_CALL_METHOD:
-        factory.fail_on_timeout_tool_calls.add(UNIT_TEST_PRIMARY_SERVER)
-        _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_TOOLS_CALL_METHOD)
-    else:
-        factory.fail_on_timeout_resource_reads.add(UNIT_TEST_PRIMARY_SERVER)
-        _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_RESOURCES_READ_METHOD)
+    _set_unit_test_primary_timeout_toggle_with_ok_fallback(factory, method_key)
 
     if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
         first = await manager.read_resource(
