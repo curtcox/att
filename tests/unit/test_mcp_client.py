@@ -539,13 +539,25 @@ def _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(
     )
 
 
+def _set_unit_test_primary_failure_script(
+    factory: ClusterNatSessionFactory,
+    method: str,
+    setup_vector: tuple[str, ...],
+) -> None:
+    _set_unit_test_failure_scripts(
+        factory,
+        _unit_test_primary_setup_steps(method, setup_vector),
+    )
+
+
 def _set_unit_test_primary_timeout_ok_failure_script(
     factory: ClusterNatSessionFactory,
     method: str,
 ) -> None:
-    _set_unit_test_failure_scripts(
+    _set_unit_test_primary_failure_script(
         factory,
-        _unit_test_primary_timeout_ok_setup_steps(method),
+        method,
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
     )
 
 
@@ -553,9 +565,10 @@ def _set_unit_test_primary_ok_failure_script(
     factory: ClusterNatSessionFactory,
     method: str,
 ) -> None:
-    _set_unit_test_failure_scripts(
+    _set_unit_test_primary_failure_script(
         factory,
-        _unit_test_primary_ok_setup_steps(method),
+        method,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
     )
 
 
@@ -1883,12 +1896,10 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
     )
 
-    _set_unit_test_failure_scripts(
+    _set_unit_test_primary_failure_script(
         factory,
-        _unit_test_primary_setup_steps(
-            UNIT_TEST_INITIALIZE_METHOD,
-            UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR,
-        ),
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR,
     )
     with pytest.raises(ValueError, match="unsupported scripted action"):
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
