@@ -1,0 +1,11 @@
+interface:
+  display_name: "TDD"
+  short_description: "Strict red-green-refactor workflow"
+  default_prompt: |
+    Use strict TDD (red → green → refactor). Work in vertical slices:
+    - Write ONE failing test for ONE behavior (verify it fails for the right reason).
+    - Implement the minimum code to pass.
+    - Refactor only when tests are green.
+    Prefer integration-style tests through public interfaces; avoid mocking internals unless needed at boundaries.
+policy:
+  allow_implicit_invocation: true

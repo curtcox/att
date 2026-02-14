@@ -32,3 +32,15 @@ After validation passes, refresh `todo/NEXT_MACHINE_HANDOFF.md` snapshot metadat
 When I report a bug, don't start by trying to fix it.
 Instead, start by writing a test that reproduces the bug.
 Then, try to fix the bug and prove it with a passing test.
+
+## Default workflow: strict TDD (red → green → refactor)
+
+When implementing, fixing, or refactoring **production code** in this repository:
+
+- **Follow the `tdd` skill as the governing procedure.**
+  - If skills are available, prefer invoking it (`@tdd` in Windsurf / `$tdd` in Codex) when doing code changes.
+  - If multiple skills apply, `tdd` takes precedence for any task that changes runtime behavior.
+- Work in **vertical slices**: one failing test → minimal code to pass → repeat.
+- Prefer **integration-style tests** through **public interfaces**; avoid mocking internals unless strictly necessary at boundaries.
+- Do **not** refactor while tests are failing; get back to green first.
+- Run the relevant tests after each small step; stop immediately on failures and fix before continuing.
