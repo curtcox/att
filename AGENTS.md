@@ -8,6 +8,16 @@
 ## Continuity Rule
 - If the user says "Continue", resume from `todo/NEXT_MACHINE_HANDOFF.md` without re-planning from scratch.
 
+## Autopilot working agreement
+- Execute the plan end-to-end; do NOT wait for me to say “Continue”.
+- Only stop when you truly need a human decision (ambiguity, tradeoff choice, missing credential, failing test you can’t resolve).
+- When you must stop, ask exactly ONE question and prefix it with: NEEDS_INPUT:
+- After each meaningful chunk of work:
+  - run the relevant tests/lint
+  - ensure `git status` is clean
+  - commit with a descriptive message
+  - push to origin (no force-push)
+
 # Development Process
 Use TDD for new features and bug fixes.
 Red, green, refactor.
