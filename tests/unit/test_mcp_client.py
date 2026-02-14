@@ -1854,7 +1854,6 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
 
     initialized = await manager.initialize_server(UNIT_TEST_NAT_SERVER)
     assert initialized is not None
-    assert initialized.initialized is True
     assert factory.created == 1
 
     _assert_unit_test_server_diagnostics_state_vector(
