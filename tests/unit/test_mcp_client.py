@@ -1889,12 +1889,18 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
         adapter_session_stale_after_seconds=300,
     )
     manager.register(UNIT_TEST_NAT_SERVER, UNIT_TEST_NAT_SERVER_URL)
+    (
+        expected_unknown_freshness,
+        expected_active_recent_freshness,
+        expected_stale_freshness,
+    ) = UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE
+    (expected_listing_stale_freshness,) = UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE
 
     initial = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert initial is not None
     _assert_unit_test_adapter_session_freshness(
         initial,
-        UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE[0],
+        expected_unknown_freshness,
     )
 
     await manager.invoke_tool(
@@ -1907,7 +1913,7 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert recent.active is True
     _assert_unit_test_adapter_session_freshness(
         recent,
-        UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE[1],
+        expected_active_recent_freshness,
     )
 
     adapter = manager._adapter_with_session_controls()
@@ -1920,13 +1926,13 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     assert stale is not None
     _assert_unit_test_adapter_session_freshness(
         stale,
-        UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE[2],
+        expected_stale_freshness,
     )
 
     listing = manager.list_adapter_sessions(server_name=UNIT_TEST_NAT_SERVER)
     _assert_unit_test_single_listed_session_freshness(
         listing,
-        UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE[0],
+        expected_listing_stale_freshness,
     )
 
 
