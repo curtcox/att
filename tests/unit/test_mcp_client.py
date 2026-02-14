@@ -2292,9 +2292,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     _set_unit_test_primary_initialize_timeout_failure_script(factory, primary_failures)
 
     async def invoke_once(preferred: list[str]) -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
+        return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
     first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -2361,9 +2359,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     _set_unit_test_primary_initialize_timeout_failure_script(factory, primary_failures=2)
 
     async def invoke_once(preferred: list[str]) -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
+        return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
     first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -2414,9 +2410,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     _set_unit_test_primary_initialize_timeout_failure_script(factory, primary_failures=2)
 
     async def invoke_once(preferred: list[str]) -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
+        return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
     first = await invoke_once(["primary", "backup"])
     assert first.server == UNIT_TEST_BACKUP_SERVER
@@ -2493,9 +2487,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     )
 
     async def invoke_once() -> object:
-        if method == UNIT_TEST_RESOURCES_READ_METHOD:
-            return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
-        return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
+        return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
     calls_before_closed = len(factory.calls)
     with pytest.raises(MCPInvocationError):
