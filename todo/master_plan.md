@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed scripted failure-exhaustion matrix constant reuse in cluster NAT helper coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_FAILURE_EXHAUSTION_METHOD_MATRIX` in `tests/unit/test_mcp_client.py`.
-  - migrated the scripted failure-exhaustion `("method_key", "expected_method")` parametrize matrix to the shared constant while keeping method-branch conditionals constant-driven.
+- [x] Completed repeated failure-count/status matrix constant reuse in cluster NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated two-entry failover status parametrizations (`(1, ServerStatus.DEGRADED)`, `(2, ServerStatus.UNREACHABLE)`) to the shared matrix in nearby backup/primary retry-window tests.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 

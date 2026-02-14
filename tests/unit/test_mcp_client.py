@@ -40,6 +40,10 @@ UNIT_TEST_CLUSTER_NAT_FAILURE_EXHAUSTION_METHOD_MATRIX = (
     (UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
     (UNIT_TEST_RESOURCES_READ_METHOD, UNIT_TEST_RESOURCES_READ_METHOD),
 )
+UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX = (
+    (1, ServerStatus.DEGRADED),
+    (2, ServerStatus.UNREACHABLE),
+)
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -1881,10 +1885,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("backup_failures", "expected_backup_status"),
-    [
-        (1, ServerStatus.DEGRADED),
-        (2, ServerStatus.UNREACHABLE),
-    ],
+    UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX,
 )
 async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_state(
     backup_failures: int,
@@ -1950,10 +1951,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
 @pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize(
     ("primary_failures", "expected_primary_status"),
-    [
-        (1, ServerStatus.DEGRADED),
-        (2, ServerStatus.UNREACHABLE),
-    ],
+    UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX,
 )
 async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_primary(
     method: str,
