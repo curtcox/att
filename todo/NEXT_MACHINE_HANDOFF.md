@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `8459c57c28b15032e87f197b41f3ac0a3a702c02`
-- Last commit: `8459c57 2026-02-13 20:06:15 -0600 - Continue active next slice`
+- HEAD: `cd2f978d0f4096d729908b454d580931766a1909`
+- Last commit: `cd2f978 2026-02-13 20:12:49 -0600 - Use constant NAT server URL in tests`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual NAT server-name literal cleanup in unit MCP client coverage:
+  - reused existing local unit-test constant `UNIT_TEST_NAT_SERVER`.
+  - migrated remaining inline NAT server-name literals in adapter unit coverage (`ExternalServer(name="nat", ...)`, `manager.register("nat", ...)`, `preferred=["nat"]`, and `adapter._sessions["nat"]`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_NAT_SERVER_URL`.
@@ -52,12 +58,6 @@
   - migrated remaining inline RPC error payload message literals and adjacent assertion text (`"rpc down"`, `"rpc failure"`, and `"rpc error: rpc failure"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Extended health-check error-message constant reuse in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_ERROR_DOWN`, `UNIT_TEST_ERROR_SLOW`, `UNIT_TEST_ERROR_HOLD_BACKUP`, and `UNIT_TEST_ERROR_HOLD_PRIMARY`.
-  - migrated repeated `record_check_result(..., error=...)` text literals plus the scripted transport helper `return False, "down"` path to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended call-vector label constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_SESSION_CALL_ENTRY_LABEL` and `UNIT_TEST_RESOURCE_CALL_ENTRY_LABEL`.
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual NAT server-name literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining NAT server-name text:
-   - migrate remaining inline NAT server-name literals in adapter unit coverage (for example `ExternalServer(name="nat", ...)` and `manager.register("nat", ...)`) to existing `UNIT_TEST_NAT_SERVER` where this improves consistency without reducing readability.
+Continue `P12/P13` test-structure hardening by finishing residual adapter session-id literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining adapter session-id text:
+   - migrate remaining inline adapter session-id literal checks (for example `session.session_id == "session-1"`) to existing shared constants where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

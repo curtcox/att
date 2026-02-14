@@ -9,6 +9,12 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Completed residual NAT server-name literal cleanup in unit MCP client coverage:
+  - reused existing local unit-test constant `UNIT_TEST_NAT_SERVER`.
+  - migrated remaining inline NAT server-name literals in adapter unit coverage (`ExternalServer(name="nat", ...)`, `manager.register("nat", ...)`, `preferred=["nat"]`, and `adapter._sessions["nat"]`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_NAT_SERVER_URL`.
   - migrated remaining inline NAT endpoint URL literals in adapter unit coverage (`ExternalServer(..., url="http://nat.local")` and `manager.register("nat", "http://nat.local")`) to constant-driven form in `tests/unit/test_mcp_client.py`.
@@ -54,12 +60,6 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Completed residual invoke/failover transport error literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_CONNECT_TIMEOUT` and `UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE`.
   - migrated repeated invoke/failover transport exception message literals (`"connect timeout"` and `"primary unavailable"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- [x] Completed residual initialize-error literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_ERROR_INIT_FAILED`.
-  - migrated remaining inline initialize-path error text (`"init failed"`) in transport exception setup and assertion checks to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
