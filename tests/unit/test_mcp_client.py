@@ -48,6 +48,10 @@ UNIT_TEST_CLUSTER_NAT_UNREACHABLE_AFTER_STATUS_MATRIX = (
     (3, ServerStatus.DEGRADED),
     (1, ServerStatus.UNREACHABLE),
 )
+UNIT_TEST_CLUSTER_NAT_BACKUP_REOPEN_STATUS_MATRIX = (
+    (1, 1, ServerStatus.DEGRADED),
+    (2, 2, ServerStatus.UNREACHABLE),
+)
 UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR = (
     "stale_expiry",
     "degraded_status",
@@ -2108,10 +2112,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("backup_failures", "reopen_seconds", "expected_backup_status"),
-    [
-        (1, 1, ServerStatus.DEGRADED),
-        (2, 2, ServerStatus.UNREACHABLE),
-    ],
+    UNIT_TEST_CLUSTER_NAT_BACKUP_REOPEN_STATUS_MATRIX,
 )
 @pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_candidate_then_reentry(
