@@ -18,8 +18,8 @@ ATT is a web-based application for developing, running, debugging, and deploying
   - migrated repeated adapter-session freshness retrieval + assertion scaffolding (`adapter_session_diagnostics(...)` + non-`None` + freshness assertion) in freshness semantics checks to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed adapter-session diagnostics retrieval helper reuse in non-matrix parity paths:
-  - added local unit-test helper `_unit_test_server_diagnostics(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated adapter-session diagnostics retrieval + non-`None` scaffolding in nearby adapter-session control/disconnect tests to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
+  - added local unit-test helpers `_unit_test_server_diagnostics(...)` and `_assert_unit_test_server_diagnostics_state_vector(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated adapter-session diagnostics retrieval + non-`None` scaffolding and nearby repeated diagnostics state-vector assertions in adapter-session control/disconnect tests to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed repeated-invokes expected progression constant reuse in NAT cluster unit coverage:
   - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS` in `tests/unit/test_mcp_client.py`.
@@ -29,11 +29,6 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - [x] Completed force-reinitialize expected re-entry call-order vector constant reuse in NAT cluster parity coverage:
   - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_FORCE_REINITIALIZE_REENTRY_CALL_ORDER_LISTS` in `tests/unit/test_mcp_client.py`.
   - migrated inline expected re-entry call-order list materialization in `test_cluster_nat_force_reinitialize_triggers_call_order_parity` to constant-driven form.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-- [x] Completed residual primary resource re-entry expected-vector constant reuse in NAT helper coverage:
-  - added local unit-test constant `UNIT_TEST_PRIMARY_RESOURCE_REENTRY_CALL_ORDER_SLICE` in `tests/unit/test_mcp_client.py`.
-  - migrated remaining inline re-entry call-order list assertion in `test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_state` to constant-driven form.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed reopen initialize-start server-order expected-vector constant reuse in NAT helper coverage:

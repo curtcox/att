@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `2943c69d8e4bab93976a346dba289eb39dd8ecf5`
-- Last commit: `2943c69 2026-02-14 12:36:24 -0600 - Reuse diagnostics freshness assertion helper`
+- HEAD: `44191f916a0be0867f1732b6179d49b201184b2c`
+- Last commit: `44191f9 2026-02-14 12:46:33 -0600 - Reuse shared adapter diagnostics retrieval helper`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -26,8 +26,8 @@
   - migrated repeated adapter-session freshness retrieval + assertion scaffolding (`adapter_session_diagnostics(...)` + non-`None` + freshness assertion) in freshness semantics checks to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed adapter-session diagnostics retrieval helper reuse in non-matrix parity paths:
-  - added local unit-test helper `_unit_test_server_diagnostics(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated adapter-session diagnostics retrieval + non-`None` scaffolding in nearby adapter-session control/disconnect tests to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
+  - added local unit-test helpers `_unit_test_server_diagnostics(...)` and `_assert_unit_test_server_diagnostics_state_vector(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated adapter-session diagnostics retrieval + non-`None` scaffolding and nearby repeated diagnostics state-vector assertions in adapter-session control/disconnect tests to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
@@ -45,18 +45,6 @@
   - added local unit-test constant `UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX` in `tests/unit/test_mcp_client.py`.
   - migrated the inline `("failure", "category")` parametrize matrix in `test_nat_transport_adapter_category_mapping_parity` to constant-driven form.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_NAT_SERVER_URL`.
-  - migrated remaining inline NAT endpoint URL literals in adapter unit coverage (`ExternalServer(..., url="http://nat.local")` and `manager.register("nat", "http://nat.local")`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Completed residual adapter request-id literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_NAT_INITIALIZE_REQUEST_ID`, `UNIT_TEST_NAT_INITIALIZED_NOTIFICATION_REQUEST_ID`, and `UNIT_TEST_NAT_RESOURCE_READ_REQUEST_ID`.
-  - migrated remaining inline adapter request-id literals (`"init-1"`, `"init-notify"`, and `"resource-1"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual transport-fixture request literal cleanup in unit MCP client coverage:

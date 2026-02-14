@@ -647,6 +647,16 @@ def _assert_unit_test_server_diagnostics_freshness(
     return diagnostics
 
 
+def _assert_unit_test_server_diagnostics_state_vector(
+    manager: MCPClientManager,
+    server_name: str,
+    expected_state: tuple[bool, bool, bool],
+) -> Any:
+    diagnostics = _unit_test_server_diagnostics(manager, server_name)
+    _assert_unit_test_adapter_session_state_vector(diagnostics, expected_state)
+    return diagnostics
+
+
 def _assert_unit_test_single_listed_session_freshness(
     listing: list[Any],
     expected_freshness: str,
@@ -1789,9 +1799,9 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     manager.register(UNIT_TEST_NAT_SERVER, UNIT_TEST_NAT_SERVER_URL)
 
     assert manager.supports_adapter_session_controls() is True
-    diagnostics = _unit_test_server_diagnostics(manager, UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state_vector(
-        diagnostics,
+    _assert_unit_test_server_diagnostics_state_vector(
+        manager,
+        UNIT_TEST_NAT_SERVER,
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
     )
 
@@ -1800,9 +1810,9 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     assert initialized.initialized is True
     assert factory.created == 1
 
-    after_initialize = _unit_test_server_diagnostics(manager, UNIT_TEST_NAT_SERVER)
-    _assert_unit_test_adapter_session_state_vector(
-        after_initialize,
+    _assert_unit_test_server_diagnostics_state_vector(
+        manager,
+        UNIT_TEST_NAT_SERVER,
         UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
     )
 
