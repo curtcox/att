@@ -626,6 +626,14 @@ def _assert_unit_test_listed_adapter_session_servers(
     assert [item.server for item in listing] == list(expected_servers)
 
 
+def _assert_unit_test_listed_adapter_sessions_inactive(listing: list[Any]) -> None:
+    assert all(item.active is False for item in listing)
+
+
+def _assert_unit_test_empty_adapter_session_listing(listing: list[Any]) -> None:
+    assert listing == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1764,7 +1772,7 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
     assert manager.supports_adapter_session_controls() is False
     assert manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER) is None
     assert await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER) is False
-    assert manager.list_adapter_sessions() == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
+    _assert_unit_test_empty_adapter_session_listing(manager.list_adapter_sessions())
 
 
 @pytest.mark.asyncio
@@ -1781,7 +1789,7 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
         before,
         UNIT_TEST_SERVER_A_B_VECTOR,
     )
-    assert all(item.active is False for item in before)
+    _assert_unit_test_listed_adapter_sessions_inactive(before)
 
     await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
@@ -1924,7 +1932,7 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     )
 
     recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)
-    assert recent == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
+    _assert_unit_test_empty_adapter_session_listing(recent)
 
 
 @pytest.mark.asyncio
