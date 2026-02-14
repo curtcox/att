@@ -2041,15 +2041,17 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
 
     _set_unit_test_failure_scripts(factory, UNIT_TEST_FAILURE_SCRIPT_MIXED_FAILOVER_SETUP_STEPS)
 
-    first = await manager.invoke_tool(
-        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+    first = await _invoke_unit_test_method_with_preferred(
+        manager,
+        UNIT_TEST_TOOLS_CALL_METHOD,
         preferred=["primary", "backup"],
     )
     assert first.server == UNIT_TEST_BACKUP_SERVER
     clock.advance(seconds=1)
 
-    second = await manager.read_resource(
-        UNIT_TEST_PROJECTS_URI,
+    second = await _invoke_unit_test_method_with_preferred(
+        manager,
+        UNIT_TEST_RESOURCES_READ_METHOD,
         preferred=["backup", "primary"],
     )
     assert second.server == UNIT_TEST_PRIMARY_SERVER
