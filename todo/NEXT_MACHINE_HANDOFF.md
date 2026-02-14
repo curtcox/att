@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `56c675a44289f121076e6bb170f22b6ed4a18802`
-- Last commit: `56c675a 2026-02-14 08:13:19 -0600 - Refresh handoff snapshot metadata`
-- Working tree at handoff creation: dirty
+- HEAD: `63e147480e7da4a0fc5df880db0df11e7e159d55`
+- Last commit: `63e1474 2026-02-14 08:18:19 -0600 - Extract NAT snapshot single-action step helper`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
