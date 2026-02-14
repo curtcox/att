@@ -104,6 +104,7 @@ UNIT_TEST_GITHUB_SERVER_URL = "http://github.local"
 UNIT_TEST_SECONDARY_SERVER_URL = "http://secondary.local"
 UNIT_TEST_RECOVERED_SERVER_URL = "http://recovered.local"
 UNIT_TEST_DEGRADED_SERVER_URL = "http://degraded.local"
+UNIT_TEST_PRIMARY_SERVER_URL = "http://primary.local"
 UNIT_TEST_TERMINAL_SERVER_URL = "http://terminal.local"
 UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS = 60
 UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS = 61
@@ -356,7 +357,7 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     result = await manager.invoke_tool(
@@ -402,7 +403,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("secondary", UNIT_TEST_SECONDARY_SERVER_URL)
 
     result = await manager.read_resource(
@@ -451,7 +452,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     with pytest.raises(MCPInvocationError) as exc_info:
@@ -593,7 +594,7 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
         max_initialization_age_seconds=None,
         now_provider=clock,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("recovered", UNIT_TEST_RECOVERED_SERVER_URL)
     manager.register("degraded", UNIT_TEST_DEGRADED_SERVER_URL)
 
@@ -662,7 +663,7 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     result = await manager.invoke_tool(
@@ -1367,7 +1368,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
         max_initialization_age_seconds=None,
         now_provider=clock,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("recovered", UNIT_TEST_RECOVERED_SERVER_URL)
     manager.register("degraded", UNIT_TEST_DEGRADED_SERVER_URL)
 
@@ -1579,7 +1580,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         now_provider=clock,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     if method_key == "initialize":
@@ -1664,7 +1665,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         now_provider=clock,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     factory.set_failure_script(
@@ -1712,7 +1713,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
 
     async def invoke_once() -> object:
         if method == "resources/read":
@@ -1766,7 +1767,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         now_provider=clock,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
 
     async def invoke_once() -> object:
         if method == "resources/read":
@@ -1820,7 +1821,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
         now_provider=clock,
         unreachable_after=unreachable_after,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
     factory.set_failure_script(UNIT_TEST_PRIMARY_SERVER, method, ["timeout", "ok"])
 
@@ -1888,7 +1889,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
         now_provider=clock,
         unreachable_after=2,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
     factory.set_failure_script(
         UNIT_TEST_PRIMARY_SERVER,
@@ -1958,7 +1959,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         now_provider=clock,
         unreachable_after=2,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
     factory.set_failure_script(
         UNIT_TEST_PRIMARY_SERVER,
@@ -2039,7 +2040,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
         now_provider=clock,
         unreachable_after=2,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
     factory.set_failure_script(
         UNIT_TEST_PRIMARY_SERVER,
@@ -2103,7 +2104,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
         now_provider=clock,
         unreachable_after=2,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
     factory.set_failure_script(
         UNIT_TEST_PRIMARY_SERVER,
@@ -2176,7 +2177,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
         now_provider=clock,
         unreachable_after=1,
     )
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     manager.record_check_result(
@@ -2282,7 +2283,7 @@ async def test_event_list_filters_and_limits() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("primary", "http://primary.local")
+    manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", "http://backup.local")
 
     result = await manager.invoke_tool(
