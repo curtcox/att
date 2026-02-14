@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `4a46db67fb339ed79fc1e87e1c6265de100ea535`
-- Last commit: `4a46db6 2026-02-13 21:20:42 -0600 - Update NAT backup reopen matrix`
+- HEAD: `039362f1b80addee2ce6b86cf0731995ef3401cf`
+- Last commit: `039362f 2026-02-13 21:22:55 -0600 - Update NAT test error category data`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,6 +17,11 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
+- Completed mixed scripted-failover expected call-order constant reuse in NAT cluster unit coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_MIXED_SCRIPTED_FAILOVER_CALL_ORDER` in `tests/unit/test_mcp_client.py`.
+  - migrated the inline expected call-order list assertion in `test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover` to constant-driven form.
+  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:
   - added local unit-test constant `UNIT_TEST_NAT_CATEGORY_MAPPING_FAILURE_MATRIX` in `tests/unit/test_mcp_client.py`.
   - migrated the inline `("failure", "category")` parametrize matrix in `test_nat_transport_adapter_category_mapping_parity` to constant-driven form.
@@ -196,7 +201,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - add a local unit-test constant for the inline expected call-order list in `test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover` and migrate that assertion payload to constant-driven form.
+   - add local unit-test constants for the inline expected call-method progression vectors in `test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate` and migrate those assertion payloads to constant-driven form.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
