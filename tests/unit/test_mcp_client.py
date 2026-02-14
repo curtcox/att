@@ -577,10 +577,13 @@ def _set_unit_test_primary_initialize_timeout_failure_script(
     factory: ClusterNatSessionFactory,
     primary_failures: int,
 ) -> None:
-    _set_unit_test_failure_scripts(
-        factory,
-        _unit_test_primary_initialize_timeout_setup_steps(primary_failures),
-    )
+    if primary_failures == 1:
+        _set_unit_test_primary_timeout_ok_failure_script(
+            factory,
+            UNIT_TEST_INITIALIZE_METHOD,
+        )
+    else:
+        _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(factory)
 
 
 def _assert_unit_test_failure_script_progression(
@@ -689,16 +692,6 @@ def _unit_test_primary_ok_setup_steps(
     return _unit_test_primary_setup_steps(
         method,
         UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-    )
-
-
-def _unit_test_primary_initialize_timeout_setup_steps(
-    primary_failures: int,
-) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
-    return (
-        _unit_test_primary_timeout_ok_setup_steps(UNIT_TEST_INITIALIZE_METHOD)
-        if primary_failures == 1
-        else UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS
     )
 
 
