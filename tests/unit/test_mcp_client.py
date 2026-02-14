@@ -82,6 +82,9 @@ UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE = "primary unavailable"
 UNIT_TEST_ERROR_PRIMARY_DOWN = "primary down"
 UNIT_TEST_ERROR_INIT_DOWN = "init down"
 UNIT_TEST_ERROR_HTTP_STATUS_503 = "http status 503"
+UNIT_TEST_ERROR_RPC_DOWN = "rpc down"
+UNIT_TEST_ERROR_RPC_FAILURE = "rpc failure"
+UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX = "rpc error: rpc failure"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -368,7 +371,7 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
-                "error": {"message": "rpc down"},
+                "error": {"message": UNIT_TEST_ERROR_RPC_DOWN},
             }
         return {
             "jsonrpc": "2.0",
@@ -422,7 +425,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
         return {
             "jsonrpc": "2.0",
             "id": str(request.get("id", "")),
-            "error": {"message": "rpc failure"},
+            "error": {"message": UNIT_TEST_ERROR_RPC_FAILURE},
         }
 
     manager = MCPClientManager(transport=transport)
@@ -447,7 +450,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     assert error.attempts[2].server == UNIT_TEST_BACKUP_SERVER
     assert error.attempts[2].stage == UNIT_TEST_INVOKE_STAGE
     assert error.attempts[2].success is False
-    assert error.attempts[2].error == "rpc error: rpc failure"
+    assert error.attempts[2].error == UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX
     assert error.attempts[2].error_category == UNIT_TEST_RPC_ERROR_CATEGORY
 
 
@@ -555,7 +558,7 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
-                "error": {"message": "rpc failure"},
+                "error": {"message": UNIT_TEST_ERROR_RPC_FAILURE},
             }
         return {
             "jsonrpc": "2.0",

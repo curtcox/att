@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `c45b2b3ec8aeae1a0dc518176fde105320fe3d1d`
-- Last commit: `c45b2b3 2026-02-13 18:12:48 -0600 - Resume active next slice`
+- HEAD: `e60d198df113aa3074459bf59d506ebaf5ab3fd4`
+- Last commit: `e60d198 2026-02-13 18:14:46 -0600 - Refine mcp client error trace test`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual RPC error-message literal cleanup in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_ERROR_RPC_DOWN`, `UNIT_TEST_ERROR_RPC_FAILURE`, and `UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX`.
+  - migrated remaining inline RPC error payload message literals and adjacent assertion text (`"rpc down"`, `"rpc failure"`, and `"rpc error: rpc failure"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual transport-error literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_PRIMARY_DOWN`, `UNIT_TEST_ERROR_INIT_DOWN`, and `UNIT_TEST_ERROR_HTTP_STATUS_503`.
@@ -188,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual RPC error-message literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining inline RPC error text:
-   - migrate remaining inline RPC error payload message literals and adjacent assertion text (for example `"rpc down"` / `"rpc failure"` and `"rpc error: rpc failure"`) to dedicated `UNIT_TEST_ERROR_*` constants where this improves consistency without reducing readability.
+Continue `P12/P13` test-structure hardening by finishing residual transport-category fixture literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining category-fixture literal text:
+   - migrate remaining inline category-fixture literals in transport mapping coverage (for example `httpx.ReadTimeout("timed out")` and `ValueError("bad payload")`) to dedicated `UNIT_TEST_ERROR_*` constants where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
