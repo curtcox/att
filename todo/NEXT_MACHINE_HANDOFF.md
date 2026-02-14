@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `55388e81766baa7144b042eb44d47308daef67dd`
-- Last commit: `55388e8 2026-02-14 08:41:58 -0600 - Consolidate NAT primary ok setup branches`
+- HEAD: `f6c01fabdd6ec4441e6c8c7710857043ac72100e`
+- Last commit: `f6c01fa 2026-02-14 08:45:18 -0600 - Reuse NAT initialize timeout setup selector`
 - Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
