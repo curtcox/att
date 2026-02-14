@@ -560,6 +560,21 @@ def _assert_unit_test_failure_script_consumed_action(
     assert factory.consume_failure_action(server, method) == expected_action
 
 
+def _assert_unit_test_adapter_session_state(
+    diagnostics: Any,
+    *,
+    active: bool,
+    initialized: bool,
+    has_last_activity: bool,
+) -> None:
+    assert diagnostics.active is active
+    assert diagnostics.initialized is initialized
+    if has_last_activity:
+        assert diagnostics.last_activity_at is not None
+    else:
+        assert diagnostics.last_activity_at is None
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1608,9 +1623,12 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     server = ExternalServer(name=UNIT_TEST_NAT_SERVER, url=UNIT_TEST_NAT_SERVER_URL)
 
     before = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert before.active is False
-    assert before.initialized is False
-    assert before.last_activity_at is None
+    _assert_unit_test_adapter_session_state(
+        before,
+        active=False,
+        initialized=False,
+        has_last_activity=False,
+    )
 
     await adapter(
         server,
@@ -1623,17 +1641,23 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
     )
 
     after = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert after.active is True
-    assert after.initialized is True
-    assert after.last_activity_at is not None
+    _assert_unit_test_adapter_session_state(
+        after,
+        active=True,
+        initialized=True,
+        has_last_activity=True,
+    )
 
     invalidated = await adapter.invalidate_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
 
     final = adapter.session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert final.active is False
-    assert final.initialized is False
-    assert final.last_activity_at is None
+    _assert_unit_test_adapter_session_state(
+        final,
+        active=False,
+        initialized=False,
+        has_last_activity=False,
+    )
 
 
 @pytest.mark.asyncio
@@ -1647,7 +1671,12 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     assert manager.supports_adapter_session_controls() is True
     diagnostics = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert diagnostics is not None
-    assert diagnostics.active is False
+    _assert_unit_test_adapter_session_state(
+        diagnostics,
+        active=False,
+        initialized=False,
+        has_last_activity=False,
+    )
 
     initialized = await manager.initialize_server(UNIT_TEST_NAT_SERVER)
     assert initialized is not None
@@ -1656,9 +1685,12 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
 
     after_initialize = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert after_initialize is not None
-    assert after_initialize.active is True
-    assert after_initialize.initialized is True
-    assert after_initialize.last_activity_at is not None
+    _assert_unit_test_adapter_session_state(
+        after_initialize,
+        active=True,
+        initialized=True,
+        has_last_activity=True,
+    )
 
     invalidated = await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER)
     assert invalidated is True
