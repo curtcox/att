@@ -530,6 +530,15 @@ def _set_unit_test_failure_scripts(
         _set_unit_test_failure_script(factory, server, method, setup_vector)
 
 
+def _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(
+    factory: ClusterNatSessionFactory,
+) -> None:
+    _set_unit_test_failure_scripts(
+        factory,
+        UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS,
+    )
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -2313,10 +2322,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_scripts(
-        factory,
-        UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS,
-    )
+    _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(factory)
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == UNIT_TEST_RESOURCES_READ_METHOD:
@@ -2373,10 +2379,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_scripts(
-        factory,
-        UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS,
-    )
+    _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(factory)
 
     async def invoke_once(preferred: list[str]) -> object:
         if method == UNIT_TEST_RESOURCES_READ_METHOD:
