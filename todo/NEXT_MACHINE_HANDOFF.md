@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `234a001fda149bde444b175362dea2cd836fc5d6`
-- Last commit: `234a001 2026-02-14 08:32:04 -0600 - Refresh handoff snapshot metadata`
-- Working tree at handoff creation: dirty
+- HEAD: `1aadebf94ab09017d970ae45efb7d34255005c33`
+- Last commit: `1aadebf 2026-02-14 08:35:03 -0600 - Reuse primary timeout setup-step vector`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
