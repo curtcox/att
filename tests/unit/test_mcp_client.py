@@ -100,6 +100,7 @@ UNIT_TEST_SERVER_A_URL = "http://a.local"
 UNIT_TEST_SERVER_B_URL = "http://b.local"
 UNIT_TEST_SERVER_C_URL = "http://c.local"
 UNIT_TEST_CODEX_SERVER_URL = "http://codex.local"
+UNIT_TEST_GITHUB_SERVER_URL = "http://github.local"
 UNIT_TEST_TERMINAL_SERVER_URL = "http://terminal.local"
 UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS = 60
 UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS = 61
@@ -271,7 +272,7 @@ async def test_health_check_recovery_resets_backoff() -> None:
         return states.pop(0)
 
     manager = MCPClientManager(probe=toggled_probe)
-    manager.register("github", "http://github.local")
+    manager.register("github", UNIT_TEST_GITHUB_SERVER_URL)
 
     await manager.health_check_server("github")
     degraded = manager.get(UNIT_TEST_GITHUB_SERVER)
@@ -776,7 +777,7 @@ async def test_initialize_server_marks_degraded_on_error() -> None:
         raise RuntimeError(UNIT_TEST_ERROR_INIT_FAILED)
 
     manager = MCPClientManager(transport=transport)
-    manager.register("github", "http://github.local")
+    manager.register("github", UNIT_TEST_GITHUB_SERVER_URL)
 
     initialized = await manager.initialize_server(UNIT_TEST_GITHUB_SERVER)
 
@@ -813,7 +814,7 @@ async def test_initialize_server_failure_preserves_last_capability_snapshot() ->
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("github", "http://github.local")
+    manager.register("github", UNIT_TEST_GITHUB_SERVER_URL)
 
     first = await manager.initialize_server(UNIT_TEST_GITHUB_SERVER)
     second = await manager.initialize_server(UNIT_TEST_GITHUB_SERVER, force=True)
