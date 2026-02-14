@@ -2002,7 +2002,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     first = await _invoke_unit_test_method_with_preferred(
         manager,
         method_key,
-        preferred=["primary", "backup"],
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
     )
     assert first.server == UNIT_TEST_PRIMARY_SERVER
 
@@ -2013,7 +2013,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     second = await _invoke_unit_test_method_with_preferred(
         manager,
         method_key,
-        preferred=["primary", "backup"],
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
     )
     assert second.server == UNIT_TEST_BACKUP_SERVER
     assert second.method == expected_method
@@ -2059,7 +2059,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     first = await _invoke_unit_test_method_with_preferred(
         manager,
         UNIT_TEST_TOOLS_CALL_METHOD,
-        preferred=["primary", "backup"],
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
     )
     assert first.server == UNIT_TEST_BACKUP_SERVER
     clock.advance(seconds=1)
@@ -2067,7 +2067,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
     second = await _invoke_unit_test_method_with_preferred(
         manager,
         UNIT_TEST_RESOURCES_READ_METHOD,
-        preferred=["backup", "primary"],
+        preferred=UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR,
     )
     assert second.server == UNIT_TEST_PRIMARY_SERVER
 
@@ -2090,7 +2090,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
         return await _invoke_unit_test_method_with_preferred(
             manager,
             method,
-            preferred=["primary"],
+            preferred=UNIT_TEST_PREFERRED_PRIMARY_VECTOR,
         )
 
     first = await invoke_once()
@@ -2146,7 +2146,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
         return await _invoke_unit_test_method_with_preferred(
             manager,
             method,
-            preferred=["primary"],
+            preferred=UNIT_TEST_PREFERRED_PRIMARY_VECTOR,
         )
 
     first = await invoke_once()
@@ -2197,7 +2197,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
         return await _invoke_unit_test_method_with_preferred(
             manager,
             method,
-            preferred=["primary", "backup"],
+            preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
         )
 
     first = await invoke_once()
