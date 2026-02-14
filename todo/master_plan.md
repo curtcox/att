@@ -9,6 +9,12 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
+- [x] Completed residual health-probe error literal cleanup in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_ERROR_TIMEOUT` and `UNIT_TEST_ERROR_TEMPORARY`.
+  - migrated direct probe-result literals (`"timeout"` and `"temporary"`) plus adjacent assertion-side `"timeout"` comparison in health-check probe coverage to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+
 - [x] Completed residual manual-degrade health error literal cleanup in unit MCP client coverage:
   - added local unit-test constant `UNIT_TEST_ERROR_MANUAL_DEGRADE`.
   - migrated the remaining inline `record_check_result(..., error="manual degrade")` path in `tests/unit/test_mcp_client.py` to constant-driven form.

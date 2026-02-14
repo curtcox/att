@@ -74,6 +74,8 @@ UNIT_TEST_ERROR_SLOW = "slow"
 UNIT_TEST_ERROR_HOLD_BACKUP = "hold backup"
 UNIT_TEST_ERROR_HOLD_PRIMARY = "hold primary"
 UNIT_TEST_ERROR_MANUAL_DEGRADE = "manual degrade"
+UNIT_TEST_ERROR_TIMEOUT = "timeout"
+UNIT_TEST_ERROR_TEMPORARY = "temporary"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -204,7 +206,7 @@ def _assert_unit_test_reopen_slice(
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
-        return False, "timeout"
+        return False, UNIT_TEST_ERROR_TIMEOUT
 
     clock = MCPTestClock()
     manager = MCPClientManager(
@@ -219,7 +221,7 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     assert server is not None
     assert server.status is ServerStatus.DEGRADED
     assert server.retry_count == 1
-    assert server.last_error == "timeout"
+    assert server.last_error == UNIT_TEST_ERROR_TIMEOUT
     clock.advance(seconds=1)
 
     await manager.health_check_server("codex")
@@ -236,7 +238,7 @@ async def test_health_check_probe_updates_status_and_logs_transition() -> None:
 
 @pytest.mark.asyncio
 async def test_health_check_recovery_resets_backoff() -> None:
-    states = [(False, "temporary"), (True, None)]
+    states = [(False, UNIT_TEST_ERROR_TEMPORARY), (True, None)]
 
     async def toggled_probe(_: object) -> tuple[bool, str | None]:
         return states.pop(0)
