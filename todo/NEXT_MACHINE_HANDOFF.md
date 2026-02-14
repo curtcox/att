@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `c137316b6884f6c29097849e873bd83c262190b4`
-- Last commit: `c137316 2026-02-13 20:41:32 -0600 - Add codex server URL constant to mcp`
+- HEAD: `1ddac492f3af61e409caa1ae526009e8f91a2512`
+- Last commit: `1ddac49 2026-02-13 20:43:26 -0600 - Update health test server URLs`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual `github` endpoint URL literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_GITHUB_SERVER_URL`.
-  - migrated remaining inline `manager.register("github", "http://github.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
+- Completed residual `secondary` endpoint URL literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_SECONDARY_SERVER_URL`.
+  - migrated remaining inline `manager.register("secondary", "http://secondary.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual `secondary` endpoint URL literal cleanup in unit MCP client coverage:
+Continue `P12/P13` test-structure hardening by finishing residual `recovered` endpoint URL literal cleanup in unit MCP client coverage:
 1. Reuse shared URL constants in `tests/unit/test_mcp_client.py` where this improves consistency in nearby adapter-session tests:
-   - add a local unit-test constant for the secondary endpoint URL and migrate remaining inline `manager.register("secondary", "http://secondary.local")` setup usages to constant-driven form.
+   - add a local unit-test constant for the recovered endpoint URL and migrate remaining inline `manager.register("recovered", "http://recovered.local")` setup usages to constant-driven form.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
