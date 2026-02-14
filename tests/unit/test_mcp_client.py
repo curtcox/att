@@ -77,6 +77,8 @@ UNIT_TEST_ERROR_MANUAL_DEGRADE = "manual degrade"
 UNIT_TEST_ERROR_TIMEOUT = "timeout"
 UNIT_TEST_ERROR_TEMPORARY = "temporary"
 UNIT_TEST_ERROR_INIT_FAILED = "init failed"
+UNIT_TEST_ERROR_CONNECT_TIMEOUT = "connect timeout"
+UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE = "primary unavailable"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -318,7 +320,7 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
         calls.append((server.name, method))
         from_server = server.name
         if from_server == "primary":
-            raise RuntimeError("connect timeout")
+            raise RuntimeError(UNIT_TEST_ERROR_CONNECT_TIMEOUT)
         return {
             "jsonrpc": "2.0",
             "id": str(request.get("id", "")),
@@ -609,7 +611,7 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         if server.name == "primary":
-            raise RuntimeError("primary unavailable")
+            raise RuntimeError(UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE)
         if method == "initialize":
             return {
                 "jsonrpc": "2.0",
@@ -1304,7 +1306,7 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
             key = "degraded"
         session = sessions.setdefault(key, FakeNatSession())
         if key == "primary":
-            session.fail_with = RuntimeError("primary unavailable")
+            session.fail_with = RuntimeError(UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE)
         yield session
 
     manager = MCPClientManager(
@@ -2207,7 +2209,7 @@ async def test_event_list_filters_and_limits() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         if server.name == "primary":
-            raise RuntimeError("primary unavailable")
+            raise RuntimeError(UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE)
         if method == "initialize":
             return {
                 "jsonrpc": "2.0",
