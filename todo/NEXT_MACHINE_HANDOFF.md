@@ -13,6 +13,10 @@
   - `PYTHONPATH=src ./.venv313/bin/mypy` passes
   - `PYTHONPATH=src ./.venv313/bin/pytest` passes (`237 passed`)
 
+## Process Trial Status
+- Adopted: `#2` handoff snapshot updater, `#4` second planning-doc guardrail. Policy: `#6` behavior-impact slices stay in rotation.
+- Queued trials (`#1/#3/#5` + new candidates) are reviewed every Friday; source of truth: `todo/proposed_process_changes.md`.
+
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`

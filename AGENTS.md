@@ -5,6 +5,10 @@
 2. Follow the "Active Next Slice" and "Resume Checklist" sections in that file.
 3. Update both `todo/NEXT_MACHINE_HANDOFF.md` and `todo/master_plan.md` as progress is made.
 
+## Process Trials Alignment
+- Keep execution aligned with `todo/proposed_process_changes.md` statuses (`adopted`, `policy`, `queued trial`).
+- Re-evaluate queued process trials every Friday and record decisions in `todo/proposed_process_changes.md`.
+
 ## Continuity Rule
 - If the user says "Continue", resume from `todo/NEXT_MACHINE_HANDOFF.md` without re-planning from scratch.
 
