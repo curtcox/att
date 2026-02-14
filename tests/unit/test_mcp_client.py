@@ -375,7 +375,10 @@ UNIT_TEST_FAILURE_SCRIPT_ORDER_VALIDATION_PROGRESSION_STEPS = (
     ),
 )
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
+UNIT_TEST_SERVER_A_VECTOR = (UNIT_TEST_SERVER_A,)
+UNIT_TEST_SERVER_B_VECTOR = (UNIT_TEST_SERVER_B,)
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
+UNIT_TEST_SERVER_A_C_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
 UNIT_TEST_PRIMARY_INITIALIZE_CALL_ORDER_ENTRY = (
     UNIT_TEST_PRIMARY_SERVER,
@@ -1726,7 +1729,7 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     active_only = manager.list_adapter_sessions(active_only=True)
-    assert [item.server for item in active_only] == [UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_C]
+    assert [item.server for item in active_only] == list(UNIT_TEST_SERVER_A_C_VECTOR)
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
     assert [item.server for item in only_c] == list(UNIT_TEST_SERVER_C_VECTOR)
@@ -1796,10 +1799,10 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     )
 
     stale = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_STALE)
-    assert [item.server for item in stale] == [UNIT_TEST_SERVER_A]
+    assert [item.server for item in stale] == list(UNIT_TEST_SERVER_A_VECTOR)
 
     unknown = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_UNKNOWN)
-    assert [item.server for item in unknown] == [UNIT_TEST_SERVER_B]
+    assert [item.server for item in unknown] == list(UNIT_TEST_SERVER_B_VECTOR)
 
     recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)
     assert recent == []

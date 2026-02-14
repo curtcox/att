@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `fce0a25401e97568ad89c7c05cf34206bfd7d33b`
-- Last commit: `fce0a25 2026-02-14 11:20:40 -0600 - Expand preferred vector reuse in NAT parity paths`
+- HEAD: `d7859987f33222bea3696529403c5a5b985a6e5c`
+- Last commit: `d785998 2026-02-14 11:37:02 -0600 - Consolidate preferred vectors in adapter session parity tests`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,9 +21,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed adapter-session/health-gating preferred-vector reuse expansion in non-matrix parity paths:
-  - added local unit-test preferred-order vectors (`UNIT_TEST_PREFERRED_SERVER_A_B_VECTOR`, `UNIT_TEST_PREFERRED_SERVER_A_VECTOR`, `UNIT_TEST_PREFERRED_SERVER_B_VECTOR`, `UNIT_TEST_PREFERRED_SERVER_C_VECTOR`, `UNIT_TEST_PREFERRED_NAT_VECTOR`, `UNIT_TEST_PREFERRED_PRIMARY_RECOVERED_DEGRADED_VECTOR`) in `tests/unit/test_mcp_client.py`.
-  - migrated remaining inline preferred lists in adapter-session diagnostics/freshness and recovered-server health-gating invoke paths (including `choose_server(...)`) to vector-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
+- Completed adapter-session/freshness expected server-list assertion vector reuse in non-matrix parity paths:
+  - added local unit-test expected server-list vectors (`UNIT_TEST_SERVER_A_VECTOR`, `UNIT_TEST_SERVER_B_VECTOR`, `UNIT_TEST_SERVER_A_C_VECTOR`) in `tests/unit/test_mcp_client.py`.
+  - migrated remaining inline expected server-list assertion literals in adapter-session filter/freshness checks to shared vector-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
@@ -201,7 +201,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby repeated expected server-list assertion literals in adapter-session diagnostics and freshness-filter parity paths into shared local helper/vector form where this keeps branch intent explicit and behavior unchanged.
+   - migrate any remaining nearby repeated expected empty-result/parity assertion literals in adapter-session diagnostics and freshness-filter paths into shared local helper/vector form where this keeps branch intent explicit and behavior unchanged.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
