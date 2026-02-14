@@ -687,6 +687,21 @@ def _assert_unit_test_server_diagnostics_state_vector(
     return diagnostics
 
 
+def _assert_unit_test_server_diagnostics_freshness_and_state_vector(
+    manager: MCPClientManager,
+    server_name: str,
+    expected_freshness: str,
+    expected_state: tuple[bool, bool, bool],
+) -> Any:
+    diagnostics = _assert_unit_test_server_diagnostics_freshness(
+        manager,
+        server_name,
+        expected_freshness,
+    )
+    _assert_unit_test_adapter_session_state_vector(diagnostics, expected_state)
+    return diagnostics
+
+
 def _assert_unit_test_listed_adapter_session_servers(
     listing: list[Any],
     expected_servers: tuple[str, ...],
@@ -1968,13 +1983,10 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
         preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
     )
 
-    recent = _assert_unit_test_server_diagnostics_freshness(
+    _assert_unit_test_server_diagnostics_freshness_and_state_vector(
         manager,
         UNIT_TEST_NAT_SERVER,
         expected_active_recent_freshness,
-    )
-    _assert_unit_test_adapter_session_state_vector(
-        recent,
         UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
     )
 

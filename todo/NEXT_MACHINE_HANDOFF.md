@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `34d27c81dc0465aca90f2a3e6bf8af5a29a185ba`
-- Last commit: `34d27c8 2026-02-14 14:30:18 -0600 - Consolidate limited adapter session listing assertion helper`
+- HEAD: `39147255ea53b40433991116e42dd2239413b34a`
+- Last commit: `3914725 2026-02-14 14:33:27 -0600 - Consolidate freshness-filter adapter session keyed-state assertions`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,8 +21,8 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed limited-list adapter-session combined helper assertion reuse in NAT filter coverage:
-  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit` plus freshness-filter stale/unknown assertions in `test_manager_list_adapter_sessions_supports_freshness_filter` from server-only list checks to `_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)` using keyed-state vectors (existing `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` plus new freshness vectors) in `tests/unit/test_mcp_client.py`.
+- Completed limited-list adapter-session combined helper assertion reuse in NAT filter/freshness coverage:
+  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit`, freshness-filter stale/unknown assertions in `test_manager_list_adapter_sessions_supports_freshness_filter`, and active-recent diagnostics freshness+state checks in `test_manager_adapter_session_freshness_semantics` from split/server-only assertions to combined helpers (`_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)` plus `_assert_unit_test_server_diagnostics_freshness_and_state_vector(...)`) using keyed-state vectors (existing `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` plus freshness vectors) in `tests/unit/test_mcp_client.py`.
   - preserved server-order semantics, active-session state semantics, timeout-category regression coverage, invocation-event/connection-event filter behavior, and call-order/subsequence behavior unchanged.
   - addressed the `todo/master_plan.md` guardrail (`<=1300` lines) by compacting the newest status entry without changing delivered meaning.
 
