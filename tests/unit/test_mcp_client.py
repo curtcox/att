@@ -107,6 +107,8 @@ UNIT_TEST_DEGRADED_SERVER_URL = "http://degraded.local"
 UNIT_TEST_PRIMARY_SERVER_URL = "http://primary.local"
 UNIT_TEST_BACKUP_SERVER_URL = "http://backup.local"
 UNIT_TEST_TERMINAL_SERVER_URL = "http://terminal.local"
+UNIT_TEST_PRIMARY_ENDPOINT_HOST_FRAGMENT = "primary.local"
+UNIT_TEST_RECOVERED_ENDPOINT_HOST_FRAGMENT = "recovered.local"
 UNIT_TEST_ADAPTER_SESSION_STALE_AFTER_SECONDS = 60
 UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS = 61
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
@@ -1353,9 +1355,9 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
 
     @asynccontextmanager
     async def session_context(endpoint: str) -> Any:
-        if "primary.local" in endpoint:
+        if UNIT_TEST_PRIMARY_ENDPOINT_HOST_FRAGMENT in endpoint:
             key = "primary"
-        elif "recovered.local" in endpoint:
+        elif UNIT_TEST_RECOVERED_ENDPOINT_HOST_FRAGMENT in endpoint:
             key = "recovered"
         else:
             key = "degraded"
