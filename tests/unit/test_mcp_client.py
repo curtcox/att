@@ -290,6 +290,28 @@ UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SNAPSHOT_STEPS = (
         UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
     ),
 )
+UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SETUP_STEPS = (
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
+    ),
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR,
+    ),
+    (
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+    ),
+    (
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
+    ),
+)
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
@@ -479,6 +501,14 @@ def _set_unit_test_failure_script(
     setup_vector: tuple[str, ...],
 ) -> None:
     factory.set_failure_script(server, method, list(setup_vector))
+
+
+def _set_unit_test_failure_scripts(
+    factory: ClusterNatSessionFactory,
+    setup_steps: tuple[tuple[str, str, tuple[str, ...]], ...],
+) -> None:
+    for server, method, setup_vector in setup_steps:
+        _set_unit_test_failure_script(factory, server, method, setup_vector)
 
 
 def _assert_unit_test_failure_script_progression(
@@ -1755,30 +1785,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
 def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> None:
     factory = ClusterNatSessionFactory()
 
-    _set_unit_test_failure_script(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
-    )
-    _set_unit_test_failure_script(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR,
-    )
-    _set_unit_test_failure_script(
-        factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-    )
-    _set_unit_test_failure_script(
-        factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
-    )
+    _set_unit_test_failure_scripts(factory, UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SETUP_STEPS)
 
     _assert_unit_test_failure_script_snapshots_after_consumed_actions(
         factory,
