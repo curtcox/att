@@ -653,27 +653,28 @@ def _unit_test_failure_script_reopen_setup_steps(
     )
 
 
+def _unit_test_primary_setup_steps(
+    method: str,
+    setup_vector: tuple[str, ...],
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return ((UNIT_TEST_PRIMARY_SERVER, method, setup_vector),)
+
+
 def _unit_test_primary_timeout_ok_setup_steps(
     method: str,
 ) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
-    return (
-        (
-            UNIT_TEST_PRIMARY_SERVER,
-            method,
-            UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
-        ),
+    return _unit_test_primary_setup_steps(
+        method,
+        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
     )
 
 
 def _unit_test_primary_ok_setup_steps(
     method: str,
 ) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
-    return (
-        (
-            UNIT_TEST_PRIMARY_SERVER,
-            method,
-            UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-        ),
+    return _unit_test_primary_setup_steps(
+        method,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
     )
 
 
@@ -1882,11 +1883,12 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
     )
 
-    _set_unit_test_failure_script(
+    _set_unit_test_failure_scripts(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR,
+        _unit_test_primary_setup_steps(
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_FAILURE_SCRIPT_INVALID_VECTOR,
+        ),
     )
     with pytest.raises(ValueError, match="unsupported scripted action"):
         factory.consume_failure_action(UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD)
