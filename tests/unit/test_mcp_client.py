@@ -588,9 +588,9 @@ def _set_unit_test_primary_initialize_timeout_failure_script(
     primary_failures: int,
 ) -> None:
     if primary_failures == 1:
-        _set_unit_test_primary_timeout_ok_failure_script(
+        _set_unit_test_primary_initialize_failure_script(
             factory,
-            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
         )
     else:
         _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(factory)
