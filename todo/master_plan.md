@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed failure-script setup/ordering/snapshot single-step helper reuse in nearby cluster NAT helper coverage:
-  - added local unit-test helpers `_set_unit_test_failure_script(...)`, `_assert_unit_test_failure_script_consumed_actions_in_order(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_actions(...)`, and `_assert_unit_test_failure_script_snapshot_after_consumed_action(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated `set_failure_script(...)` setup blocks in nearby retry-window/reopen call-order tests, repeated consumed-action ordering assertions, repeated consumed-action-plus-state-snapshot sequences, and remaining repeated single-step consumed-action wrapper assertions in nearby validation tests to helper-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- [x] Completed failure-script setup/ordering/snapshot single-step+multi-step helper reuse in nearby cluster NAT helper coverage:
+  - added local unit-test helpers `_set_unit_test_failure_script(...)`, `_assert_unit_test_failure_script_consumed_actions_in_order(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_actions(...)`, and `_assert_unit_test_failure_script_snapshot_after_consumed_action(...)`, plus local expected-action vector `UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated `set_failure_script(...)` setup blocks in nearby retry-window/reopen call-order tests, repeated consumed-action ordering assertions, repeated consumed-action-plus-state-snapshot sequences, and remaining repeated single-step/multi-step consumed-action wrapper assertions in nearby validation tests to helper/constant-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed failure-script setup+consume progression helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_progression(...)` in `tests/unit/test_mcp_client.py`.

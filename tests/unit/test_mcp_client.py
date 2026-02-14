@@ -248,6 +248,28 @@ UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR = ("timeout", "timeout", "ok"
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
 UNIT_TEST_FAILURE_ACTION_OK = "ok"
 UNIT_TEST_FAILURE_ACTION_TIMEOUT = "timeout"
+UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS = (
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_ACTION_ERROR,
+    ),
+    (
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
+    ),
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
+    ),
+    (
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_ACTION_OK,
+    ),
+)
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
@@ -1734,28 +1756,7 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
 
     _assert_unit_test_failure_script_consumed_actions_in_order(
         factory,
-        (
-            (
-                UNIT_TEST_PRIMARY_SERVER,
-                UNIT_TEST_RESOURCES_READ_METHOD,
-                UNIT_TEST_FAILURE_ACTION_ERROR,
-            ),
-            (
-                UNIT_TEST_BACKUP_SERVER,
-                UNIT_TEST_INITIALIZE_METHOD,
-                UNIT_TEST_FAILURE_ACTION_OK,
-            ),
-            (
-                UNIT_TEST_PRIMARY_SERVER,
-                UNIT_TEST_INITIALIZE_METHOD,
-                UNIT_TEST_FAILURE_ACTION_OK,
-            ),
-            (
-                UNIT_TEST_BACKUP_SERVER,
-                UNIT_TEST_TOOLS_CALL_METHOD,
-                UNIT_TEST_FAILURE_ACTION_OK,
-            ),
-        ),
+        UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS,
     )
 
     _assert_unit_test_failure_script_terminal_state(factory)
