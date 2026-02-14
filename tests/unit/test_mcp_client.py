@@ -436,13 +436,13 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
         method = str(request.get("method", ""))
         if server.name == "primary":
             raise RuntimeError(UNIT_TEST_ERROR_PRIMARY_DOWN)
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -487,13 +487,13 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         calls.append(method)
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -528,13 +528,13 @@ async def test_invoke_tool_reinitializes_when_initialization_is_stale() -> None:
 async def test_invoke_tool_transport_error_category_http_status() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -568,13 +568,13 @@ async def test_invoke_tool_mixed_state_cluster_recovers_in_preferred_order() -> 
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         calls.append((server.name, method))
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -647,13 +647,13 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
         method = str(request.get("method", ""))
         if server.name == "primary":
             raise RuntimeError(UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE)
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -701,13 +701,13 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
 async def test_invocation_events_retention_is_bounded() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -737,7 +737,7 @@ async def test_invocation_events_retention_is_bounded() -> None:
 async def test_initialize_server_updates_state_on_success() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -747,7 +747,7 @@ async def test_initialize_server_updates_state_on_success() -> None:
                     "capabilities": {"tools": {}, "resources": {}},
                 },
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -801,7 +801,7 @@ async def test_initialize_server_failure_preserves_last_capability_snapshot() ->
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         nonlocal calls
         method = str(request.get("method", ""))
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             calls += 1
             if calls == 1:
                 return {
@@ -863,13 +863,13 @@ async def test_invoke_tool_auto_initializes_server_before_tool_call() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         calls.append(method)
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -909,7 +909,7 @@ async def test_connect_server_runs_health_and_initialize() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         transport_calls.append(method)
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
@@ -1568,9 +1568,9 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
 @pytest.mark.parametrize(
     ("method_key", "expected_method"),
     [
-        ("initialize", "tools/call"),
-        ("tools/call", "tools/call"),
-        ("resources/read", "resources/read"),
+        (UNIT_TEST_INITIALIZE_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
+        (UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_TOOLS_CALL_METHOD),
+        (UNIT_TEST_RESOURCES_READ_METHOD, UNIT_TEST_RESOURCES_READ_METHOD),
     ],
 )
 async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
@@ -1586,14 +1586,14 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
-    if method_key == "initialize":
+    if method_key == UNIT_TEST_INITIALIZE_METHOD:
         factory.fail_on_timeout_initialize.add(UNIT_TEST_PRIMARY_SERVER)
         factory.set_failure_script(
             UNIT_TEST_PRIMARY_SERVER,
             UNIT_TEST_INITIALIZE_METHOD,
             ["ok"],
         )
-    elif method_key == "tools/call":
+    elif method_key == UNIT_TEST_TOOLS_CALL_METHOD:
         factory.fail_on_timeout_tool_calls.add(UNIT_TEST_PRIMARY_SERVER)
         factory.set_failure_script(
             UNIT_TEST_PRIMARY_SERVER,
@@ -1608,7 +1608,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
             ["ok"],
         )
 
-    if method_key == "resources/read":
+    if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
         first = await manager.read_resource(
             UNIT_TEST_PROJECTS_URI,
             preferred=["primary", "backup"],
@@ -1619,11 +1619,11 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         )
     assert first.server == UNIT_TEST_PRIMARY_SERVER
 
-    if method_key == "initialize":
+    if method_key == UNIT_TEST_INITIALIZE_METHOD:
         invalidated = await manager.invalidate_adapter_session(UNIT_TEST_PRIMARY_SERVER)
         assert invalidated is True
 
-    if method_key == "resources/read":
+    if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
         second = await manager.read_resource(
             UNIT_TEST_PROJECTS_URI,
             preferred=["primary", "backup"],
@@ -1640,7 +1640,7 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
         method=expected_method,
         request_id=second.request_id,
     )
-    if method_key == "initialize":
+    if method_key == UNIT_TEST_INITIALIZE_METHOD:
         assert [event.phase for event in primary_events] == list(
             UNIT_TEST_INITIALIZE_START_FAILURE_PHASES
         )
@@ -1708,7 +1708,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     method: str,
 ) -> None:
@@ -1719,7 +1719,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
 
     async def invoke_once() -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
         return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary"])
 
@@ -1758,7 +1758,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 @pytest.mark.parametrize("trigger", ["stale_expiry", "degraded_status"])
 async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     method: str,
@@ -1773,7 +1773,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
 
     async def invoke_once() -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=["primary"])
         return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary"])
 
@@ -1804,7 +1804,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 @pytest.mark.parametrize(
     ("unreachable_after", "expected_status"),
     [
@@ -1829,7 +1829,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     factory.set_failure_script(UNIT_TEST_PRIMARY_SERVER, method, ["timeout", "ok"])
 
     async def invoke_once() -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(
                 UNIT_TEST_PROJECTS_URI,
                 preferred=["primary", "backup"],
@@ -1942,7 +1942,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 @pytest.mark.parametrize(
     ("primary_failures", "expected_primary_status"),
     [
@@ -1971,7 +1971,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     )
 
     async def invoke_once(preferred: list[str]) -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
@@ -2032,7 +2032,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_before_invoke(
     method: str,
 ) -> None:
@@ -2052,7 +2052,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     )
 
     async def invoke_once(preferred: list[str]) -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
@@ -2093,7 +2093,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
         (2, 2, ServerStatus.UNREACHABLE),
     ],
 )
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_candidate_then_reentry(
     backup_failures: int,
     reopen_seconds: int,
@@ -2116,7 +2116,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     )
 
     async def invoke_once(preferred: list[str]) -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
@@ -2159,7 +2159,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", ["tools/call", "resources/read"])
+@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
 @pytest.mark.parametrize(
     ("preferred", "expected_first", "expected_second"),
     [
@@ -2205,7 +2205,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
     factory.set_failure_script(expected_second, UNIT_TEST_INITIALIZE_METHOD, ["ok"])
 
     async def invoke_once() -> object:
-        if method == "resources/read":
+        if method == UNIT_TEST_RESOURCES_READ_METHOD:
             return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
         return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
 
@@ -2237,7 +2237,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
 async def test_invocation_failure_records_correlation_id_on_connection_events() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             raise RuntimeError(UNIT_TEST_ERROR_INIT_DOWN)
         return {
             "jsonrpc": "2.0",
@@ -2267,13 +2267,13 @@ async def test_event_list_filters_and_limits() -> None:
         method = str(request.get("method", ""))
         if server.name == "primary":
             raise RuntimeError(UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE)
-        if method == "initialize":
+        if method == UNIT_TEST_INITIALIZE_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),
                 "result": {"protocolVersion": "2025-11-25"},
             }
-        if method == "notifications/initialized":
+        if method == UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD:
             return {
                 "jsonrpc": "2.0",
                 "id": str(request.get("id", "")),

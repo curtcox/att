@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `320851dc5581b4b97aab89d7b923a0af9bfba81f`
-- Last commit: `320851d 2026-02-13 20:56:28 -0600 - Update test host fragment constants`
+- HEAD: `56416b94d4dbdcdf955aefa418349d6d48fa1a6a`
+- Last commit: `56416b9 2026-02-13 20:59:26 -0600 - Continue machine-handoff work`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,10 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual adapter session-routing key literal cleanup in unit MCP client coverage:
-  - migrated remaining inline adapter session-context key assignments (`"primary"`, `"recovered"`, and `"degraded"`) to existing `UNIT_TEST_*_SERVER` constants in `tests/unit/test_mcp_client.py`.
-  - retained host-fragment matching through local endpoint-fragment constants and preserved session routing branches unchanged.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- Completed residual scripted method-key literal cleanup in cluster NAT helper coverage:
+  - migrated remaining scripted method-key branch literals (`"initialize"`, `"tools/call"`, and `"resources/read"`) plus adjacent method-pair parametrize vectors to existing method constants in `tests/unit/test_mcp_client.py`.
+  - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
@@ -194,9 +193,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual method-branch literal cleanup in nearby adapter transport helper tests:
-1. Reuse shared URL constants in `tests/unit/test_mcp_client.py` where this improves consistency in nearby adapter-session tests:
-   - migrate nearby inline method branch checks (`"initialize"` and `"notifications/initialized"`) in adapter transport helper callbacks to existing method constants.
+Continue `P12/P13` test-structure hardening by consolidating repeated method-vector reuse in cluster NAT helper coverage:
+1. Reuse shared method vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby cluster NAT tests:
+   - add a local unit-test constant for the repeated method parametrize vector (`UNIT_TEST_TOOLS_CALL_METHOD`, `UNIT_TEST_RESOURCES_READ_METHOD`) and migrate repeated `@pytest.mark.parametrize("method", [...])` callsites in the cluster NAT section.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

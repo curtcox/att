@@ -9,10 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed residual adapter session-routing key literal cleanup in unit MCP client coverage:
-  - migrated remaining inline adapter session-context key assignments (`"primary"`, `"recovered"`, and `"degraded"`) to existing `UNIT_TEST_*_SERVER` constants in `tests/unit/test_mcp_client.py`.
-  - retained host-fragment matching through local endpoint-fragment constants and preserved session routing branches unchanged.
-  - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+- [x] Completed residual scripted method-key literal cleanup in cluster NAT helper coverage:
+  - migrated remaining scripted method-key branch literals (`"initialize"`, `"tools/call"`, and `"resources/read"`) plus adjacent method-pair parametrize vectors to existing method constants in `tests/unit/test_mcp_client.py`.
+  - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - [x] Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:
