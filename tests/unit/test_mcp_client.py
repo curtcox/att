@@ -430,6 +430,24 @@ def _assert_unit_test_failure_script_consumed_action(
     assert factory.consume_failure_action(server, method) == expected_action
 
 
+def _assert_unit_test_failure_script_progression(
+    factory: ClusterNatSessionFactory,
+    server: str,
+    method: str,
+    setup_vector: tuple[str, ...],
+    consumed_actions: tuple[str, ...],
+) -> None:
+    factory.set_failure_script(server, method, list(setup_vector))
+    for expected_action in consumed_actions:
+        _assert_unit_test_failure_script_consumed_action(
+            factory,
+            server,
+            method,
+            expected_action,
+        )
+    _assert_unit_test_failure_script_method_exhausted(factory, server, method)
+
+
 @pytest.mark.asyncio
 async def test_health_check_probe_updates_status_and_logs_transition() -> None:
     async def flaky_probe(_: object) -> tuple[bool, str | None]:
@@ -1588,67 +1606,32 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
 def test_cluster_nat_failure_script_order_and_validation() -> None:
     factory = ClusterNatSessionFactory()
 
-    factory.set_failure_script(
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR),
-    )
-    _assert_unit_test_failure_script_consumed_action(
+    _assert_unit_test_failure_script_progression(
         factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_OK,
-    )
-    _assert_unit_test_failure_script_consumed_action(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
-    )
-    _assert_unit_test_failure_script_consumed_action(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_ERROR,
-    )
-    _assert_unit_test_failure_script_method_exhausted(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR,
+        (
+            UNIT_TEST_FAILURE_ACTION_OK,
+            UNIT_TEST_FAILURE_ACTION_TIMEOUT,
+            UNIT_TEST_FAILURE_ACTION_ERROR,
+        ),
     )
 
-    factory.set_failure_script(
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
-    )
-    _assert_unit_test_failure_script_consumed_action(
+    _assert_unit_test_failure_script_progression(
         factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_ACTION_OK,
-    )
-    _assert_unit_test_failure_script_method_exhausted(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        (UNIT_TEST_FAILURE_ACTION_OK,),
     )
 
-    factory.set_failure_script(
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
-        list(UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR),
-    )
-    _assert_unit_test_failure_script_consumed_action(
+    _assert_unit_test_failure_script_progression(
         factory,
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_RESOURCES_READ_METHOD,
-        UNIT_TEST_FAILURE_ACTION_OK,
-    )
-    _assert_unit_test_failure_script_method_exhausted(
-        factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        (UNIT_TEST_FAILURE_ACTION_OK,),
     )
 
     factory.set_failure_script(

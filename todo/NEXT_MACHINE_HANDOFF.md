@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `54f8ecc7cfd9df378eb1d5444868bc073930e831`
-- Last commit: `54f8ecc 2026-02-13 22:30:40 -0600 - Add NAT test failure-script vector constants`
+- HEAD: `4452d74d540f2cf38f502b9db137093e10595d3e`
+- Last commit: `4452d74 2026-02-14 07:30:46 -0600 - Added Autopilot working agreement`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -190,10 +190,14 @@
   - added local unit-test helpers `_assert_unit_test_collected_primary_reentry_slice(...)` and `_assert_unit_test_collected_backup_reentry_slice(...)` in `tests/unit/test_mcp_client.py`.
   - migrated repeated patterns that collected re-entry slices and immediately asserted expected primary/backup vectors to helper-driven calls across retry-window/unreachable tests while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
+- Completed failure-script setup+consume progression helper assertion reuse in nearby cluster NAT helper validation coverage:
+  - added local unit-test helper `_assert_unit_test_failure_script_progression(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated failure-script setup+consume progression assertion blocks in `test_cluster_nat_failure_script_order_and_validation` to helper-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - add local unit-test helper assertions for remaining repeated failure-script setup+consume progression checks in nearby validation tests and migrate those repeated assertion blocks to helper-driven form.
+   - migrate remaining repeated `set_failure_script(...)` setup blocks in nearby retry-window/reopen call-order tests to helper-driven setup reuse while keeping server-name setup literals and method-branch conditionals explicit.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
