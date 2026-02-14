@@ -575,6 +575,23 @@ def _assert_unit_test_adapter_session_state(
         assert diagnostics.last_activity_at is None
 
 
+def _assert_unit_test_listed_adapter_session_state(
+    session: Any,
+    *,
+    active: bool,
+    initialized: bool | None = None,
+    has_last_activity: bool | None = None,
+) -> None:
+    assert session.active is active
+    if initialized is not None:
+        assert session.initialized is initialized
+    if has_last_activity is not None:
+        if has_last_activity:
+            assert session.last_activity_at is not None
+        else:
+            assert session.last_activity_at is None
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1736,10 +1753,16 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
 
     after = manager.list_adapter_sessions()
     by_name = {item.server: item for item in after}
-    assert by_name[UNIT_TEST_SERVER_B].active is True
-    assert by_name[UNIT_TEST_SERVER_B].initialized is True
-    assert by_name[UNIT_TEST_SERVER_B].last_activity_at is not None
-    assert by_name[UNIT_TEST_SERVER_A].active is False
+    _assert_unit_test_listed_adapter_session_state(
+        by_name[UNIT_TEST_SERVER_B],
+        active=True,
+        initialized=True,
+        has_last_activity=True,
+    )
+    _assert_unit_test_listed_adapter_session_state(
+        by_name[UNIT_TEST_SERVER_A],
+        active=False,
+    )
 
 
 @pytest.mark.asyncio
@@ -1766,7 +1789,7 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
     assert [item.server for item in only_c] == list(UNIT_TEST_SERVER_C_VECTOR)
-    assert only_c[0].active is True
+    _assert_unit_test_listed_adapter_session_state(only_c[0], active=True)
 
     limited = manager.list_adapter_sessions(limit=1)
     assert [item.server for item in limited] == list(UNIT_TEST_SERVER_C_VECTOR)
