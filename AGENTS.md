@@ -5,6 +5,11 @@
 2. Follow the "Active Next Slice" and "Resume Checklist" sections in that file.
 3. Update both `todo/NEXT_MACHINE_HANDOFF.md` and `todo/master_plan.md` as progress is made.
 
+## Handoff Productivity
+- Prefer `./.venv/bin/python scripts/handoff_helper.py quickview --file todo/NEXT_MACHINE_HANDOFF.md` (or `make handoff-quickview`) when you need a fast context refresh.
+- Prefer `./.venv/bin/python scripts/handoff_helper.py prepend-recent ...` (or `make handoff-prepend SUMMARY="..."`) when adding new `Recent Delivered Work` bullets.
+- Continue using `./scripts/update_handoff_snapshot.sh --pytest-passed <N>` (or `make snapshot PASSED=<N>`) after validation.
+
 ## Process Trials Alignment
 - Keep execution aligned with `todo/proposed_process_changes.md` statuses (`adopted`, `policy`, `queued trial`).
 - Re-evaluate queued process trials every Friday and record decisions in `todo/proposed_process_changes.md`.

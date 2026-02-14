@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `345b5d3a7d1fca9490f2a551390fb1ffeb1474c2`
-- Last commit: `345b5d3 2026-02-14 14:50:18 -0600 - Use diagnostics helper in refresh identity adapter-session test`
+- HEAD: `04beeb1d3d2b45609a48d09bf3453186bc4314cb`
+- Last commit: `04beeb1 2026-02-14 14:57:36 -0600 - Add handoff helper tools for quickview and delivered updates`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -22,7 +22,7 @@
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
 - Completed handoff productivity tooling to speed repeated NEXT_MACHINE_HANDOFF read/update workflow:
-  - added `scripts/handoff_helper.py` with `quickview` (prints Snapshot/Active Next Slice/Resume Checklist/Working Agreement) and `prepend-recent` (prepends delivered-work bullets under Recent Delivered Work) plus unit coverage in `tests/unit/test_handoff_helper_script.py`.
+  - added `scripts/handoff_helper.py` with `quickview` (prints Snapshot/Active Next Slice/Resume Checklist/Working Agreement) and `prepend-recent` (prepends delivered-work bullets under Recent Delivered Work) plus unit coverage in `tests/unit/test_handoff_helper_script.py`, and added explicit AGENTS self-guidance to prefer these commands when helpful.
   - added Makefile shortcuts `handoff-quickview` and `handoff-prepend` for fast local use, while preserving existing `snapshot` behavior.
   - preserved planning-doc guardrail limits (`todo/NEXT_MACHINE_HANDOFF.md <= 250`, `todo/master_plan.md <= 1300`) and kept full validation green.
 
