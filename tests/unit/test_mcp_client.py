@@ -64,6 +64,7 @@ UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR = [
     "backup",
     "primary",
 ]
+UNIT_TEST_PREFERRED_PRIMARY_VECTOR = ["primary"]
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -2256,7 +2257,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     first = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
-    second = await invoke_once(["backup", "primary"])
+    second = await invoke_once(UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR)
     assert second.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
@@ -2266,7 +2267,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     assert backup.status is expected_backup_status
 
     calls_before_third = len(factory.calls)
-    third = await invoke_once(["backup", "primary"])
+    third = await invoke_once(UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR)
     assert third.server == UNIT_TEST_PRIMARY_SERVER
 
     third_slice = _unit_test_collect_reentry_call_order_slice(
@@ -2316,7 +2317,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
         clock.advance(seconds=1)
         _record_unit_test_backup_hold_error(manager)
         with pytest.raises(MCPInvocationError):
-            await invoke_once(["primary"])
+            await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_VECTOR)
         primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
         assert primary is not None
         assert primary.status is ServerStatus.UNREACHABLE
@@ -2369,13 +2370,13 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     async def invoke_once(preferred: list[str]) -> object:
         return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
-    first = await invoke_once(["primary", "backup"])
+    first = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
     _record_unit_test_backup_hold_error(manager)
     with pytest.raises(MCPInvocationError):
-        await invoke_once(["primary"])
+        await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_VECTOR)
 
     primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
@@ -2383,7 +2384,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
 
     clock.advance(seconds=1)
     calls_before_backup_reentry = len(factory.calls)
-    backup_reentry = await invoke_once(["primary", "backup"])
+    backup_reentry = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert backup_reentry.server == UNIT_TEST_BACKUP_SERVER
     assert backup_reentry.method == method
 
@@ -2420,7 +2421,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     async def invoke_once(preferred: list[str]) -> object:
         return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
-    first = await invoke_once(["primary", "backup"])
+    first = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
@@ -2430,7 +2431,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     assert backup.status is expected_backup_status
 
     with pytest.raises(MCPInvocationError):
-        await invoke_once(["primary"])
+        await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_VECTOR)
     primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     assert primary is not None
     assert primary.status is ServerStatus.UNREACHABLE
