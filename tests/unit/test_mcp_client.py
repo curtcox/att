@@ -1356,13 +1356,13 @@ async def test_adapter_transport_fallback_across_mixed_states() -> None:
     @asynccontextmanager
     async def session_context(endpoint: str) -> Any:
         if UNIT_TEST_PRIMARY_ENDPOINT_HOST_FRAGMENT in endpoint:
-            key = "primary"
+            key = UNIT_TEST_PRIMARY_SERVER
         elif UNIT_TEST_RECOVERED_ENDPOINT_HOST_FRAGMENT in endpoint:
-            key = "recovered"
+            key = UNIT_TEST_RECOVERED_SERVER
         else:
-            key = "degraded"
+            key = UNIT_TEST_DEGRADED_SERVER
         session = sessions.setdefault(key, FakeNatSession())
-        if key == "primary":
+        if key == UNIT_TEST_PRIMARY_SERVER:
             session.fail_with = RuntimeError(UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE)
         yield session
 

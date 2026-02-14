@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `40adc8da60df2fa5f2d867593f284c702260bae0`
-- Last commit: `40adc8d 2026-02-13 20:54:33 -0600 - Update MCP client tests backup URL`
+- HEAD: `320851dc5581b4b97aab89d7b923a0af9bfba81f`
+- Last commit: `320851d 2026-02-13 20:56:28 -0600 - Update test host fragment constants`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual adapter endpoint host-fragment literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_PRIMARY_ENDPOINT_HOST_FRAGMENT` and `UNIT_TEST_RECOVERED_ENDPOINT_HOST_FRAGMENT`.
-  - migrated remaining inline session-context routing checks (`"primary.local"` and `"recovered.local"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+- Completed residual adapter session-routing key literal cleanup in unit MCP client coverage:
+  - migrated remaining inline adapter session-context key assignments (`"primary"`, `"recovered"`, and `"degraded"`) to existing `UNIT_TEST_*_SERVER` constants in `tests/unit/test_mcp_client.py`.
+  - retained host-fragment matching through local endpoint-fragment constants and preserved session routing branches unchanged.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual adapter session-routing key literal cleanup in unit MCP client coverage:
+Continue `P12/P13` test-structure hardening by finishing residual method-branch literal cleanup in nearby adapter transport helper tests:
 1. Reuse shared URL constants in `tests/unit/test_mcp_client.py` where this improves consistency in nearby adapter-session tests:
-   - migrate remaining inline adapter session-context key assignments (`"primary"`, `"recovered"`, and `"degraded"`) to existing `UNIT_TEST_*_SERVER` constants.
+   - migrate nearby inline method branch checks (`"initialize"` and `"notifications/initialized"`) in adapter transport helper callbacks to existing method constants.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
