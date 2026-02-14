@@ -73,6 +73,7 @@ UNIT_TEST_ERROR_DOWN = "down"
 UNIT_TEST_ERROR_SLOW = "slow"
 UNIT_TEST_ERROR_HOLD_BACKUP = "hold backup"
 UNIT_TEST_ERROR_HOLD_PRIMARY = "hold primary"
+UNIT_TEST_ERROR_MANUAL_DEGRADE = "manual degrade"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -2230,7 +2231,11 @@ async def test_event_list_filters_and_limits() -> None:
         UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
     )
     request_id = result.request_id
-    manager.record_check_result(UNIT_TEST_BACKUP_SERVER, healthy=False, error="manual degrade")
+    manager.record_check_result(
+        UNIT_TEST_BACKUP_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_MANUAL_DEGRADE,
+    )
 
     primary_invocation = manager.list_invocation_events(
         server=UNIT_TEST_PRIMARY_SERVER,

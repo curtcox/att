@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `d39ba95e2a9c04cd64da1a78c42d22d1ccb14aa3`
-- Last commit: `d39ba95 2026-02-13 16:19:26 -0600 - Update mcp session call labels`
+- HEAD: `40537ea3b9ef8a4c63a36179e85d9e0cb519a324`
+- Last commit: `40537ea 2026-02-13 17:21:04 -0600 - Add MCP error constants`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual manual-degrade health error literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_ERROR_MANUAL_DEGRADE`.
+  - migrated the remaining inline `record_check_result(..., error="manual degrade")` path in `tests/unit/test_mcp_client.py` to constant-driven form.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Extended health-check error-message constant reuse in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_DOWN`, `UNIT_TEST_ERROR_SLOW`, `UNIT_TEST_ERROR_HOLD_BACKUP`, and `UNIT_TEST_ERROR_HOLD_PRIMARY`.
@@ -158,9 +164,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual health/error literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for the remaining inline health-check error text:
-   - migrate the remaining `record_check_result(..., error="manual degrade")` literal to a dedicated `UNIT_TEST_ERROR_*` constant (and fold any adjacent single-path health error text into existing constants where this improves consistency without reducing readability).
+Continue `P12/P13` test-structure hardening by finishing residual health-probe error literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining inline probe error text:
+   - migrate direct probe-result strings (for example `"timeout"` / `"temporary"` in health-check probe coverage) plus adjacent assertion text where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
