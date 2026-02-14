@@ -79,6 +79,9 @@ UNIT_TEST_ERROR_TEMPORARY = "temporary"
 UNIT_TEST_ERROR_INIT_FAILED = "init failed"
 UNIT_TEST_ERROR_CONNECT_TIMEOUT = "connect timeout"
 UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE = "primary unavailable"
+UNIT_TEST_ERROR_PRIMARY_DOWN = "primary down"
+UNIT_TEST_ERROR_INIT_DOWN = "init down"
+UNIT_TEST_ERROR_HTTP_STATUS_503 = "http status 503"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -403,7 +406,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         if server.name == "primary":
-            raise RuntimeError("primary down")
+            raise RuntimeError(UNIT_TEST_ERROR_PRIMARY_DOWN)
         if method == "initialize":
             return {
                 "jsonrpc": "2.0",
@@ -435,7 +438,7 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     assert error.attempts[0].server == UNIT_TEST_PRIMARY_SERVER
     assert error.attempts[0].stage == UNIT_TEST_INITIALIZE_METHOD
     assert error.attempts[0].success is False
-    assert error.attempts[0].error == "primary down"
+    assert error.attempts[0].error == UNIT_TEST_ERROR_PRIMARY_DOWN
     assert error.attempts[0].error_category == UNIT_TEST_TRANSPORT_ERROR_CATEGORY
     assert error.attempts[1].server == UNIT_TEST_BACKUP_SERVER
     assert error.attempts[1].stage == UNIT_TEST_INITIALIZE_METHOD
@@ -508,7 +511,10 @@ async def test_invoke_tool_transport_error_category_http_status() -> None:
                 "id": str(request.get("id", "")),
                 "result": {},
             }
-        raise MCPTransportError("http status 503", category="http_status")
+        raise MCPTransportError(
+            UNIT_TEST_ERROR_HTTP_STATUS_503,
+            category=UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY,
+        )
 
     manager = MCPClientManager(transport=transport)
     manager.register("codex", "http://codex.local")
@@ -2181,7 +2187,7 @@ async def test_invocation_failure_records_correlation_id_on_connection_events() 
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
         method = str(request.get("method", ""))
         if method == "initialize":
-            raise RuntimeError("init down")
+            raise RuntimeError(UNIT_TEST_ERROR_INIT_DOWN)
         return {
             "jsonrpc": "2.0",
             "id": str(request.get("id", "")),
