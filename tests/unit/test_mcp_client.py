@@ -61,6 +61,18 @@ UNIT_TEST_SERVER_C = "c"
 UNIT_TEST_CODEX_SERVER = "codex"
 UNIT_TEST_GITHUB_SERVER = "github"
 UNIT_TEST_TERMINAL_SERVER = "terminal"
+UNIT_TEST_CLUSTER_NAT_PREFERRED_REOPEN_MATRIX = (
+    (
+        [UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_BACKUP_SERVER],
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_BACKUP_SERVER,
+    ),
+    (
+        [UNIT_TEST_BACKUP_SERVER, UNIT_TEST_PRIMARY_SERVER],
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_PRIMARY_SERVER,
+    ),
+)
 UNIT_TEST_INITIALIZE_START_PHASE = "initialize_start"
 UNIT_TEST_INITIALIZE_FAILURE_PHASE = "initialize_failure"
 UNIT_TEST_INITIALIZE_SUCCESS_PHASE = "initialize_success"
@@ -2169,10 +2181,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 @pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize(
     ("preferred", "expected_first", "expected_second"),
-    [
-        (["primary", "backup"], "primary", "backup"),
-        (["backup", "primary"], "backup", "primary"),
-    ],
+    UNIT_TEST_CLUSTER_NAT_PREFERRED_REOPEN_MATRIX,
 )
 async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candidates(
     method: str,

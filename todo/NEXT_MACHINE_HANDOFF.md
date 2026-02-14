@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `0e56a669bc85d9f8c652a4ecbbfcb64f5357e176`
-- Last commit: `0e56a66 2026-02-13 21:11:35 -0600 - Update cluster NAT failure matrix`
+- HEAD: `f36f5ea7a475285269c5969bc5499cd445dcb1c7`
+- Last commit: `f36f5ea 2026-02-13 21:13:19 -0600 - Use trigger constant for NAT reinit`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed trigger-vector constant reuse in cluster NAT force-reinitialize coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated the inline trigger parametrize vector (`"stale_expiry"`, `"degraded_status"`) to the shared constant in cluster NAT force-reinitialize call-order parity coverage.
+- Completed preferred-order reopen matrix constant reuse in cluster NAT simultaneous-unreachable coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_PREFERRED_REOPEN_MATRIX` in `tests/unit/test_mcp_client.py`.
+  - migrated the inline simultaneous-unreachable preferred-order parametrize matrix (`["primary","backup"]`/`["backup","primary"]`) to the shared constant while preserving expected-first/expected-second semantics.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -196,7 +196,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating small parametrize vectors in cluster NAT helper coverage:
 1. Reuse shared small parametrize vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby cluster NAT tests:
-   - add a local unit-test constant for the remaining preferred-order reopen matrix in simultaneous-unreachable coverage (`(["primary", "backup"], "primary", "backup")`, `(["backup", "primary"], "backup", "primary")`) and migrate the inline parametrize matrix.
+   - add a local unit-test constant for the remaining two-entry unreachable-after matrix (`(3, ServerStatus.DEGRADED)`, `(1, ServerStatus.UNREACHABLE)`) and migrate the inline `("unreachable_after", "expected_status")` parametrize list in retry-window gating coverage.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
