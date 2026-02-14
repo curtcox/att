@@ -628,13 +628,21 @@ def _assert_unit_test_adapter_session_freshness(
     assert diagnostics.freshness == expected_freshness
 
 
+def _unit_test_server_diagnostics(
+    manager: MCPClientManager,
+    server_name: str,
+) -> Any:
+    diagnostics = manager.adapter_session_diagnostics(server_name)
+    assert diagnostics is not None
+    return diagnostics
+
+
 def _assert_unit_test_server_diagnostics_freshness(
     manager: MCPClientManager,
     server_name: str,
     expected_freshness: str,
 ) -> Any:
-    diagnostics = manager.adapter_session_diagnostics(server_name)
-    assert diagnostics is not None
+    diagnostics = _unit_test_server_diagnostics(manager, server_name)
     _assert_unit_test_adapter_session_freshness(diagnostics, expected_freshness)
     return diagnostics
 
@@ -1781,8 +1789,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     manager.register(UNIT_TEST_NAT_SERVER, UNIT_TEST_NAT_SERVER_URL)
 
     assert manager.supports_adapter_session_controls() is True
-    diagnostics = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert diagnostics is not None
+    diagnostics = _unit_test_server_diagnostics(manager, UNIT_TEST_NAT_SERVER)
     _assert_unit_test_adapter_session_state_vector(
         diagnostics,
         UNIT_TEST_ADAPTER_SESSION_STATE_INACTIVE_VECTOR,
@@ -1793,8 +1800,7 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
     assert initialized.initialized is True
     assert factory.created == 1
 
-    after_initialize = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert after_initialize is not None
+    after_initialize = _unit_test_server_diagnostics(manager, UNIT_TEST_NAT_SERVER)
     _assert_unit_test_adapter_session_state_vector(
         after_initialize,
         UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
@@ -2031,8 +2037,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
             preferred=UNIT_TEST_PREFERRED_NAT_VECTOR,
         )
 
-    first_diag = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
-    assert first_diag is not None
+    first_diag = _unit_test_server_diagnostics(manager, UNIT_TEST_NAT_SERVER)
     assert first_diag.active is False
     assert factory.created == 1
     assert factory.closed == 1
