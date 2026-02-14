@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `1e213d81029993e8b751457ed7e8e9209001bf38`
-- Last commit: `1e213d8 2026-02-14 09:49:56 -0600 - Route NAT initialize-timeout branch via initialize helper`
-- Working tree at handoff creation: dirty
+- HEAD: `d7517312f7bd93093ea3585adef950ba87330160`
+- Last commit: `d751731 2026-02-14 09:56:02 -0600 - Reuse initialize-timeout helper in unreachable tests`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
