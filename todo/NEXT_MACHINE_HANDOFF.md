@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `b089a4848816c11b64b0f2ca27b2096c37737c7a`
-- Last commit: `b089a48 2026-02-14 10:09:12 -0600 - Refresh handoff snapshot metadata`
+- HEAD: `9a0e6106e19ecfaa4b031b6e3e0c85ed9ee31f8b`
+- Last commit: `9a0e610 2026-02-14 10:16:17 -0600 - Refactor NAT failure-script progression expectations`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,9 +21,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed failure-script progression expected-vector constant reuse in nearby cluster NAT helper validation coverage:
-  - added local unit-test constant `UNIT_TEST_FAILURE_SCRIPT_ORDER_VALIDATION_PROGRESSION_STEPS` and helper `_assert_unit_test_failure_script_progressions(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated progression assertion blocks in `test_cluster_nat_failure_script_order_and_validation` to helper/constant-driven form while keeping server-name setup literals and method-branch conditionals explicit and unchanged.
+- Completed retry-window backup hold-error helper reuse in nearby cluster NAT helper coverage:
+  - added local unit-test helpers `_record_unit_test_backup_hold_error(...)` and `_record_unit_test_backup_hold_errors(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated backup hold-state setup calls (`record_check_result(..., error=UNIT_TEST_ERROR_HOLD_BACKUP)`) in retry-window and unreachable/reopen tests to helper-driven form while keeping server-name setup literals and method-branch conditionals explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
@@ -201,7 +201,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby repeated setup sequences used in timeout-toggle and retry-window helper setup/assertion paths into shared local setup-step vectors/helpers while keeping server-name setup literals and method-branch conditionals explicit.
+   - migrate any remaining nearby repeated timeout-toggle branch setup sequences in failure-script exhaustion paths into shared local helper/vector form while keeping server-name setup literals and method-branch conditionals explicit.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

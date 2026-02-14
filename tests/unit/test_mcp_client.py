@@ -616,6 +616,22 @@ def _set_unit_test_primary_initialize_timeout_failure_script(
         _set_unit_test_primary_initialize_timeout_timeout_ok_failure_script(factory)
 
 
+def _record_unit_test_backup_hold_error(manager: MCPClientManager) -> None:
+    manager.record_check_result(
+        UNIT_TEST_BACKUP_SERVER,
+        healthy=False,
+        error=UNIT_TEST_ERROR_HOLD_BACKUP,
+    )
+
+
+def _record_unit_test_backup_hold_errors(
+    manager: MCPClientManager,
+    count: int,
+) -> None:
+    for _ in range(count):
+        _record_unit_test_backup_hold_error(manager)
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -2174,11 +2190,7 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     assert all(server == UNIT_TEST_BACKUP_SERVER for server, _, _ in second_slice)
 
     clock.advance(seconds=1)
-    manager.record_check_result(
-        UNIT_TEST_BACKUP_SERVER,
-        healthy=False,
-        error=UNIT_TEST_ERROR_HOLD_BACKUP,
-    )
+    _record_unit_test_backup_hold_error(manager)
 
     calls_before_third = len(factory.calls)
     third = await invoke_once()
@@ -2228,12 +2240,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     assert second.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
-    for _ in range(backup_failures):
-        manager.record_check_result(
-            UNIT_TEST_BACKUP_SERVER,
-            healthy=False,
-            error=UNIT_TEST_ERROR_HOLD_BACKUP,
-        )
+    _record_unit_test_backup_hold_errors(manager, backup_failures)
     backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert backup is not None
     assert backup.status is expected_backup_status
@@ -2292,11 +2299,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
     if primary_failures == 2:
         clock.advance(seconds=1)
-        manager.record_check_result(
-            UNIT_TEST_BACKUP_SERVER,
-            healthy=False,
-            error=UNIT_TEST_ERROR_HOLD_BACKUP,
-        )
+        _record_unit_test_backup_hold_error(manager)
         with pytest.raises(MCPInvocationError):
             await invoke_once(["primary"])
         primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
@@ -2318,11 +2321,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     assert primary is not None
     assert primary.status is expected_primary_status
 
-    manager.record_check_result(
-        UNIT_TEST_BACKUP_SERVER,
-        healthy=False,
-        error=UNIT_TEST_ERROR_HOLD_BACKUP,
-    )
+    _record_unit_test_backup_hold_error(manager)
 
     calls_before_reentry = len(factory.calls)
     reentry = await invoke_once(["backup", "primary"])
@@ -2361,11 +2360,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
-    manager.record_check_result(
-        UNIT_TEST_BACKUP_SERVER,
-        healthy=False,
-        error=UNIT_TEST_ERROR_HOLD_BACKUP,
-    )
+    _record_unit_test_backup_hold_error(manager)
     with pytest.raises(MCPInvocationError):
         await invoke_once(["primary"])
 
@@ -2418,12 +2413,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     clock.advance(seconds=1)
-    for _ in range(backup_failures):
-        manager.record_check_result(
-            UNIT_TEST_BACKUP_SERVER,
-            healthy=False,
-            error=UNIT_TEST_ERROR_HOLD_BACKUP,
-        )
+    _record_unit_test_backup_hold_errors(manager, backup_failures)
     backup = manager.get(UNIT_TEST_BACKUP_SERVER)
     assert backup is not None
     assert backup.status is expected_backup_status
@@ -2479,11 +2469,7 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
         healthy=False,
         error=UNIT_TEST_ERROR_HOLD_PRIMARY,
     )
-    manager.record_check_result(
-        UNIT_TEST_BACKUP_SERVER,
-        healthy=False,
-        error=UNIT_TEST_ERROR_HOLD_BACKUP,
-    )
+    _record_unit_test_backup_hold_error(manager)
 
     primary = manager.get(UNIT_TEST_PRIMARY_SERVER)
     backup = manager.get(UNIT_TEST_BACKUP_SERVER)
