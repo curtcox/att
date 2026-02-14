@@ -44,6 +44,10 @@ UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX = (
     (1, ServerStatus.DEGRADED),
     (2, ServerStatus.UNREACHABLE),
 )
+UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR = (
+    "stale_expiry",
+    "degraded_status",
+)
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -1768,7 +1772,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
-@pytest.mark.parametrize("trigger", ["stale_expiry", "degraded_status"])
+@pytest.mark.parametrize("trigger", UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR)
 async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     method: str,
     trigger: str,

@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `72d7ed448d8b8662523f148e394f99fd954d451c`
-- Last commit: `72d7ed4 2026-02-13 21:09:33 -0600 - Add NAT failure exhaustion matrix`
+- HEAD: `0e56a669bc85d9f8c652a4ecbbfcb64f5357e176`
+- Last commit: `0e56a66 2026-02-13 21:11:35 -0600 - Update cluster NAT failure matrix`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed repeated failure-count/status matrix constant reuse in cluster NAT helper coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_FAILURE_COUNT_STATUS_MATRIX` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated two-entry failover status parametrizations (`(1, ServerStatus.DEGRADED)`, `(2, ServerStatus.UNREACHABLE)`) to the shared matrix in nearby backup/primary retry-window tests.
+- Completed trigger-vector constant reuse in cluster NAT force-reinitialize coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated the inline trigger parametrize vector (`"stale_expiry"`, `"degraded_status"`) to the shared constant in cluster NAT force-reinitialize call-order parity coverage.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -196,7 +196,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating small parametrize vectors in cluster NAT helper coverage:
 1. Reuse shared small parametrize vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby cluster NAT tests:
-   - add a local unit-test constant for the remaining trigger vector (`"stale_expiry"`, `"degraded_status"`) and migrate the inline `@pytest.mark.parametrize("trigger", [...])` callsite in the cluster NAT force-reinitialize coverage.
+   - add a local unit-test constant for the remaining preferred-order reopen matrix in simultaneous-unreachable coverage (`(["primary", "backup"], "primary", "backup")`, `(["backup", "primary"], "backup", "primary")`) and migrate the inline parametrize matrix.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
