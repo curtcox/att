@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `5065c4e888a6135c13883b5e02ee2d7818af263c`
-- Last commit: `5065c4e 2026-02-14 08:48:45 -0600 - Refresh handoff snapshot metadata`
-- Working tree at handoff creation: dirty
+- HEAD: `ebd6fb588d97b8811bf8213506ac83e8323b828a`
+- Last commit: `ebd6fb5 2026-02-14 08:53:21 -0600 - Unify NAT primary initialize timeout setup calls`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
