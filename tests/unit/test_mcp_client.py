@@ -248,6 +248,12 @@ UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR = ("timeout", "timeout", "ok"
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
 UNIT_TEST_FAILURE_ACTION_OK = "ok"
 UNIT_TEST_FAILURE_ACTION_TIMEOUT = "timeout"
+UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_ACTION_VECTOR = (
+    UNIT_TEST_FAILURE_ACTION_OK,
+    UNIT_TEST_FAILURE_ACTION_TIMEOUT,
+    UNIT_TEST_FAILURE_ACTION_ERROR,
+)
+UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR = (UNIT_TEST_FAILURE_ACTION_OK,)
 UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS = (
     (
         UNIT_TEST_PRIMARY_SERVER,
@@ -1677,11 +1683,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_INITIALIZE_METHOD,
         UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_VECTOR,
-        (
-            UNIT_TEST_FAILURE_ACTION_OK,
-            UNIT_TEST_FAILURE_ACTION_TIMEOUT,
-            UNIT_TEST_FAILURE_ACTION_ERROR,
-        ),
+        UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_ACTION_VECTOR,
     )
 
     _assert_unit_test_failure_script_progression(
@@ -1689,7 +1691,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_TOOLS_CALL_METHOD,
         UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-        (UNIT_TEST_FAILURE_ACTION_OK,),
+        UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
     )
 
     _assert_unit_test_failure_script_progression(
@@ -1697,7 +1699,7 @@ def test_cluster_nat_failure_script_order_and_validation() -> None:
         UNIT_TEST_PRIMARY_SERVER,
         UNIT_TEST_RESOURCES_READ_METHOD,
         UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-        (UNIT_TEST_FAILURE_ACTION_OK,),
+        UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR,
     )
 
     _set_unit_test_failure_script(
