@@ -56,6 +56,14 @@ UNIT_TEST_CLUSTER_NAT_TRIGGER_VECTOR = (
     "stale_expiry",
     "degraded_status",
 )
+UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR = [
+    "primary",
+    "backup",
+]
+UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR = [
+    "backup",
+    "primary",
+]
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -2245,7 +2253,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
             preferred,
         )
 
-    first = await invoke_once(["primary", "backup"])
+    first = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     second = await invoke_once(["backup", "primary"])
@@ -2429,12 +2437,12 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 
     calls_before_no_candidate = len(factory.calls)
     with pytest.raises(MCPInvocationError):
-        await invoke_once(["primary", "backup"])
+        await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert len(factory.calls) == calls_before_no_candidate
 
     clock.advance(seconds=reopen_seconds)
     calls_before_reentry = len(factory.calls)
-    reentry = await invoke_once(["backup", "primary"])
+    reentry = await invoke_once(UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR)
     assert reentry.server == UNIT_TEST_BACKUP_SERVER
     assert reentry.method == method
 
