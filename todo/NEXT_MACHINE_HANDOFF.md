@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `edc42d229eea5bca644559eb7900ea5e54835db7`
-- Last commit: `edc42d2 2026-02-14 14:08:38 -0600 - Eliminate single-use absent diagnostics wrapper`
+- HEAD: `012c02ba4ff73f16d70c1571ae2237794f0407e8`
+- Last commit: `012c02b 2026-02-14 14:20:51 -0600 - Install TDD skill`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -20,6 +20,11 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed single-list NAT adapter-session listing state assertion helper reuse in freshness coverage:
+  - added local unit-test helper `_assert_unit_test_single_listed_adapter_session_servers_and_keyed_states(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated the remaining single-server list assertion in `test_manager_adapter_session_freshness_semantics` from inline `len(...)` + index access to helper-driven strict server-order + keyed-state assertion reuse while preserving freshness assertions and method semantics unchanged.
+  - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed adapter-session freshness diagnostics helper reuse in non-matrix parity paths:
   - added local unit-test helper `_assert_unit_test_server_diagnostics_freshness(...)` in `tests/unit/test_mcp_client.py`.
@@ -191,10 +196,8 @@
   - migrated repeated failure-script setup+consume progression assertions, repeated `set_failure_script(...)` setup blocks, repeated consumed-action ordering sequences, repeated consumed-action-plus-state-snapshot sequences, remaining repeated single-step/multi-step consumed-action wrapper assertions, remaining inline consumed-action tuples passed to progression helpers, remaining inline single-step action-tuple wrapper in snapshot assertions, repeated adjacent single-step snapshot assertions, nearby repeated multi-step setup sequences in validation tests, additional mixed-failover/reopen setup sequences, repeated primary-initialize timeout-timeout-ok setup sequences, repeated primary timeout-ok setup sequences used by retry-window/resource-retry tests, repeated primary ok setup sequences in exhaustion method-branch setup paths, repeated primary initialize timeout-timeout-ok setup invocation sequences in nearby unreachable-primary tests, repeated primary timeout-ok/ok setup invocation sequences in nearby retry-window and exhaustion method-branch paths, single-step primary invalid-vector setup invocation in failure-script order validation, and primary initialize + timeout-timeout-ok/timeout-ok/ok/setup-routing invocation plumbing via shared primary setter + initialize wrapper helpers (including setup-step constant reuse in the timeout-timeout-ok wrapper, initialize-timeout primary_failures==1 branch routing through the initialize wrapper, and nearby unreachable-primary setup routing through the initialize-timeout helper with explicit failure count) to helper/constant-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
-1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby repeated adapter-session diagnostics/listing state assertions (especially post-invalidation/failure active-state checks, pre-invocation inactive listings, adapter-level diagnostics state scaffolding, and remaining single-use wrappers) into shared helper/vector form, preferring combined helper checks where strict server-order + keyed-state assertions appear together.
-   - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+Continue `P12/P13` test-structure hardening by consolidating remaining NAT helper assertion reuse opportunities:
+1. Reuse existing combined listing-state helpers in `tests/unit/test_mcp_client.py` where nearby tests still mix direct indexing/shape checks with helper assertions.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.

@@ -719,6 +719,20 @@ def _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
     )
 
 
+def _assert_unit_test_single_listed_adapter_session_servers_and_keyed_states(
+    listing: list[Any],
+    expected_server: str,
+    expected_state: tuple[bool, bool, bool],
+) -> Any:
+    active, initialized, has_last_activity = expected_state
+    _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
+        listing,
+        (expected_server,),
+        ((expected_server, active, initialized, has_last_activity),),
+    )
+    return listing[0]
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1966,8 +1980,14 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     )
 
     listing = manager.list_adapter_sessions(server_name=UNIT_TEST_NAT_SERVER)
-    assert len(listing) == 1
-    _assert_unit_test_adapter_session_freshness(listing[0], expected_listing_stale_freshness)
+    _assert_unit_test_adapter_session_freshness(
+        _assert_unit_test_single_listed_adapter_session_servers_and_keyed_states(
+            listing,
+            UNIT_TEST_NAT_SERVER,
+            UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
+        ),
+        expected_listing_stale_freshness,
+    )
 
 
 @pytest.mark.asyncio
