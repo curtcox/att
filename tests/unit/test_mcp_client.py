@@ -213,6 +213,8 @@ UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES = (
     (UNIT_TEST_SERVER_C, True, True, True),
 )
 UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE = ((UNIT_TEST_SERVER_C, True, True, True),)
+UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_STATE = ((UNIT_TEST_SERVER_A, True, True, True),)
+UNIT_TEST_ADAPTER_SESSION_KEYED_INACTIVE_B_STATE = ((UNIT_TEST_SERVER_B, False, None, None),)
 UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE = (
     UNIT_TEST_FRESHNESS_UNKNOWN,
     UNIT_TEST_FRESHNESS_ACTIVE_RECENT,
@@ -220,8 +222,16 @@ UNIT_TEST_ADAPTER_SESSION_DIAGNOSTICS_FRESHNESS_SEQUENCE = (
 )
 UNIT_TEST_ADAPTER_SESSION_LISTING_FRESHNESS_SEQUENCE = (UNIT_TEST_FRESHNESS_STALE,)
 UNIT_TEST_ADAPTER_SESSION_FILTER_FRESHNESS_SERVER_VECTORS = (
-    (UNIT_TEST_FRESHNESS_STALE, (UNIT_TEST_SERVER_A,)),
-    (UNIT_TEST_FRESHNESS_UNKNOWN, (UNIT_TEST_SERVER_B,)),
+    (
+        UNIT_TEST_FRESHNESS_STALE,
+        (UNIT_TEST_SERVER_A,),
+        UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_STATE,
+    ),
+    (
+        UNIT_TEST_FRESHNESS_UNKNOWN,
+        (UNIT_TEST_SERVER_B,),
+        UNIT_TEST_ADAPTER_SESSION_KEYED_INACTIVE_B_STATE,
+    ),
 )
 UNIT_TEST_SESSION_CALL_ENTRY_LABEL = "session"
 UNIT_TEST_TOOL_CALL_ENTRY_LABEL = "tool"
@@ -2012,11 +2022,16 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
         seconds=UNIT_TEST_ADAPTER_SESSION_STALE_DELTA_SECONDS,
     )
 
-    for freshness, expected_servers in UNIT_TEST_ADAPTER_SESSION_FILTER_FRESHNESS_SERVER_VECTORS:
+    for (
+        freshness,
+        expected_servers,
+        expected_states,
+    ) in UNIT_TEST_ADAPTER_SESSION_FILTER_FRESHNESS_SERVER_VECTORS:
         filtered = manager.list_adapter_sessions(freshness=freshness)
-        _assert_unit_test_listed_adapter_session_servers(
+        _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
             filtered,
             expected_servers,
+            expected_states,
         )
 
     recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)

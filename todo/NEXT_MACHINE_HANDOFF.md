@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `d9ecc243bfe1bafa0c77f2bfa6feb86d06fce617`
-- Last commit: `d9ecc24 2026-02-14 14:26:35 -0600 - Refactor NAT freshness listing assertion into shared helper`
+- HEAD: `34d27c81dc0465aca90f2a3e6bf8af5a29a185ba`
+- Last commit: `34d27c8 2026-02-14 14:30:18 -0600 - Consolidate limited adapter session listing assertion helper`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -22,7 +22,7 @@
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
 - Completed limited-list adapter-session combined helper assertion reuse in NAT filter coverage:
-  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit` from server-only list assertion to `_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)` using existing keyed-state vector `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` in `tests/unit/test_mcp_client.py`.
+  - migrated the `limit=1` assertion path in `test_manager_list_adapter_sessions_supports_filters_and_limit` plus freshness-filter stale/unknown assertions in `test_manager_list_adapter_sessions_supports_freshness_filter` from server-only list checks to `_assert_unit_test_listed_adapter_session_servers_and_keyed_states(...)` using keyed-state vectors (existing `UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE` plus new freshness vectors) in `tests/unit/test_mcp_client.py`.
   - preserved server-order semantics, active-session state semantics, timeout-category regression coverage, invocation-event/connection-event filter behavior, and call-order/subsequence behavior unchanged.
   - addressed the `todo/master_plan.md` guardrail (`<=1300` lines) by compacting the newest status entry without changing delivered meaning.
 
