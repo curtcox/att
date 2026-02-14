@@ -592,6 +592,21 @@ def _assert_unit_test_listed_adapter_session_state(
             assert session.last_activity_at is None
 
 
+def _assert_unit_test_adapter_session_freshness(
+    diagnostics: Any,
+    expected_freshness: str,
+) -> None:
+    assert diagnostics.freshness == expected_freshness
+
+
+def _assert_unit_test_single_listed_session_freshness(
+    listing: list[Any],
+    expected_freshness: str,
+) -> None:
+    assert len(listing) == 1
+    _assert_unit_test_adapter_session_freshness(listing[0], expected_freshness)
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1806,7 +1821,10 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
 
     initial = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert initial is not None
-    assert initial.freshness == UNIT_TEST_FRESHNESS_UNKNOWN
+    _assert_unit_test_adapter_session_freshness(
+        initial,
+        UNIT_TEST_FRESHNESS_UNKNOWN,
+    )
 
     await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
@@ -1816,7 +1834,10 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
     recent = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert recent is not None
     assert recent.active is True
-    assert recent.freshness == UNIT_TEST_FRESHNESS_ACTIVE_RECENT
+    _assert_unit_test_adapter_session_freshness(
+        recent,
+        UNIT_TEST_FRESHNESS_ACTIVE_RECENT,
+    )
 
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
@@ -1826,11 +1847,16 @@ async def test_manager_adapter_session_freshness_semantics() -> None:
 
     stale = manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER)
     assert stale is not None
-    assert stale.freshness == UNIT_TEST_FRESHNESS_STALE
+    _assert_unit_test_adapter_session_freshness(
+        stale,
+        UNIT_TEST_FRESHNESS_STALE,
+    )
 
     listing = manager.list_adapter_sessions(server_name=UNIT_TEST_NAT_SERVER)
-    assert len(listing) == 1
-    assert listing[0].freshness == UNIT_TEST_FRESHNESS_STALE
+    _assert_unit_test_single_listed_session_freshness(
+        listing,
+        UNIT_TEST_FRESHNESS_STALE,
+    )
 
 
 @pytest.mark.asyncio
