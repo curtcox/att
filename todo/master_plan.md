@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed residual `recovered` endpoint URL literal cleanup in unit MCP client coverage:
-  - added local unit-test constant `UNIT_TEST_RECOVERED_SERVER_URL`.
-  - migrated remaining inline `manager.register("recovered", "http://recovered.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
+- [x] Completed residual `degraded` endpoint URL literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_DEGRADED_SERVER_URL`.
+  - migrated remaining inline `manager.register("degraded", "http://degraded.local")` setup usages to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
