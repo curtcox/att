@@ -1198,13 +1198,13 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
     assert adapter is not None
     adapter._sessions["a"].last_activity_at = datetime.now(UTC) - timedelta(seconds=61)
 
-    stale = manager.list_adapter_sessions(freshness="stale")
+    stale = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_STALE)
     assert [item.server for item in stale] == [UNIT_TEST_SERVER_A]
 
-    unknown = manager.list_adapter_sessions(freshness="unknown")
+    unknown = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_UNKNOWN)
     assert [item.server for item in unknown] == [UNIT_TEST_SERVER_B]
 
-    recent = manager.list_adapter_sessions(freshness="active_recent")
+    recent = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_ACTIVE_RECENT)
     assert recent == []
 
 

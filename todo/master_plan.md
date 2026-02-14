@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed residual adapter session-id literal cleanup in unit MCP client coverage:
-  - reused existing local unit-test constant `UNIT_TEST_SESSION_ID_FIRST`.
-  - migrated the remaining inline adapter session-id comparison (`session.session_id == "session-1"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+- [x] Completed residual adapter freshness-filter literal cleanup in unit MCP client coverage:
+  - reused existing local unit-test constants `UNIT_TEST_FRESHNESS_STALE`, `UNIT_TEST_FRESHNESS_UNKNOWN`, and `UNIT_TEST_FRESHNESS_ACTIVE_RECENT`.
+  - migrated the remaining inline adapter freshness-filter arguments (`freshness="stale"`, `freshness="unknown"`, and `freshness="active_recent"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 

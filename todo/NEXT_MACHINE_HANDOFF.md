@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `807b1181b9eed47efbc07fc2026624c541fbb260`
-- Last commit: `807b118 2026-02-13 20:15:47 -0600 - Update NAT server naming in tests`
+- HEAD: `d193758dbe527e0ca5bf04cf75a4395123fe7116`
+- Last commit: `d193758 2026-02-13 20:19:30 -0600 - Continue NEXT machine handoff`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -17,9 +17,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed residual adapter session-id literal cleanup in unit MCP client coverage:
-  - reused existing local unit-test constant `UNIT_TEST_SESSION_ID_FIRST`.
-  - migrated the remaining inline adapter session-id comparison (`session.session_id == "session-1"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+- Completed residual adapter freshness-filter literal cleanup in unit MCP client coverage:
+  - reused existing local unit-test constants `UNIT_TEST_FRESHNESS_STALE`, `UNIT_TEST_FRESHNESS_UNKNOWN`, and `UNIT_TEST_FRESHNESS_ACTIVE_RECENT`.
+  - migrated the remaining inline adapter freshness-filter arguments (`freshness="stale"`, `freshness="unknown"`, and `freshness="active_recent"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,10 +194,10 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual adapter freshness-filter literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining adapter freshness-filter text:
-   - migrate remaining inline adapter freshness-filter arguments (for example `freshness="stale"`) to existing shared constants where this improves consistency without reducing readability.
-   - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+Continue `P12/P13` test-structure hardening by finishing residual adapter server-name literal cleanup in freshness-filter unit coverage:
+1. Reuse shared server-name constants in `tests/unit/test_mcp_client.py` where this improves consistency in adapter freshness-filter tests:
+   - migrate remaining inline server-name arguments/accessors in `test_manager_list_adapter_sessions_supports_freshness_filter` (for example `manager.register("a", ...)`, `preferred=["a"]`, and `adapter._sessions["a"]`) to existing shared constants.
+   - keep transport payload literals and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
    - preserve invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
