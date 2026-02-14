@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `07ed4da410e5ea9e0bb790688709ac02c779e988`
-- Last commit: `07ed4da 2026-02-14 15:02:32 -0600 - Document handoff helper usage guidance for agents`
+- HEAD: `b2e26f7a374d1c94f92e796f7c45aa6f487eba50`
+- Last commit: `b2e26f7 2026-02-14 15:06:37 -0600 - Streamline adapter-session control assertion paths`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -22,7 +22,7 @@
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
 - Completed adapter-session control assertion helper cleanup in unit MCP client coverage:
-  - removed redundant direct non-`None` checks in `test_manager_adapter_session_controls_invalidate_and_refresh` (`initialize_server(...)` and `refresh_adapter_session(...)` return-value checks) and relied on existing helper-driven diagnostics state-vector assertions.
+  - removed redundant direct non-`None` checks in `test_manager_adapter_session_controls_invalidate_and_refresh` (`initialize_server(...)` and `refresh_adapter_session(...)` return-value checks), and added/reused `_assert_unit_test_invalidate_adapter_session(...)` across adapter-session control and nearby failover/invalidate paths.
   - preserved adapter-session control semantics (supports/invalidate/refresh), timeout-category regression coverage, invocation-event/connection-event filter behavior, and call-order/subsequence behavior unchanged.
   - kept full validation green and planning-doc guardrail limits unchanged (`todo/NEXT_MACHINE_HANDOFF.md <= 250`, `todo/master_plan.md <= 1300`).
 

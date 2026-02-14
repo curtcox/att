@@ -713,6 +713,15 @@ def _assert_unit_test_empty_adapter_session_listing(listing: list[Any]) -> None:
     assert listing == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
 
 
+async def _assert_unit_test_invalidate_adapter_session(
+    manager: MCPClientManager,
+    server_name: str,
+    *,
+    expected: bool,
+) -> None:
+    assert await manager.invalidate_adapter_session(server_name) is expected
+
+
 def _unit_test_listed_adapter_sessions_by_server(
     listing: list[Any],
 ) -> dict[str, Any]:
@@ -1861,8 +1870,11 @@ async def test_manager_adapter_session_controls_invalidate_and_refresh() -> None
         UNIT_TEST_ADAPTER_SESSION_STATE_ACTIVE_INITIALIZED_VECTOR,
     )
 
-    invalidated = await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER)
-    assert invalidated is True
+    await _assert_unit_test_invalidate_adapter_session(
+        manager,
+        UNIT_TEST_NAT_SERVER,
+        expected=True,
+    )
     assert factory.closed == 1
     _assert_unit_test_server_diagnostics_state_vector(
         manager,
@@ -1886,7 +1898,11 @@ async def test_manager_adapter_session_controls_absent_for_non_nat_adapter() -> 
 
     assert manager.supports_adapter_session_controls() is False
     assert manager.adapter_session_diagnostics(UNIT_TEST_NAT_SERVER) is None
-    assert await manager.invalidate_adapter_session(UNIT_TEST_NAT_SERVER) is False
+    await _assert_unit_test_invalidate_adapter_session(
+        manager,
+        UNIT_TEST_NAT_SERVER,
+        expected=False,
+    )
     _assert_unit_test_empty_adapter_session_listing(manager.list_adapter_sessions())
 
 
@@ -2286,8 +2302,11 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
     assert first.server == UNIT_TEST_PRIMARY_SERVER
 
     if method_key == UNIT_TEST_INITIALIZE_METHOD:
-        invalidated = await manager.invalidate_adapter_session(UNIT_TEST_PRIMARY_SERVER)
-        assert invalidated is True
+        await _assert_unit_test_invalidate_adapter_session(
+            manager,
+            UNIT_TEST_PRIMARY_SERVER,
+            expected=True,
+        )
 
     second = await _invoke_unit_test_method_with_preferred(
         manager,
@@ -2390,8 +2409,11 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     assert before_invalidate[0][0] == UNIT_TEST_PRIMARY_SERVER
     assert before_invalidate[1][1] == before_invalidate[2][1]
 
-    invalidated = await manager.invalidate_adapter_session(UNIT_TEST_PRIMARY_SERVER)
-    assert invalidated is True
+    await _assert_unit_test_invalidate_adapter_session(
+        manager,
+        UNIT_TEST_PRIMARY_SERVER,
+        expected=True,
+    )
 
     third = await invoke_once()
     assert third.server == UNIT_TEST_PRIMARY_SERVER
