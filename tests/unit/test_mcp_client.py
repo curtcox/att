@@ -638,6 +638,16 @@ def _unit_test_primary_ok_setup_steps(
     )
 
 
+def _unit_test_primary_initialize_timeout_setup_steps(
+    primary_failures: int,
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return (
+        _unit_test_primary_timeout_ok_setup_steps(UNIT_TEST_INITIALIZE_METHOD)
+        if primary_failures == 1
+        else UNIT_TEST_FAILURE_SCRIPT_PRIMARY_INITIALIZE_TIMEOUT_TIMEOUT_OK_SETUP_STEPS
+    )
+
+
 def _assert_unit_test_failure_script_consumed_actions_in_order(
     factory: ClusterNatSessionFactory,
     action_steps: tuple[tuple[str, str, str], ...],
@@ -2223,15 +2233,9 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_script(
+    _set_unit_test_failure_scripts(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        (
-            UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR
-            if primary_failures == 1
-            else UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_TIMEOUT_OK_VECTOR
-        ),
+        _unit_test_primary_initialize_timeout_setup_steps(primary_failures),
     )
 
     async def invoke_once(preferred: list[str]) -> object:
