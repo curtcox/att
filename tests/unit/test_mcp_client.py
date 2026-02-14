@@ -640,6 +640,19 @@ def _unit_test_listed_adapter_sessions_by_server(
     return {item.server: item for item in listing}
 
 
+def _assert_unit_test_listed_adapter_session_keyed_states(
+    by_server: dict[str, Any],
+    expected_states: tuple[tuple[str, bool, bool | None, bool | None], ...],
+) -> None:
+    for server, active, initialized, has_last_activity in expected_states:
+        _assert_unit_test_listed_adapter_session_state(
+            by_server[server],
+            active=active,
+            initialized=initialized,
+            has_last_activity=has_last_activity,
+        )
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1804,15 +1817,12 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
 
     after = manager.list_adapter_sessions()
     by_name = _unit_test_listed_adapter_sessions_by_server(after)
-    _assert_unit_test_listed_adapter_session_state(
-        by_name[UNIT_TEST_SERVER_B],
-        active=True,
-        initialized=True,
-        has_last_activity=True,
-    )
-    _assert_unit_test_listed_adapter_session_state(
-        by_name[UNIT_TEST_SERVER_A],
-        active=False,
+    _assert_unit_test_listed_adapter_session_keyed_states(
+        by_name,
+        (
+            (UNIT_TEST_SERVER_B, True, True, True),
+            (UNIT_TEST_SERVER_A, False, None, None),
+        ),
     )
 
 
