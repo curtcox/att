@@ -65,6 +65,7 @@ UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR = [
     "primary",
 ]
 UNIT_TEST_PREFERRED_PRIMARY_VECTOR = ["primary"]
+UNIT_TEST_PREFERRED_PRIMARY_SECONDARY_VECTOR = ["primary", "secondary"]
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -955,9 +956,10 @@ async def test_read_resource_fallback_on_rpc_error() -> None:
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("secondary", UNIT_TEST_SECONDARY_SERVER_URL)
 
-    result = await manager.read_resource(
-        UNIT_TEST_PROJECTS_URI,
-        preferred=["primary", "secondary"],
+    result = await _invoke_unit_test_method_with_preferred(
+        manager,
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_SECONDARY_VECTOR,
     )
     assert result.server == UNIT_TEST_SECONDARY_SERVER
     assert result.method == UNIT_TEST_RESOURCES_READ_METHOD
