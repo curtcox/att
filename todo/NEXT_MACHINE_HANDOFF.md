@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `dbf772ad3e0dac6ca42c60f3828d7974b5ef100d`
-- Last commit: `dbf772a 2026-02-13 18:06:18 -0600 - Add manual degrade error constant`
+- HEAD: `ac04d67c27221f5894c0aa922fa6091eed786548`
+- Last commit: `ac04d67 2026-02-13 18:08:37 -0600 - Continue active next slice work`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual initialize-error literal cleanup in unit MCP client coverage:
+  - added local unit-test constant `UNIT_TEST_ERROR_INIT_FAILED`.
+  - migrated remaining inline initialize-path error text (`"init failed"`) in transport exception setup and assertion checks to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual health-probe error literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_TIMEOUT` and `UNIT_TEST_ERROR_TEMPORARY`.
@@ -170,9 +176,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual initialize-error literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining initialize error text:
-   - migrate the remaining inline initialize-error assertion literal (for example `assert initialized.last_error == "init failed"`) to a dedicated `UNIT_TEST_ERROR_*` constant and fold any adjacent initialize-path single-use error text where this improves consistency without reducing readability.
+Continue `P12/P13` test-structure hardening by finishing residual invoke/transport error literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining inline invoke-path error text:
+   - migrate repeated exception message literals used by invoke/failover transport tests (for example `"connect timeout"` / `"primary unavailable"`) to dedicated `UNIT_TEST_ERROR_*` constants where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

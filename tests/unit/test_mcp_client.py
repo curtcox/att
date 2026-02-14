@@ -76,6 +76,7 @@ UNIT_TEST_ERROR_HOLD_PRIMARY = "hold primary"
 UNIT_TEST_ERROR_MANUAL_DEGRADE = "manual degrade"
 UNIT_TEST_ERROR_TIMEOUT = "timeout"
 UNIT_TEST_ERROR_TEMPORARY = "temporary"
+UNIT_TEST_ERROR_INIT_FAILED = "init failed"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -743,7 +744,7 @@ async def test_initialize_server_updates_state_on_success() -> None:
 @pytest.mark.asyncio
 async def test_initialize_server_marks_degraded_on_error() -> None:
     async def transport(server: ExternalServer, request: JSONObject) -> JSONObject:
-        raise RuntimeError("init failed")
+        raise RuntimeError(UNIT_TEST_ERROR_INIT_FAILED)
 
     manager = MCPClientManager(transport=transport)
     manager.register("github", "http://github.local")
@@ -753,7 +754,7 @@ async def test_initialize_server_marks_degraded_on_error() -> None:
     assert initialized is not None
     assert initialized.status is ServerStatus.DEGRADED
     assert initialized.initialized is False
-    assert initialized.last_error == "init failed"
+    assert initialized.last_error == UNIT_TEST_ERROR_INIT_FAILED
 
 
 @pytest.mark.asyncio
@@ -775,7 +776,7 @@ async def test_initialize_server_failure_preserves_last_capability_snapshot() ->
                         "capabilities": {"tools": {}},
                     },
                 }
-            raise RuntimeError("init failed")
+            raise RuntimeError(UNIT_TEST_ERROR_INIT_FAILED)
         return {
             "jsonrpc": "2.0",
             "id": str(request.get("id", "")),
