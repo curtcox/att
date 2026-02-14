@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `d7517312f7bd93093ea3585adef950ba87330160`
-- Last commit: `d751731 2026-02-14 09:56:02 -0600 - Reuse initialize-timeout helper in unreachable tests`
+- HEAD: `7c0987bf8ee05e9d1593739dc36ca3c502691e67`
+- Last commit: `7c0987b 2026-02-14 10:08:32 -0600 - Operationalize process-trial statuses and cadence`
 - Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
