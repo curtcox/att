@@ -110,6 +110,26 @@ UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS = (
         ),
     ),
 )
+UNIT_TEST_CLUSTER_NAT_FORCE_REINITIALIZE_REENTRY_CALL_ORDERS = (
+    (
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        (
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD),
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_TOOLS_CALL_METHOD),
+        ),
+    ),
+    (
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        (
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
+            (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
+        ),
+    ),
+)
 UNIT_TEST_CLUSTER_NAT_PREFERRED_REOPEN_MATRIX = (
     (
         [UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_BACKUP_SERVER],
@@ -1861,13 +1881,14 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     assert second.server == UNIT_TEST_PRIMARY_SERVER
     assert second.method == method
 
+    expected_call_order = {
+        method_name: call_order_vector
+        for method_name, call_order_vector in (
+            UNIT_TEST_CLUSTER_NAT_FORCE_REINITIALIZE_REENTRY_CALL_ORDERS
+        )
+    }[method]
     call_order = _unit_test_collect_reentry_call_order_slice(factory.calls, 0, method)
-    assert call_order == [
-        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
-        _unit_test_primary_method_call_order_entry(method),
-        (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
-        _unit_test_primary_method_call_order_entry(method),
-    ]
+    assert call_order == list(expected_call_order)
 
 
 @pytest.mark.asyncio
