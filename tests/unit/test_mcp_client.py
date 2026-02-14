@@ -607,6 +607,18 @@ def _assert_unit_test_single_listed_session_freshness(
     _assert_unit_test_adapter_session_freshness(listing[0], expected_freshness)
 
 
+def _assert_unit_test_single_listed_session_server(
+    listing: list[Any],
+    expected_server: str,
+    *,
+    active: bool | None = None,
+) -> None:
+    assert len(listing) == 1
+    assert listing[0].server == expected_server
+    if active is not None:
+        _assert_unit_test_listed_adapter_session_state(listing[0], active=active)
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1803,11 +1815,17 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     assert [item.server for item in active_only] == list(UNIT_TEST_SERVER_A_C_VECTOR)
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
-    assert [item.server for item in only_c] == list(UNIT_TEST_SERVER_C_VECTOR)
-    _assert_unit_test_listed_adapter_session_state(only_c[0], active=True)
+    _assert_unit_test_single_listed_session_server(
+        only_c,
+        UNIT_TEST_SERVER_C,
+        active=True,
+    )
 
     limited = manager.list_adapter_sessions(limit=1)
-    assert [item.server for item in limited] == list(UNIT_TEST_SERVER_C_VECTOR)
+    _assert_unit_test_single_listed_session_server(
+        limited,
+        UNIT_TEST_SERVER_C,
+    )
 
 
 @pytest.mark.asyncio
