@@ -647,6 +647,16 @@ def _set_unit_test_primary_timeout_toggle_with_ok_fallback(
         _set_unit_test_primary_ok_failure_script(factory, UNIT_TEST_RESOURCES_READ_METHOD)
 
 
+async def _invoke_unit_test_method_with_preferred(
+    manager: MCPClientManager,
+    method: str,
+    preferred: list[str],
+) -> object:
+    if method == UNIT_TEST_RESOURCES_READ_METHOD:
+        return await manager.read_resource(UNIT_TEST_PROJECTS_URI, preferred=preferred)
+    return await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=preferred)
+
+
 def _assert_unit_test_failure_script_progression(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1974,30 +1984,22 @@ async def test_cluster_nat_failure_script_exhaustion_falls_back_to_set_toggles(
 
     _set_unit_test_primary_timeout_toggle_with_ok_fallback(factory, method_key)
 
-    if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
-        first = await manager.read_resource(
-            UNIT_TEST_PROJECTS_URI,
-            preferred=["primary", "backup"],
-        )
-    else:
-        first = await manager.invoke_tool(
-            UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
-        )
+    first = await _invoke_unit_test_method_with_preferred(
+        manager,
+        method_key,
+        preferred=["primary", "backup"],
+    )
     assert first.server == UNIT_TEST_PRIMARY_SERVER
 
     if method_key == UNIT_TEST_INITIALIZE_METHOD:
         invalidated = await manager.invalidate_adapter_session(UNIT_TEST_PRIMARY_SERVER)
         assert invalidated is True
 
-    if method_key == UNIT_TEST_RESOURCES_READ_METHOD:
-        second = await manager.read_resource(
-            UNIT_TEST_PROJECTS_URI,
-            preferred=["primary", "backup"],
-        )
-    else:
-        second = await manager.invoke_tool(
-            UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
-        )
+    second = await _invoke_unit_test_method_with_preferred(
+        manager,
+        method_key,
+        preferred=["primary", "backup"],
+    )
     assert second.server == UNIT_TEST_BACKUP_SERVER
     assert second.method == expected_method
 
