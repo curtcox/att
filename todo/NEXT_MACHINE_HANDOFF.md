@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `48a4caa39f6ca97b7ecf0929b062707ff6243e66`
-- Last commit: `48a4caa 2026-02-14 09:35:09 -0600 - Prune redundant NAT primary setup-step helpers`
-- Working tree at handoff creation: dirty
+- HEAD: `150ca41b337d049eb10b21b8caa2db6c857ec166`
+- Last commit: `150ca41 2026-02-14 09:41:00 -0600 - Add NAT primary initialize setup helper`
+- Working tree at handoff creation: clean
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
