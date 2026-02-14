@@ -9,9 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed mixed scripted-failover expected call-order constant reuse in NAT cluster unit coverage:
-  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_MIXED_SCRIPTED_FAILOVER_CALL_ORDER` in `tests/unit/test_mcp_client.py`.
-  - migrated the inline expected call-order list assertion in `test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover` to constant-driven form.
+- [x] Completed repeated-invokes expected progression constant reuse in NAT cluster unit coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS` in `tests/unit/test_mcp_client.py`.
+  - migrated inline expected call-method progression vectors in `test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate` to constant-driven form.
   - kept server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - [x] Completed NAT transport failure/category matrix constant reuse in unit adapter parity coverage:

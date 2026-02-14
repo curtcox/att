@@ -78,6 +78,38 @@ UNIT_TEST_CLUSTER_NAT_MIXED_SCRIPTED_FAILOVER_CALL_ORDER = (
     (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_INITIALIZE_METHOD),
     (UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_RESOURCES_READ_METHOD),
 )
+UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS = (
+    (
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        (
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+        ),
+        (
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_TOOLS_CALL_METHOD,
+        ),
+    ),
+    (
+        UNIT_TEST_RESOURCES_READ_METHOD,
+        (
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+        ),
+        (
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+            UNIT_TEST_INITIALIZE_METHOD,
+            UNIT_TEST_RESOURCES_READ_METHOD,
+        ),
+    ),
+)
 UNIT_TEST_CLUSTER_NAT_PREFERRED_REOPEN_MATRIX = (
     (
         [UNIT_TEST_PRIMARY_SERVER, UNIT_TEST_BACKUP_SERVER],
@@ -1765,12 +1797,14 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     assert first.method == method
     assert second.method == method
 
+    expected_before_invalidate = {
+        method_name: before_vector
+        for method_name, before_vector, _ in UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS
+    }[method]
     before_invalidate = _unit_test_collect_full_call_order_slice(factory.calls, 0, method)
-    assert [call_method for _, _, call_method in before_invalidate] == [
-        UNIT_TEST_INITIALIZE_METHOD,
-        method,
-        method,
-    ]
+    assert [call_method for _, _, call_method in before_invalidate] == list(
+        expected_before_invalidate
+    )
     assert before_invalidate[0][0] == UNIT_TEST_PRIMARY_SERVER
     assert before_invalidate[1][1] == before_invalidate[2][1]
 
@@ -1781,14 +1815,12 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     assert third.server == UNIT_TEST_PRIMARY_SERVER
     assert third.method == method
 
+    expected_after_invalidate = {
+        method_name: after_vector
+        for method_name, _, after_vector in UNIT_TEST_CLUSTER_NAT_REPEATED_INVOKES_PROGRESSIONS
+    }[method]
     call_order = _unit_test_collect_full_call_order_slice(factory.calls, 0, method)
-    assert [call_method for _, _, call_method in call_order] == [
-        UNIT_TEST_INITIALIZE_METHOD,
-        method,
-        method,
-        UNIT_TEST_INITIALIZE_METHOD,
-        method,
-    ]
+    assert [call_method for _, _, call_method in call_order] == list(expected_after_invalidate)
     assert call_order[3][1] != call_order[2][1]
 
 
