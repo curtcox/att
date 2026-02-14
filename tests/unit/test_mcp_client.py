@@ -31,6 +31,10 @@ UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY = "invalid_payload"
 UNIT_TEST_INITIALIZE_METHOD = "initialize"
 UNIT_TEST_TOOLS_CALL_METHOD = "tools/call"
 UNIT_TEST_RESOURCES_READ_METHOD = "resources/read"
+UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR = (
+    UNIT_TEST_TOOLS_CALL_METHOD,
+    UNIT_TEST_RESOURCES_READ_METHOD,
+)
 UNIT_TEST_NOTIFICATIONS_INITIALIZED_METHOD = "notifications/initialized"
 UNIT_TEST_PRIMARY_SERVER = "primary"
 UNIT_TEST_BACKUP_SERVER = "backup"
@@ -1708,7 +1712,7 @@ async def test_cluster_nat_call_order_is_stable_for_mixed_scripted_failover() ->
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
     method: str,
 ) -> None:
@@ -1758,7 +1762,7 @@ async def test_cluster_nat_repeated_invokes_skip_initialize_until_invalidate(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize("trigger", ["stale_expiry", "degraded_status"])
 async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
     method: str,
@@ -1804,7 +1808,7 @@ async def test_cluster_nat_force_reinitialize_triggers_call_order_parity(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize(
     ("unreachable_after", "expected_status"),
     [
@@ -1942,7 +1946,7 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize(
     ("primary_failures", "expected_primary_status"),
     [
@@ -2032,7 +2036,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_before_invoke(
     method: str,
 ) -> None:
@@ -2093,7 +2097,7 @@ async def test_cluster_nat_unreachable_primary_reinitializes_degraded_backup_bef
         (2, 2, ServerStatus.UNREACHABLE),
     ],
 )
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_candidate_then_reentry(
     backup_failures: int,
     reopen_seconds: int,
@@ -2159,7 +2163,7 @@ async def test_cluster_nat_unreachable_primary_with_closed_backup_windows_no_can
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method", [UNIT_TEST_TOOLS_CALL_METHOD, UNIT_TEST_RESOURCES_READ_METHOD])
+@pytest.mark.parametrize("method", UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR)
 @pytest.mark.parametrize(
     ("preferred", "expected_first", "expected_second"),
     [

@@ -9,8 +9,9 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed residual scripted method-key literal cleanup in cluster NAT helper coverage:
-  - migrated remaining scripted method-key branch literals (`"initialize"`, `"tools/call"`, and `"resources/read"`) plus adjacent method-pair parametrize vectors to existing method constants in `tests/unit/test_mcp_client.py`.
+- [x] Completed repeated method-parametrize vector constant reuse in cluster NAT helper coverage:
+  - added local unit-test constant `UNIT_TEST_CLUSTER_NAT_METHOD_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated cluster NAT `@pytest.mark.parametrize("method", [...])` callsites to the shared vector while keeping method-branch conditionals constant-driven.
   - kept server-name setup literals and transport payload literals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
