@@ -3,9 +3,9 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `63e147480e7da4a0fc5df880db0df11e7e159d55`
-- Last commit: `63e1474 2026-02-14 08:18:19 -0600 - Extract NAT snapshot single-action step helper`
-- Working tree at handoff creation: clean
+- HEAD: `1b7beeb68fa1f3b99b7dc52ad92d625f9c19eeae`
+- Last commit: `1b7beeb 2026-02-14 08:18:42 -0600 - Refresh handoff snapshot metadata`
+- Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
   - `./.venv313/bin/ruff format .` passes
@@ -191,13 +191,13 @@
   - migrated repeated patterns that collected re-entry slices and immediately asserted expected primary/backup vectors to helper-driven calls across retry-window/unreachable tests while keeping registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed failure-script progression/setup/snapshot helper assertion vectorization in nearby cluster NAT helper validation coverage:
-  - added local unit-test helpers `_assert_unit_test_failure_script_progression(...)`, `_set_unit_test_failure_script(...)`, `_assert_unit_test_failure_script_consumed_actions_in_order(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_actions(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_action(...)`, and `_unit_test_failure_script_single_action_steps(...)`, plus local expected-action vectors `UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS`, `UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_ACTION_VECTOR`, and `UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated failure-script setup+consume progression assertions, repeated `set_failure_script(...)` setup blocks, repeated consumed-action ordering sequences, repeated consumed-action-plus-state-snapshot sequences, remaining repeated single-step/multi-step consumed-action wrapper assertions, remaining inline consumed-action tuples passed to progression helpers, and the remaining inline single-step action-tuple wrapper in snapshot assertions to helper/constant-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - added local unit-test helpers `_assert_unit_test_failure_script_progression(...)`, `_set_unit_test_failure_script(...)`, `_assert_unit_test_failure_script_consumed_actions_in_order(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_actions(...)`, `_assert_unit_test_failure_script_snapshot_after_consumed_action(...)`, `_unit_test_failure_script_single_action_steps(...)`, and `_assert_unit_test_failure_script_snapshots_after_consumed_actions(...)`, plus local expected-action vectors `UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS`, `UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SNAPSHOT_STEPS`, `UNIT_TEST_FAILURE_SCRIPT_OK_TIMEOUT_ERROR_ACTION_VECTOR`, and `UNIT_TEST_FAILURE_SCRIPT_OK_ACTION_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated failure-script setup+consume progression assertions, repeated `set_failure_script(...)` setup blocks, repeated consumed-action ordering sequences, repeated consumed-action-plus-state-snapshot sequences, remaining repeated single-step/multi-step consumed-action wrapper assertions, remaining inline consumed-action tuples passed to progression helpers, remaining inline single-step action-tuple wrapper in snapshot assertions, and repeated adjacent single-step snapshot assertions in nearby validation tests to helper/constant-driven form while keeping server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby inline setup/expected vectors used in failure-script helper assertions into shared local expected vectors/helpers while keeping server-name setup literals and method-branch conditionals explicit.
+   - migrate any remaining nearby repeated setup vectors used in failure-script helper setup/assertion sequences into shared local vectors/helpers while keeping server-name setup literals and method-branch conditionals explicit.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

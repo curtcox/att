@@ -276,6 +276,20 @@ UNIT_TEST_FAILURE_SCRIPT_ISOLATION_FINAL_ACTION_STEPS = (
         UNIT_TEST_FAILURE_ACTION_OK,
     ),
 )
+UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SNAPSHOT_STEPS = (
+    (
+        UNIT_TEST_PRIMARY_SERVER,
+        UNIT_TEST_INITIALIZE_METHOD,
+        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
+        UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
+    ),
+    (
+        UNIT_TEST_BACKUP_SERVER,
+        UNIT_TEST_TOOLS_CALL_METHOD,
+        UNIT_TEST_FAILURE_ACTION_ERROR,
+        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+    ),
+)
 UNIT_TEST_GITHUB_SERVER_INFO = {"name": "github", "version": "2.0.0"}
 UNIT_TEST_SERVER_A_B_VECTOR = (UNIT_TEST_SERVER_A, UNIT_TEST_SERVER_B)
 UNIT_TEST_SERVER_C_VECTOR = (UNIT_TEST_SERVER_C,)
@@ -509,6 +523,20 @@ def _assert_unit_test_failure_script_snapshot_after_consumed_action(
         ),
         backup_tools_call_vector,
     )
+
+
+def _assert_unit_test_failure_script_snapshots_after_consumed_actions(
+    factory: ClusterNatSessionFactory,
+    snapshot_steps: tuple[tuple[str, str, str, tuple[str, ...]], ...],
+) -> None:
+    for server, method, expected_action, backup_tools_call_vector in snapshot_steps:
+        _assert_unit_test_failure_script_snapshot_after_consumed_action(
+            factory,
+            server,
+            method,
+            expected_action,
+            backup_tools_call_vector,
+        )
 
 
 def _unit_test_failure_script_single_action_steps(
@@ -1752,20 +1780,9 @@ def test_cluster_nat_failure_script_isolation_across_servers_and_methods() -> No
         UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
     )
 
-    _assert_unit_test_failure_script_snapshot_after_consumed_action(
+    _assert_unit_test_failure_script_snapshots_after_consumed_actions(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_INITIALIZE_METHOD,
-        UNIT_TEST_FAILURE_ACTION_TIMEOUT,
-        UNIT_TEST_FAILURE_SCRIPT_ERROR_OK_VECTOR,
-    )
-
-    _assert_unit_test_failure_script_snapshot_after_consumed_action(
-        factory,
-        UNIT_TEST_BACKUP_SERVER,
-        UNIT_TEST_TOOLS_CALL_METHOD,
-        UNIT_TEST_FAILURE_ACTION_ERROR,
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
+        UNIT_TEST_FAILURE_SCRIPT_ISOLATION_SNAPSHOT_STEPS,
     )
 
     _assert_unit_test_failure_script_consumed_actions_in_order(
