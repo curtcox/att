@@ -317,8 +317,8 @@ async def test_should_retry_uses_injected_clock_when_now_omitted() -> None:
 
 def test_choose_server_prefers_healthy_then_degraded() -> None:
     manager = MCPClientManager()
-    manager.register("a", "http://a.local")
-    manager.register("b", "http://b.local")
+    manager.register("a", UNIT_TEST_SERVER_A_URL)
+    manager.register("b", UNIT_TEST_SERVER_B_URL)
 
     manager.record_check_result(UNIT_TEST_SERVER_A, healthy=False, error=UNIT_TEST_ERROR_SLOW)
 
@@ -836,8 +836,8 @@ async def test_initialize_all_returns_all_servers() -> None:
         }
 
     manager = MCPClientManager(transport=transport)
-    manager.register("a", "http://a.local")
-    manager.register("b", "http://b.local")
+    manager.register("a", UNIT_TEST_SERVER_A_URL)
+    manager.register("b", UNIT_TEST_SERVER_B_URL)
 
     results = await manager.initialize_all()
 
@@ -1110,8 +1110,8 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
-    manager.register("b", "http://b.local")
-    manager.register("a", "http://a.local")
+    manager.register("b", UNIT_TEST_SERVER_B_URL)
+    manager.register("a", UNIT_TEST_SERVER_A_URL)
 
     before = manager.list_adapter_sessions()
     assert [item.server for item in before] == list(UNIT_TEST_SERVER_A_B_VECTOR)
@@ -1133,8 +1133,8 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     manager = MCPClientManager(
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
     )
-    manager.register("a", "http://a.local")
-    manager.register("b", "http://b.local")
+    manager.register("a", UNIT_TEST_SERVER_A_URL)
+    manager.register("b", UNIT_TEST_SERVER_B_URL)
     manager.register("c", "http://c.local")
 
     await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["a"])
