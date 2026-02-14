@@ -1247,7 +1247,7 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
     @asynccontextmanager
     async def session_context(endpoint: str) -> Any:
         async with factory(endpoint) as session:
-            if session.session_id == "session-1":
+            if session.session_id == UNIT_TEST_SESSION_ID_FIRST:
                 session.fail_with = httpx.ReadTimeout(UNIT_TEST_ERROR_TIMED_OUT)
             yield session
 
