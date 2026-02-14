@@ -9,10 +9,10 @@ ATT is a web-based application for developing, running, debugging, and deploying
 - See done for older completed implementation details:
   - `/Users/curt/me/att/done/master_plan_implementation_progress_archive_2026-02-13.md`
 
-- [x] Completed residual adapter freshness-filter literal cleanup in unit MCP client coverage:
-  - reused existing local unit-test constants `UNIT_TEST_FRESHNESS_STALE`, `UNIT_TEST_FRESHNESS_UNKNOWN`, and `UNIT_TEST_FRESHNESS_ACTIVE_RECENT`.
-  - migrated the remaining inline adapter freshness-filter arguments (`freshness="stale"`, `freshness="unknown"`, and `freshness="active_recent"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+- [x] Completed residual adapter server-name literal cleanup in freshness-filter unit coverage:
+  - reused existing local unit-test constants `UNIT_TEST_SERVER_A` and `UNIT_TEST_SERVER_B`.
+  - migrated remaining inline server-name arguments/accessors in `test_manager_list_adapter_sessions_supports_freshness_filter` (`manager.register("a", ...)`, `manager.register("b", ...)`, `preferred=["a"]`, and `adapter._sessions["a"]`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept transport payload literals and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - [x] Completed residual NAT endpoint URL literal cleanup in unit MCP client coverage:

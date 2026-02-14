@@ -1189,14 +1189,19 @@ async def test_manager_list_adapter_sessions_supports_freshness_filter() -> None
         transport_adapter=NATMCPTransportAdapter(session_factory=factory),
         adapter_session_stale_after_seconds=60,
     )
-    manager.register("a", "http://a.local")
-    manager.register("b", "http://b.local")
+    manager.register(UNIT_TEST_SERVER_A, "http://a.local")
+    manager.register(UNIT_TEST_SERVER_B, "http://b.local")
 
-    await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["a"])
+    await manager.invoke_tool(
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=[UNIT_TEST_SERVER_A],
+    )
 
     adapter = manager._adapter_with_session_controls()
     assert adapter is not None
-    adapter._sessions["a"].last_activity_at = datetime.now(UTC) - timedelta(seconds=61)
+    adapter._sessions[UNIT_TEST_SERVER_A].last_activity_at = datetime.now(UTC) - timedelta(
+        seconds=61,
+    )
 
     stale = manager.list_adapter_sessions(freshness=UNIT_TEST_FRESHNESS_STALE)
     assert [item.server for item in stale] == [UNIT_TEST_SERVER_A]
