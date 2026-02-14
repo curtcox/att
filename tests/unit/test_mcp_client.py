@@ -2495,17 +2495,14 @@ async def test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candi
         _unit_test_failure_script_reopen_setup_steps(expected_first, expected_second),
     )
 
-    async def invoke_once() -> object:
-        return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
-
     calls_before_closed = len(factory.calls)
     with pytest.raises(MCPInvocationError):
-        await invoke_once()
+        await _invoke_unit_test_method_with_preferred(manager, method, preferred)
     assert len(factory.calls) == calls_before_closed
 
     clock.advance(seconds=1)
     calls_before_reopen = len(factory.calls)
-    reopened = await invoke_once()
+    reopened = await _invoke_unit_test_method_with_preferred(manager, method, preferred)
     assert reopened.server == expected_second
     assert reopened.method == method
     reopen_events = manager.list_invocation_events(request_id=reopened.request_id)
