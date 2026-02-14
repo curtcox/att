@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `f506eeb0eb2af1810c5139c587e0a438f04bfc89`
-- Last commit: `f506eeb 2026-02-14 11:01:56 -0600 - Expand preferred-vector reuse in reopen matrix tests`
+- HEAD: `8d6236358de92600844fc2a0623434ba4637298a`
+- Last commit: `8d62363 2026-02-14 11:05:44 -0600 - Streamline reopen matrix invoke wrapper scaffolding`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,9 +21,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed simultaneous-unreachable reopen-order invoke wrapper scaffolding reuse in cluster NAT coverage:
-  - reused local async unit-test helper `_invoke_unit_test_method_with_preferred(...)` directly in `tests/unit/test_mcp_client.py`.
-  - removed remaining local invoke wrapper scaffolding in `test_cluster_nat_simultaneous_unreachable_reopen_prefers_ordered_candidates` while keeping server-name setup literals, preferred-order semantics, and method-branch behavior explicit and unchanged.
+- Completed non-matrix preferred-vector reuse in NAT parity invocation/event tests:
+  - reused local unit-test preferred-order vector `UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated non-matrix `preferred=["primary", "backup"]` literals in fallback/error/event correlation tests to vector-driven form while keeping server-name setup literals and method-branch behavior explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
@@ -201,7 +201,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby repeated preferred-order vector literals and invoke wrapper scaffolding in non-matrix NAT parity paths into shared local helper/vector form where this keeps branch intent explicit and behavior unchanged.
+   - migrate any remaining nearby repeated preferred-order vector literals and invoke wrapper scaffolding in non-matrix read-resource fallback paths into shared local helper/vector form where this keeps branch intent explicit and behavior unchanged.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

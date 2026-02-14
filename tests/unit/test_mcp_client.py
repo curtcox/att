@@ -912,7 +912,7 @@ async def test_invoke_tool_fails_over_to_next_server() -> None:
     result = await manager.invoke_tool(
         UNIT_TEST_PROJECT_LIST_TOOL_NAME,
         {"limit": 10},
-        preferred=["primary", "backup"],
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
     )
     assert result.server == UNIT_TEST_BACKUP_SERVER
     assert result.method == UNIT_TEST_TOOLS_CALL_METHOD
@@ -1005,7 +1005,10 @@ async def test_invoke_tool_error_contains_structured_attempt_trace() -> None:
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
     with pytest.raises(MCPInvocationError) as exc_info:
-        await manager.invoke_tool(UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"])
+        await manager.invoke_tool(
+            UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+            preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
+        )
 
     error = exc_info.value
     assert error.method == UNIT_TEST_TOOLS_CALL_METHOD
@@ -1216,7 +1219,8 @@ async def test_invocation_events_emitted_in_order_for_fallback() -> None:
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
     result = await manager.invoke_tool(
-        UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
     )
     assert result.server == UNIT_TEST_BACKUP_SERVER
 
@@ -2579,7 +2583,8 @@ async def test_event_list_filters_and_limits() -> None:
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
 
     result = await manager.invoke_tool(
-        UNIT_TEST_PROJECT_LIST_TOOL_NAME, preferred=["primary", "backup"]
+        UNIT_TEST_PROJECT_LIST_TOOL_NAME,
+        preferred=UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR,
     )
     request_id = result.request_id
     manager.record_check_result(
