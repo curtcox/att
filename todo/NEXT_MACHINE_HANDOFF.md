@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-13`
 - Branch: `main`
-- HEAD: `7acab70f0e329aad843d3fa0ee3a118add10044e`
-- Last commit: `7acab70 2026-02-13 18:19:16 -0600 - Continue NEXT_MACHINE_HANDOFF tasks`
+- HEAD: `c75728bc4fb3b3e4a6bf527ce77377718524250b`
+- Last commit: `c75728b 2026-02-13 18:21:44 -0600 - Add invalid payload error category`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -16,6 +16,12 @@
 ## Recent Delivered Work
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
+
+- Completed residual transport-fixture request literal cleanup in unit MCP client coverage:
+  - added local unit-test constants `UNIT_TEST_NAT_TOOL_REQUEST_ID`, `UNIT_TEST_HTTP_METHOD_POST`, and `UNIT_TEST_NAT_MCP_ENDPOINT`.
+  - migrated remaining inline NAT transport fixture request literals (`"tool-1"`, `"POST"`, and `"http://nat.local/mcp"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
+  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
+  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 - Completed residual transport-category mapping literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_INVALID_PAYLOAD_ERROR_CATEGORY` and `UNIT_TEST_ERROR_BAD_STATUS`.
@@ -44,12 +50,6 @@
 - Completed residual invoke/failover transport error literal cleanup in unit MCP client coverage:
   - added local unit-test constants `UNIT_TEST_ERROR_CONNECT_TIMEOUT` and `UNIT_TEST_ERROR_PRIMARY_UNAVAILABLE`.
   - migrated repeated invoke/failover transport exception message literals (`"connect timeout"` and `"primary unavailable"`) to constant-driven form in `tests/unit/test_mcp_client.py`.
-  - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
-  - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
-
-- Completed residual health-probe error literal cleanup in unit MCP client coverage:
-  - added local unit-test constants `UNIT_TEST_ERROR_TIMEOUT` and `UNIT_TEST_ERROR_TEMPORARY`.
-  - migrated direct probe-result literals (`"timeout"` and `"temporary"`) plus adjacent assertion-side `"timeout"` comparison in health-check probe coverage to constant-driven form in `tests/unit/test_mcp_client.py`.
   - kept registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
   - preserved timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
@@ -194,9 +194,9 @@
   - preserved timeout-category regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 
 ## Active Next Slice (Recommended)
-Continue `P12/P13` test-structure hardening by finishing residual transport-fixture request literal cleanup in unit MCP client coverage:
-1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining transport-fixture request text:
-   - migrate remaining inline request fixture literals in NAT transport parity/disconnect coverage (for example `"tool-1"`, `"POST"`, and `"http://nat.local/mcp"`) to dedicated constants where this improves consistency without reducing readability.
+Continue `P12/P13` test-structure hardening by finishing residual adapter request-id literal cleanup in unit MCP client coverage:
+1. Reuse shared test-message constants in `tests/unit/test_mcp_client.py` for remaining adapter request-id fixture text:
+   - migrate remaining inline adapter request-id literals in NAT transport adapter unit coverage (for example `"init-1"`, `"init-notify"`, and `"resource-1"`) to dedicated constants where this improves consistency without reducing readability.
    - keep registration/setup literals, preferred-order inputs, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.

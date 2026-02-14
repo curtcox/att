@@ -89,6 +89,9 @@ UNIT_TEST_ERROR_RPC_FAILURE = "rpc failure"
 UNIT_TEST_ERROR_RPC_FAILURE_WITH_PREFIX = "rpc error: rpc failure"
 UNIT_TEST_ERROR_TIMED_OUT = "timed out"
 UNIT_TEST_ERROR_BAD_PAYLOAD = "bad payload"
+UNIT_TEST_NAT_TOOL_REQUEST_ID = "tool-1"
+UNIT_TEST_HTTP_METHOD_POST = "POST"
+UNIT_TEST_NAT_MCP_ENDPOINT = "http://nat.local/mcp"
 UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR = ("ok",)
 UNIT_TEST_FAILURE_SCRIPT_ERROR_VECTOR = ("error",)
 UNIT_TEST_FAILURE_ACTION_ERROR = "error"
@@ -978,7 +981,7 @@ async def test_nat_transport_adapter_initialize_and_invoke_happy_path() -> None:
         server,
         {
             "jsonrpc": "2.0",
-            "id": "tool-1",
+            "id": UNIT_TEST_NAT_TOOL_REQUEST_ID,
             "method": "tools/call",
             "params": {"name": UNIT_TEST_PROJECT_LIST_TOOL_NAME, "arguments": {"limit": 1}},
         },
@@ -1025,7 +1028,7 @@ async def test_nat_transport_adapter_session_diagnostics_and_invalidate() -> Non
         server,
         {
             "jsonrpc": "2.0",
-            "id": "tool-1",
+            "id": UNIT_TEST_NAT_TOOL_REQUEST_ID,
             "method": "tools/call",
             "params": {"name": UNIT_TEST_PROJECT_LIST_TOOL_NAME, "arguments": {}},
         },
@@ -1269,10 +1272,10 @@ async def test_transport_disconnect_invalidation_recreates_session_on_next_invok
         (
             httpx.HTTPStatusError(
                 UNIT_TEST_ERROR_BAD_STATUS,
-                request=httpx.Request("POST", "http://nat.local/mcp"),
+                request=httpx.Request(UNIT_TEST_HTTP_METHOD_POST, UNIT_TEST_NAT_MCP_ENDPOINT),
                 response=httpx.Response(
                     503,
-                    request=httpx.Request("POST", "http://nat.local/mcp"),
+                    request=httpx.Request(UNIT_TEST_HTTP_METHOD_POST, UNIT_TEST_NAT_MCP_ENDPOINT),
                 ),
             ),
             UNIT_TEST_HTTP_STATUS_ERROR_CATEGORY,
@@ -1299,7 +1302,7 @@ async def test_nat_transport_adapter_category_mapping_parity(
             server,
             {
                 "jsonrpc": "2.0",
-                "id": "tool-1",
+                "id": UNIT_TEST_NAT_TOOL_REQUEST_ID,
                 "method": "tools/call",
                 "params": {"name": UNIT_TEST_PROJECT_LIST_TOOL_NAME, "arguments": {}},
             },
