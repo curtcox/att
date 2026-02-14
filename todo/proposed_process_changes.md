@@ -1,26 +1,54 @@
 # Proposed Process Changes
 
-## Candidate Changes
+## Bottom-Line Decisions
 
-1. Batch micro-refactors into one slice
-- Run 3 to 5 related constant/helper cleanups per slice before full validation, instead of one tiny change at a time.
+### Adopt Now
 
-2. Add a handoff snapshot updater script
-- Create `scripts/update_handoff_snapshot.sh` to auto-fill HEAD, last commit, working-tree state, and latest validation count in `todo/NEXT_MACHINE_HANDOFF.md`.
+1. Candidate `#2`: handoff snapshot updater script.
+   - Status: **adopted**.
+   - Evidence: `scripts/update_handoff_snapshot.sh` is implemented and in active use.
 
-3. Reduce commit noise
-- Use one commit per slice that includes both code and plan-doc updates, and only do a separate snapshot commit when truly needed.
+2. Candidate `#4`: second doc guardrail.
+   - Status: **adopted**.
+   - Evidence: `tests/unit/test_docs_guardrails.py` enforces limits for both
+     `todo/NEXT_MACHINE_HANDOFF.md` and `todo/master_plan.md`.
 
-4. Add a second doc guardrail
-- Add a test for `todo/master_plan.md` growth, similar to the handoff-size test, so both active planning docs stay bounded.
+### Continue as Policy
 
-5. Define a fixed archive policy
-- Document a simple rule like “keep last N items in active docs, archive older to `done/` weekly” to avoid manual decisions each time.
+3. Candidate `#6`: prioritize behavior-impact slices more often.
+   - Status: **policy (ongoing)**.
+   - Intent: keep mixing behavior-impact slices (test quality/failure clarity/coverage relevance)
+     alongside structural cleanup slices.
 
-6. Prioritize behavior-impact slices more often
-- Mix in slices that improve test quality, failure messages, or coverage relevance, not only literal/constant normalization, so each cycle has clearer value.
+### Trial Next
 
-## Trials To Run Now
+4. Candidate `#3`: reduce commit noise.
+   - Status: **queued trial**.
+   - Trial rule: target one commit per slice including code + plan docs,
+     and only split snapshot into a second commit when necessary.
+   - Success metric: >= 80% of slices over next 10 slices end as one commit.
 
-1. Trial `#2`: handoff snapshot updater script.
-2. Trial `#4`: second doc guardrail for `todo/master_plan.md`.
+5. Candidate `#1`: batch micro-refactors into one slice.
+   - Status: **queued trial**.
+   - Trial rule: batch 2 to 3 tightly related cleanups per slice (not 5 initially).
+   - Success metric: lower per-slice overhead without increased rollback/rework.
+
+6. Candidate `#5`: fixed archive policy.
+   - Status: **queued trial**.
+   - Trial rule: archive weekly, keep only last N completed bullets in active docs.
+   - Success metric: no ad hoc archive debates during daily slices.
+
+## New Candidate Trials
+
+1. Single-commit slice enforcement.
+   - Trial rule: one commit per slice by default.
+   - Success metric: >= 80% one-commit slices over next 10 slices.
+
+2. Validation tiering for tiny test-only refactors.
+   - Trial rule: use targeted checks for small doc/test-only slices; run full suite every N slices
+     and before handoff.
+   - Success metric: reduced cycle time with no rise in post-merge regressions.
+
+3. Refactor completion criteria.
+   - Trial rule: define explicit "done" criteria for the current helper-normalization campaign.
+   - Success metric: campaign closes predictably rather than drifting into endless micro-slices.
