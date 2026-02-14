@@ -634,6 +634,12 @@ def _assert_unit_test_empty_adapter_session_listing(listing: list[Any]) -> None:
     assert listing == list(UNIT_TEST_EMPTY_ADAPTER_SESSION_VECTOR)
 
 
+def _unit_test_listed_adapter_sessions_by_server(
+    listing: list[Any],
+) -> dict[str, Any]:
+    return {item.server: item for item in listing}
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1797,7 +1803,7 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     )
 
     after = manager.list_adapter_sessions()
-    by_name = {item.server: item for item in after}
+    by_name = _unit_test_listed_adapter_sessions_by_server(after)
     _assert_unit_test_listed_adapter_session_state(
         by_name[UNIT_TEST_SERVER_B],
         active=True,

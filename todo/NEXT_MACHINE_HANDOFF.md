@@ -3,8 +3,8 @@
 ## Snapshot
 - Date: `2026-02-14`
 - Branch: `main`
-- HEAD: `fc823ac255f34bf05282bbe655f6d7c7fa7c720a`
-- Last commit: `fc823ac 2026-02-14 12:06:03 -0600 - Reuse listed server collection assertions in adapter tests`
+- HEAD: `c9f611a5d03649d908dbb349b80c87056f9eead9`
+- Last commit: `c9f611a 2026-02-14 12:13:29 -0600 - Reuse empty and inactive adapter listing assertions`
 - Working tree at handoff creation: dirty
 - Validation status:
   - `./.venv313/bin/python --version` => `Python 3.13.12`
@@ -21,9 +21,9 @@
 - See done for older completed slices:
   - `/Users/curt/me/att/done/next_machine_handoff_recent_delivered_work_archive_2026-02-13.md`
 
-- Completed adapter-session empty-result and inactive-state helper reuse in non-matrix parity paths:
-  - added local unit-test helpers `_assert_unit_test_listed_adapter_sessions_inactive(...)` and `_assert_unit_test_empty_adapter_session_listing(...)` in `tests/unit/test_mcp_client.py`.
-  - migrated repeated inactive/empty adapter-session assertions (`all(item.active is False ...)`, `list_adapter_sessions(...) == []`) in non-NAT controls, aggregate listing, and freshness-filter checks to helper-driven form while keeping server-name setup literals and method semantics explicit and unchanged.
+- Completed adapter-session listing lookup helper reuse in non-matrix parity paths:
+  - added local unit-test helper `_unit_test_listed_adapter_sessions_by_server(...)` in `tests/unit/test_mcp_client.py`.
+  - migrated repeated lookup scaffolding (`by_name = {item.server: item for item in list_adapter_sessions(...)}`) in adapter-session aggregate listing checks to helper-driven form while keeping keyed state assertions, server-name setup literals, and method semantics explicit and unchanged.
   - preserved focused timeout-category constant regression semantics plus invocation-event/connection-event filters and call-order/subsequence behavior unchanged.
 - Completed terminal failure-script consume-state helper assertion reuse in nearby cluster NAT helper validation coverage:
   - added local unit-test helper `_assert_unit_test_failure_script_terminal_state(...)` in `tests/unit/test_mcp_client.py`.
@@ -201,7 +201,7 @@
 ## Active Next Slice (Recommended)
 Continue `P12/P13` test-structure hardening by consolidating residual NAT helper expected vectors:
 1. Reuse shared expected vectors in `tests/unit/test_mcp_client.py` where this improves consistency in nearby NAT helper tests:
-   - migrate any remaining nearby repeated adapter-session listing lookup/update scaffolding (e.g., repeated `by_name = {item.server: item for item in ...}` + keyed state assertions) into shared local helper/vector form where this keeps branch intent explicit and behavior unchanged.
+   - migrate any remaining nearby repeated adapter-session keyed-state assertion scaffolding (e.g., repeated `_assert_unit_test_listed_adapter_session_state(...)` sequences for the same scenario shape) into shared local helper/vector form where this keeps branch intent explicit and behavior unchanged.
    - keep server-name setup literals, transport payload literals, and method-branch conditionals explicit and unchanged.
 2. Preserve regression and semantics:
    - keep focused timeout-category constant regression coverage explicit and unchanged.
