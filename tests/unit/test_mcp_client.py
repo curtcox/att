@@ -716,6 +716,18 @@ def _assert_unit_test_listed_adapter_session_keyed_states(
         )
 
 
+def _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
+    listing: list[Any],
+    expected_servers: tuple[str, ...],
+    expected_states: tuple[tuple[str, bool, bool | None, bool | None], ...],
+) -> None:
+    _assert_unit_test_listed_adapter_session_servers(listing, expected_servers)
+    _assert_unit_test_listed_adapter_session_keyed_states(
+        _unit_test_listed_adapter_sessions_by_server(listing),
+        expected_states,
+    )
+
+
 def _set_unit_test_failure_script(
     factory: ClusterNatSessionFactory,
     server: str,
@@ -1867,9 +1879,9 @@ async def test_manager_list_adapter_sessions_returns_sorted_aggregate() -> None:
     )
 
     after = manager.list_adapter_sessions()
-    by_name = _unit_test_listed_adapter_sessions_by_server(after)
-    _assert_unit_test_listed_adapter_session_keyed_states(
-        by_name,
+    _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
+        after,
+        UNIT_TEST_SERVER_A_B_VECTOR,
         UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_B_INACTIVE_A_STATES,
     )
 
@@ -1894,22 +1906,16 @@ async def test_manager_list_adapter_sessions_supports_filters_and_limit() -> Non
     )
 
     active_only = manager.list_adapter_sessions(active_only=True)
-    _assert_unit_test_listed_adapter_session_servers(
+    _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
         active_only,
         UNIT_TEST_SERVER_A_C_VECTOR,
-    )
-    _assert_unit_test_listed_adapter_session_keyed_states(
-        _unit_test_listed_adapter_sessions_by_server(active_only),
         UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_A_C_STATES,
     )
 
     only_c = manager.list_adapter_sessions(server_name=UNIT_TEST_SERVER_C)
-    _assert_unit_test_listed_adapter_session_servers(
+    _assert_unit_test_listed_adapter_session_servers_and_keyed_states(
         only_c,
         UNIT_TEST_SERVER_C_VECTOR,
-    )
-    _assert_unit_test_listed_adapter_session_keyed_states(
-        _unit_test_listed_adapter_sessions_by_server(only_c),
         UNIT_TEST_ADAPTER_SESSION_KEYED_ACTIVE_C_STATE,
     )
 
