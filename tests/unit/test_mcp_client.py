@@ -677,24 +677,6 @@ def _unit_test_primary_setup_steps(
     return ((UNIT_TEST_PRIMARY_SERVER, method, setup_vector),)
 
 
-def _unit_test_primary_timeout_ok_setup_steps(
-    method: str,
-) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
-    return _unit_test_primary_setup_steps(
-        method,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
-    )
-
-
-def _unit_test_primary_ok_setup_steps(
-    method: str,
-) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
-    return _unit_test_primary_setup_steps(
-        method,
-        UNIT_TEST_FAILURE_SCRIPT_OK_VECTOR,
-    )
-
-
 def _assert_unit_test_failure_script_consumed_actions_in_order(
     factory: ClusterNatSessionFactory,
     action_steps: tuple[tuple[str, str, str], ...],
