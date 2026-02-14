@@ -2302,11 +2302,11 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     async def invoke_once(preferred: list[str]) -> object:
         return await _invoke_unit_test_method_with_preferred(manager, method, preferred)
 
-    first = await invoke_once(["primary", "backup"])
+    first = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert first.server == UNIT_TEST_BACKUP_SERVER
 
     calls_after_first = len(factory.calls)
-    second = await invoke_once(["primary", "backup"])
+    second = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
     assert second.server == UNIT_TEST_BACKUP_SERVER
     second_slice = factory.calls[calls_after_first:]
     assert second_slice
@@ -2323,7 +2323,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
 
         clock.advance(seconds=1)
         calls_before_fourth = len(factory.calls)
-        fourth = await invoke_once(["primary", "backup"])
+        fourth = await invoke_once(UNIT_TEST_PREFERRED_PRIMARY_BACKUP_VECTOR)
         assert fourth.server == UNIT_TEST_BACKUP_SERVER
         fourth_slice = factory.calls[calls_before_fourth:]
         assert fourth_slice
@@ -2339,7 +2339,7 @@ async def test_cluster_nat_retry_window_matrix_handles_degraded_and_unreachable_
     _record_unit_test_backup_hold_error(manager)
 
     calls_before_reentry = len(factory.calls)
-    reentry = await invoke_once(["backup", "primary"])
+    reentry = await invoke_once(UNIT_TEST_PREFERRED_BACKUP_PRIMARY_VECTOR)
     assert reentry.server == UNIT_TEST_PRIMARY_SERVER
     assert reentry.method == method
 
