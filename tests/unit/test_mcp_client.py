@@ -614,6 +614,18 @@ def _unit_test_failure_script_reopen_setup_steps(
     )
 
 
+def _unit_test_primary_timeout_ok_setup_steps(
+    method: str,
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return (
+        (
+            UNIT_TEST_PRIMARY_SERVER,
+            method,
+            UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
+        ),
+    )
+
+
 def _assert_unit_test_failure_script_consumed_actions_in_order(
     factory: ClusterNatSessionFactory,
     action_steps: tuple[tuple[str, str, str], ...],
@@ -2074,11 +2086,9 @@ async def test_cluster_nat_retry_window_gating_skips_then_reenters_primary_call_
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_script(
+    _set_unit_test_failure_scripts(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        method,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
+        _unit_test_primary_timeout_ok_setup_steps(method),
     )
 
     async def invoke_once() -> object:
@@ -2144,11 +2154,9 @@ async def test_cluster_nat_resource_retry_reentry_skips_non_retryable_backup_sta
     )
     manager.register("primary", UNIT_TEST_PRIMARY_SERVER_URL)
     manager.register("backup", UNIT_TEST_BACKUP_SERVER_URL)
-    _set_unit_test_failure_script(
+    _set_unit_test_failure_scripts(
         factory,
-        UNIT_TEST_PRIMARY_SERVER,
-        UNIT_TEST_RESOURCES_READ_METHOD,
-        UNIT_TEST_FAILURE_SCRIPT_TIMEOUT_OK_VECTOR,
+        _unit_test_primary_timeout_ok_setup_steps(UNIT_TEST_RESOURCES_READ_METHOD),
     )
 
     first = await manager.read_resource(
